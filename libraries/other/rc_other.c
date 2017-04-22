@@ -21,6 +21,9 @@ void rc_null_func(){
 	return;
 }
 
+int rc_null_func2(){
+	return 0;
+}
 
 /*******************************************************************************
 * float rc_get_random_float()

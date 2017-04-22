@@ -54,7 +54,7 @@ int packet_len;
 pthread_t imu_interrupt_thread;
 int thread_running_flag;
 struct sched_param params;
-void (*imu_interrupt_func)(); // pointer to user's interrupt function
+int (*imu_interrupt_func)(); // pointer to user's interrupt function
 int interrupt_func_set;
 float mag_factory_adjust[3];
 float mag_offsets[3];
@@ -675,7 +675,7 @@ int rc_power_off_imu(){
 /*******************************************************************************
 *	Set up the IMU for DMP accelerated filtering and interrupts
 *******************************************************************************/
-int rc_initialize_imu_dmp(rc_imu_data_t *data, rc_imu_config_t conf){
+int rc_initialize_imu_dmp(rc_imu_data_t *data, rc_imu_config_t conf, void* ptr){
 	uint8_t c;
 	// range check
 	if(conf.dmp_sample_rate>DMP_MAX_RATE || conf.dmp_sample_rate<DMP_MIN_RATE){
@@ -830,9 +830,9 @@ int rc_initialize_imu_dmp(rc_imu_data_t *data, rc_imu_config_t conf){
 	// start the interrupt handler thread
 	interrupt_func_set = 1;
 	shutdown_interrupt_thread = 0;
-	rc_set_imu_interrupt_func(&rc_null_func);
+	rc_set_imu_interrupt_func(&rc_null_func2);
 	pthread_create(&imu_interrupt_thread, NULL, \
-					imu_interrupt_handler, (void*) NULL);
+					imu_interrupt_handler, (void*) ptr);
 	params.sched_priority = config.dmp_interrupt_priority;
 	pthread_setschedparam(imu_interrupt_thread, SCHED_FIFO, &params);
 	thread_running_flag = 1;
@@ -1446,7 +1446,7 @@ void* imu_interrupt_handler( __unused void* ptr){
 *
 * sets a user function to be called when new data is read
 *******************************************************************************/
-int rc_set_imu_interrupt_func(void (*func)(void)){
+int rc_set_imu_interrupt_func(int (*func)(void*)){
 	if(func==NULL){
 		fprintf(stderr,"ERROR: trying to assign NULL pointer to imu_interrupt_func\n");
 		return -1;

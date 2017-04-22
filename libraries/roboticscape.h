@@ -705,8 +705,8 @@ int rc_read_mag_data(rc_imu_data_t* data);
 int rc_read_imu_temp(rc_imu_data_t* data);
 
 // interrupt-driven sampling mode functions
-int rc_initialize_imu_dmp(rc_imu_data_t* data, rc_imu_config_t conf);
-int rc_set_imu_interrupt_func(void (*func)(void));
+int rc_initialize_imu_dmp(rc_imu_data_t* data, rc_imu_config_t conf, void *ptr);
+int rc_set_imu_interrupt_func(int (*func)(void*));
 int rc_stop_imu_interrupt_func();
 int rc_was_last_imu_read_successful();
 uint64_t rc_nanos_since_last_imu_interrupt();
@@ -1261,6 +1261,7 @@ void rc_timespec_add(timespec* start, double seconds);
 * Returns a string of the roboticscape package version for printing.
 *******************************************************************************/
 void rc_null_func();
+int rc_null_func2();
 float rc_get_random_float();
 double rc_get_random_double();
 int rc_saturate_float(float* val, float min, float max);
