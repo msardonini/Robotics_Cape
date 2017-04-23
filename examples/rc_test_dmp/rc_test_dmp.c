@@ -24,7 +24,7 @@ rc_imu_data_t data;
 // local functions
 rc_imu_orientation_t orientation_prompt();
 void print_usage();
-void print_data(); // imu interrupt function
+int print_data(void *prr); // imu interrupt function
 void print_header();
 
 
@@ -56,7 +56,7 @@ void print_usage(){
 *
 * This is the IMU interrupt function.  
 *******************************************************************************/
-void print_data(){
+int print_data(void *ptr){
 	printf("\r");
 	printf(" ");
 	
@@ -102,7 +102,7 @@ void print_data(){
 	}
 													
 	fflush(stdout);
-	return;
+	return 0;
 }
 
 /*******************************************************************************
@@ -294,8 +294,10 @@ int main(int argc, char *argv[]){
 		fprintf(stderr,"ERROR: failed to run rc_initialize(), are you root?\n");
 		return -1;
 	}
+	
+	int ptr = 0;
 	// now set up the imu for dmp interrupt operation
-	if(rc_initialize_imu_dmp(&data, conf)){
+	if(rc_initialize_imu_dmp(&data, conf,(void*)ptr)){
 		printf("rc_initialize_imu_failed\n");
 		return -1;
 	}

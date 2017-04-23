@@ -11,8 +11,8 @@
 
 //// Spektrum DSM2 RC Radio
 #define RC_CHANNELS 9
-#define CONFIG_DIRECTORY "/root/robot_config/"
-#define DSM2_CAL_FILE	"dsm2.cal"
+#define CONFIG_DIRECTORY "/var/lib/roboticscape/"
+#define DSM2_CAL_FILE	"dsm.cal"
 #define UART4_PATH "/dev/ttyO4"
 
 /*************************DSM2 Stuff ***************/

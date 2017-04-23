@@ -166,7 +166,7 @@ int flight_core(void * ptr){
 	*           Read the RC Controller for Commands           *
 	**********************************************************/
 	
-	if(is_new_dsm2_dataMS()){
+	if(rc_is_new_dsm_data()){
 		//printf("DSM2 In\n");
 		
 		//Reset the timout counter back to zero
@@ -176,7 +176,7 @@ int flight_core(void * ptr){
 		
 		//Set Yaw, RC Controller acts on Yaw velocity, save a history for integration
 		setpoint.yaw_rate_ref[1]=setpoint.yaw_rate_ref[0];		
-		setpoint.yaw_rate_ref[0]=get_dsm2_ch_normalizedMS(4)*MAX_YAW_RATE;
+		setpoint.yaw_rate_ref[0]=rc_get_dsm_ch_normalized(4)*MAX_YAW_RATE;
 		
 		//Apply a deadzone to keep integrator from wandering
 		if(fabs(setpoint.yaw_rate_ref[0])<0.05) {
@@ -184,14 +184,14 @@ int flight_core(void * ptr){
 		}
 		
 		//Kill Switch
-		control.kill_switch[0]=get_dsm2_ch_normalizedMS(5)/2;
+		control.kill_switch[0]=rc_get_dsm_ch_normalized(5)/2;
 		
 		//Auxillary Switch
 		setpoint.Aux[1] = setpoint.Aux[0];
-		setpoint.Aux[0]=get_dsm2_ch_normalizedMS(6); 
+		setpoint.Aux[0]=rc_get_dsm_ch_normalized(6); 
 		
-		setpoint.roll_ref=-get_dsm2_ch_normalizedMS(2)*MAX_ROLL_RANGE;	//DSM2 Receiver is inherently positive to the left
-		setpoint.pitch_ref=get_dsm2_ch_normalizedMS(3)*MAX_PITCH_RANGE;
+		setpoint.roll_ref=-rc_get_dsm_ch_normalized(2)*MAX_ROLL_RANGE;	//DSM2 Receiver is inherently positive to the left
+		setpoint.pitch_ref=rc_get_dsm_ch_normalized(3)*MAX_PITCH_RANGE;
 		
 		//Convert from Drone Coordinate System to User Coordinate System
 		float P_R_MAG=pow(pow(setpoint.roll_ref,2)+pow(setpoint.pitch_ref,2),0.5);
@@ -202,16 +202,18 @@ int flight_core(void * ptr){
 			if(setpoint.Aux[0]>0)//Remote Controlled Flight
 		{ 
 			//Set the throttle
-			control.throttle=(get_dsm2_ch_normalizedMS(1)+1)*0.5*(MAX_THROTTLE-MIN_THROTTLE)+MIN_THROTTLE;
-		
+			control.throttle=(rc_get_dsm_ch_normalized(1)+1)*0.5*(MAX_THROTTLE-MIN_THROTTLE)+MIN_THROTTLE;
+	
 			//Keep the aircraft at a constant height while making manuevers 
 			control.throttle *= 1/(cos(control.pitch)*cos(control.roll));
-		
+			
+				
+				
 			function_control.altitudeHold = 0;
 		}
 		else  //Flight by GPS and/or Lidar and Barometer
 		{
-			setpoint.altitudeSetpointRate = get_dsm2_ch_normalizedMS(1) * MAX_ALT_SPEED;
+			setpoint.altitudeSetpointRate = rc_get_dsm_ch_normalized(1) * MAX_ALT_SPEED;
 			
 			if(fabs(setpoint.altitudeSetpointRate - control.standing_throttle)<0.05)
 			{
@@ -240,7 +242,7 @@ int flight_core(void * ptr){
 		}
 	}
 	
-	if(DEBUG_MODE)
+	if(DEBUG_MODE && 0)
 	{
 		control.throttle = MIN_THROTTLE;
 		setpoint.Aux[0] = 0;
@@ -498,18 +500,18 @@ int flight_core(void * ptr){
 	//	printf(" U4: %2.2f ",control.u[3]);	
 		printf(" TH %2.2f ", control.throttle);
 		printf("Aux %2.1f ", setpoint.Aux[0]);
-	//	printf("function: %f",get_dsm2_ch_normalizedMS(6));
+	//	printf("function: %f",rc_get_dsm_ch_normalized(6));
 	//	printf("num wraps %d ",control.num_wraps);
 		printf(" Pitch_ref %2.2f ", setpoint.filt_pitch_ref);
 	//	printf(" Roll_ref %2.2f ", setpoint.filt_roll_ref);
 	//	printf(" Yaw_ref %2.2f ", setpoint.yaw_ref[0]);
-	//	printf(" Pitch %1.2f ", control.pitch);
+		printf(" Pitch %1.2f ", control.pitch);
 	//	printf(" Roll %1.2f ", control.roll);
-	//	printf(" Yaw %2.3f ", control.yaw[0]); 
+		printf(" Yaw %2.3f ", control.yaw[0]); 
 	//	printf(" DPitch %1.2f ", control.d_pitch_f); 
 	//	printf(" DRoll %1.2f ", control.d_roll_f);
 	//	printf(" DYaw %2.3f ", control.d_yaw); 	
-	//	printf(" uyaw %2.3f ", control.upitch); 		
+		printf(" uyaw %2.3f ", control.upitch); 		
 	//	printf(" uyaw %2.3f ", control.uroll); 		
 	//	printf(" uyaw %2.3f ", control.uyaw);
 	//	printf(" GPS pos lat: %2.2f", GPS_data.pos_lat);
@@ -618,7 +620,7 @@ int main(int argc, char *argv[]){
 	}
 
 	//Initialize the remote controller
-		initialize_dsm2MS();
+	rc_initialize_dsm();
 	
 	if(!DEBUG_MODE)
 	{	
@@ -638,10 +640,8 @@ int main(int argc, char *argv[]){
 	}
 
 	sleep(2); //wait for the IMU to level off	
-	printf("Made it here\n");
 	init_rotation_matrix(&transform); //Initialize the rotation matrix from IMU to drone
 	initialize_filters(&filters);
-	printf("Made it here\n");
 	//Start the GPS thread, flash the LED's if GPS has a fix
 	GPS_data.GPS_init_check=GPS_init(argc, argv,&GPS_data);
 	
