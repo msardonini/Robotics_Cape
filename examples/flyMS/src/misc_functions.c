@@ -1,4 +1,33 @@
-#include "../../../libraries/roboticscape.h"
+/*
+Copyright (c) 2014, Mike Sardonini
+All rights reserved.
+
+Redistribution and use in source and binary forms, with or without
+modification, are permitted provided that the following conditions are met:
+
+1. Redistributions of source code must retain the above copyright notice, this
+   list of conditions and the following disclaimer. 
+2. Redistributions in binary form must reproduce the above copyright notice,
+   this list of conditions and the following disclaimer in the documentation
+   and/or other materials provided with the distribution.
+
+THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
+ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
+WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER OR CONTRIBUTORS BE LIABLE FOR
+ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
+(INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
+LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND
+ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+(INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
+SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+The views and conclusions contained in the software and documentation are those
+of the authors and should not be interpreted as representing official policies, 
+either expressed or implied, of the FreeBSD Project.
+*/
+
+
 #include "flyMS.h"
 #include <pthread.h>
 #include "gps.h"
@@ -11,7 +40,7 @@
 #define PITCH_ROLL_KD 0.175
 
 
-#define PITCH_ROLL_RATE_KP 0.015   //0.0285
+#define PITCH_ROLL_RATE_KP 0.015  //0.0285
 #define PITCH_ROLL_RATE_KD 0.00155 //.00175
 
 #define YAW_KP 0.5 //0.6
@@ -25,9 +54,9 @@ int ready_check(control_variables_t *control){
     int count=1;
 	printf("Toggle the kill swtich twice and leave up to initialize\n");
 	while(count<6 && rc_get_state()!=EXITING){
-		if(is_new_dsm2_dataMS()){
+		if(rc_is_new_dsm_data()){
 			control->kill_switch[1]=control->kill_switch[0];
-			control->kill_switch[0]=get_dsm2_ch_normalizedMS(5);
+			control->kill_switch[0]=rc_get_dsm_ch_normalized(5);
 			usleep(100000);
 			if(control->kill_switch[0] < -0.75 && control->kill_switch[1] > 0.15){
 			count++;
@@ -44,8 +73,8 @@ int ready_check(control_variables_t *control){
 	//make sure the kill switch is in the position to fly before starting
 	while(control->kill_switch[0] < 0.5 && rc_get_state()!=EXITING)
 		{
-		if(is_new_dsm2_dataMS()){
-			control->kill_switch[0]=get_dsm2_ch_normalizedMS(5);	
+		if(rc_is_new_dsm_data()){
+			control->kill_switch[0]=rc_get_dsm_ch_normalized(5);	
 			}
 		usleep(10000);
 		}
@@ -159,17 +188,17 @@ void* quietEscs(void *ptr){
 *	initialize_filters()
 *	setup of feedback controllers used in flight core
 ************************************************************************/
-int initialize_filters(filters_t *filters){
+int initialize_filters(filters_t *filters, core_config_t *flight_config){
 
 	
-	filters->pitch_PD = generatePID(PITCH_ROLL_KP, PITCH_ROLL_KI, PITCH_ROLL_KD, 0.15, DT);
-	filters->roll_PD  = generatePID(PITCH_ROLL_KP, PITCH_ROLL_KI, PITCH_ROLL_KD, 0.15, DT);
+	filters->pitch_PD = generatePID(flight_config->pitch_KP, flight_config->pitch_KI, flight_config->pitch_KD, 0.15, DT);
+	filters->roll_PD  = generatePID(flight_config->roll_KP, flight_config->roll_KI, flight_config->roll_KD, 0.15, DT);
 	//filters->yaw_PD   = generatePID(YAW_KP,		  0, YAW_KD,	    0.15, 0.005);
 
 	//PD Controller (I is done manually)
-	filters->pitch_rate_PD = generatePID(PITCH_ROLL_RATE_KP, 0, PITCH_ROLL_RATE_KD, 0.15, DT);
-	filters->roll_rate_PD  = generatePID(PITCH_ROLL_RATE_KP, 0, PITCH_ROLL_RATE_KD, 0.15, DT);
-	filters->yaw_rate_PD   = generatePID(YAW_KP,		  0, YAW_KD,	    0.15, DT);
+	filters->pitch_rate_PD = generatePID(flight_config->Dpitch_KP, 0, flight_config->Dpitch_KD, 0.15, DT);
+	filters->roll_rate_PD  = generatePID(flight_config->Droll_KP, 0, flight_config->Droll_KD, 0.15, DT);
+	filters->yaw_rate_PD   = generatePID(flight_config->yaw_KP,		  0, flight_config->yaw_KD,	    0.15, DT);
 	
 	//Gains on Low Pass Filter for raw gyroscope output
 	
@@ -241,8 +270,7 @@ int initialize_filters(filters_t *filters){
 int init_rotation_matrix(tranform_matrix_t *transform){
 	float pitch_offset, roll_offset, yaw_offset;
 	int i,j;
-
-
+	
 	rc_alloc_matrix(&transform->IMU_to_drone_dmp,3,3);
 	rc_alloc_matrix(&transform->IMU_to_drone_gyro,3,3);
 	rc_alloc_matrix(&transform->IMU_to_drone_accel,3,3);

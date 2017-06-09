@@ -1,0 +1,69 @@
+<?xml version='1.0'?>
+<mavlink>
+    <include>common.xml</include>
+    <include>aurora.xml</include>
+    
+     <dialect>2</dialect>
+
+     <enums>
+          <enum name="RADAR_CMD">
+            <description>command for radar</description>
+	    <entry value="0" name="RADAR_CMD_START">
+              <description>Start radar</description>
+	    </entry>
+	    <entry value="1" name="RADAR_CMD_STOP">
+              <description>Stop radar</description>
+	    </entry>
+	    <entry value="2" name="RADAR_CMD_EXIT">
+              <description>Exit radar</description>
+	    </entry>
+	    <entry value="3" name="RADAR_CMD_READ">
+              <description>Read radar register</description>
+	    </entry>
+	    <entry value="4" name="RADAR_CMD_WRITE">
+              <description>Write radar register</description>
+	    </entry>
+	    <entry value="5" name="RADAR_CMD_LOG_DISTANCE">
+              <description>logging radar</description>
+	    </entry>
+	    <entry value="6" name="RADAR_CMD_LOG_IQ">
+              <description>logging radar</description>
+	    </entry>
+	    <entry value="7" name="RADAR_CMD_DUMP_PARAM">
+              <description>dump param</description>
+	    </entry>
+	  </enum>
+     </enums>
+     <messages>
+          <message id="200" name="RADAR_PARAM">
+            <description>radar parameters</description>
+	    <field type="uint32_t" name="sensing_mode">uint32_t</field>
+	    <field type="uint32_t" name="data_sel">uint32_t</field>
+	    <field type="uint32_t" name="decimate">uint32_t</field>
+	    <field type="uint32_t" name="rx_gain">uint32_t</field>
+	    <field type="float" name="fout_ch1">float</field>
+	    <field type="uint32_t" name="fmcw_t">uint32_t</field>
+	    <field type="float" name="fmcw_f">float</field>
+	    <field type="uint8_t" name="fmcw_fast">uint8_t</field>
+	    <field type="float" name="alpha">float</field>
+	    <field type="uint32_t" name="weight">uint32_t</field>
+	    <field type="float" name="thrsh_db">float</field>
+	    <field type="uint32_t" name="cal_period">uint32_t</field>
+	    <field type="float" name="lower">float</field>
+	    <field type="float" name="upper">float</field>
+	    <field type="uint32_t" name="search">uint32_t</field>
+	    <field type="uint32_t" name="window_func">uint32_t</field>
+	    <field type="uint32_t" name="dc_cut">uint32_t</field>
+	    <field type="uint32_t" name="output">uint32_t</field>
+	    <field type="uint32_t" name="nfft">uint32_t</field>
+	    <field type="float" name="period">float</field>
+	    <field type="uint8_t" name="enlpf">uint8_t</field>
+          </message>
+          <message id="201" name="RADAR_COMMAND">
+            <description>radar command</description>
+	    <field type="uint8_t" name="command" enum="RADAR_CMD">uint8_t</field>
+	    <field type="uint32_t" name="address">uint32_t</field>
+	    <field type="uint32_t" name="data">uint32_t</field>
+          </message>
+     </messages>
+</mavlink>

@@ -2,6 +2,19 @@
 ## Eclipse
 #################
 
+config_files/*
+!config_files/.gitkeep
+
+examples/flyMS/obj/*
+!examples/flyMS/obj/.gitkeep
+
+test_result/*
+!testresult/.gitkeep
+
+examples/flyMS/bin/*
+!examples/flyMS/bin/.gitkeep
+
+
 *.pydevproject
 .project
 .metadata
@@ -218,6 +231,7 @@ pip-log.txt
 #Mr Developer
 .mr.developer.cfg
 battery_monitor_service/rc_battery_monitor/rc_battery_monitor
+examples/flyMS/bin/flyMS
 examples/rc_benchmark_algebra/rc_benchmark_algebra
 examples/rc_bind_dsm/rc_bind_dsm
 examples/rc_blink/rc_blink
@@ -238,6 +252,7 @@ examples/rc_test_buttons/rc_test_buttons
 examples/rc_test_cape/rc_test_cape
 examples/rc_test_drivers/rc_test_drivers
 examples/rc_test_dsm/rc_test_dsm
+examples/rc_test_dmp/rc_test_dmp
 examples/rc_test_encoders/rc_test_encoders
 examples/rc_test_filters/rc_test_filters
 examples/rc_test_imu/rc_test_imu
