@@ -3,16 +3,9 @@
 #################
 
 config_files/*
-!config_files/.gitkeep
-
 examples/flyMS/obj/*
-!examples/flyMS/obj/.gitkeep
-
 test_result/*
-!testresult/.gitkeep
-
 examples/flyMS/bin/*
-!examples/flyMS/bin/.gitkeep
 
 
 *.pydevproject
@@ -64,11 +57,8 @@ local.properties
 [Rr]elease/
 x64/
 build/
-[Bb]in/
-[Oo]bj/
 
 # MSTest test Results
-[Tt]est[Rr]esult*/
 [Bb]uild[Ll]og.*
 
 *_i.c

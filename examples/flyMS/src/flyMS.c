@@ -517,8 +517,8 @@ int flight_core(void * ptr){
 	logger.new_entry.accel_lon		= accel_data.accel_Lon;
 	logger.new_entry.baro_alt		= control.baro_alt;
 	logger.new_entry.v_batt			= 0;
-	//logger.new_entry.v_batt			= get_dc_jack_voltage();
-	//log_core_data(&logger.core_logger, &logger.new_entry);
+	//logger.new_entry.v_batt			= rc_dc_jack_voltage();
+	log_core_data(&logger.core_logger, &logger.new_entry);
 	//debug_struct_real.flag2 = 38;
 		//Print some stuff
 		printf("\r ");
