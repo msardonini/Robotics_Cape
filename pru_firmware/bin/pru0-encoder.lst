@@ -1,0 +1,167 @@
+PRU Assembler Unix v2.1.4 Fri Jun  9 01:24:28 2017
+
+Tools Copyright (c) 2012-2015 Texas Instruments Incorporated
+pru0-encoder.asm                                                     PAGE    1
+
+       1; Converted to clpru by Mark A. Yoder
+       2;       26-July-2016
+       3
+       4; pru_0_encoder.p
+       5; assembly code for counting quadrature encoder signal on inputs R31_14 & 15
+       6
+       7; Copyright (c) 2015, James Strawson
+       8; All rights reserved.
+       9
+      10; Redistribution and use in source and binary forms, with or without
+      11; modification, are permitted provided that the following conditions are met:
+      12
+      13; 1. Redistributions of source code must retain the above copyright notice, this
+      14;   list of conditions and the following disclaimer. 
+      15; 2. Redistributions in binary form must reproduce the above copyright notice,
+      16;   this list of conditions and the following disclaimer in the documentation
+      17;   and/or other materials provided with the distribution.
+      18
+      19; THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
+      20; ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
+      21; WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+      22; DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER OR CONTRIBUTORS BE LIABLE FOR
+      23; ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
+      24; (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
+      25; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND
+      26; ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+      27; (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
+      28; SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+      29
+      30; The views and conclusions contained in the software and documentation are those
+      31; of the authors and should not be interpreted as representing official policies, 
+      32; either expressed or implied, of the FreeBSD Project.
+      33
+      34;       .cdecls "robotics_cape_defs.h"
+      35
+      36; PRU setup definitions
+      37        ; .asg    C4,     CONST_SYSCFG         
+      38        .asg    C28,    CONST_PRUSHAREDRAM   
+      39 
+      40        .asg    0x22000,        PRU0_CTRL
+      41        .asg    0x24000,    PRU1_CTRL       ; page 19
+      42        ; .asg    0x28,       CTPPR0          ; page 75
+      43 
+      44        .asg    0x000,  OWN_RAM
+      45        .asg    0x020,  OTHER_RAM
+      46        .asg    0x100,  SHARED_RAM       ; This is so prudebug can find it.
+      47        .asg    64,     CNT_OFFSET
+      48
+      49; Encoder counting definitions
+      50; these pin definitions are specific to SD-101D Robotics Cape
+      51        .asg    r31,            CH              ; CHA: P8_16, CHB: P8_15
+      52        .asg    r0,                     OLD             ; keep last known values of chA and B in memor
+      53        .asg    r0.t14,         OLD_A
+      54        .asg    r0.t15,         OLD_B
+      55        .asg    r1,                     EXOR    ; place to store the XOR of old with new AB vals
+PRU Assembler Unix v2.1.4 Fri Jun  9 01:24:28 2017
+
+Tools Copyright (c) 2012-2015 Texas Instruments Incorporated
+pru0-encoder.asm                                                     PAGE    2
+
+      56        .asg    14,                     A
+      57        .asg    15,                     B
+      58
+      59increment       .macro 
+      60        LBCO    &r2, CONST_PRUSHAREDRAM, CNT_OFFSET, 4  ; load existing counter from shared memory
+      61        ADD     r2, r2, 1               ; increment
+      62        SBCO    &r2, CONST_PRUSHAREDRAM, CNT_OFFSET, 4  ; write to shared memory
+      63        QBA CHECKPINS                           ; jump back to main CHECKPINS
+      64        .endm
+      65
+      66decrement       .macro
+      67        LBCO    &r2, CONST_PRUSHAREDRAM, CNT_OFFSET, 4  ; load existing counter from shared memory
+      68        SUB     r2, r2, 1               ; subtract 1
+      69        SBCO    &r2, CONST_PRUSHAREDRAM, CNT_OFFSET, 4  ; write to shared memory
+      70        QBA CHECKPINS                           ;/ jump back to main CHECKPINS
+      71        .endm
+      72
+      73        .clink
+      74        .global start
+      75 00000000                 start:
+      76;       LBCO    &r0, CONST_SYSCFG, 4, 4         ; Enable OCP master port
+      77;       CLR     r0, r0, 4                                       ; Clear SYSCFG[STANDBY_INIT] to enable
+      78;       SBCO    &r0, CONST_SYSCFG, 4, 4
+      79; Configure the programmable pointer register for PRU0 by setting c28_pointer[15:0]
+      80        ; LDI     r0, SHARED_RAM              ; Set C28 to point to shared RAM
+      81        ; LDI32   r1, PRU0_CTRL + CTPPR0                ; Note we use beginning of shared ram unlike e
+      82        ; SBBO    &r0, r1, 0, 4                         ; has arbitrary 2048 offset
+      83        
+      84; initialize by setting current state of two channels           
+      85 00000000 00000010FFFFE0          MOV     OLD, r31                                
+      86 00000004 0000002EFF8182          zero    &r2, 4
+      87 00000008 00000081403C82          SBCO    &r2, CONST_PRUSHAREDRAM, CNT_OFFSET, 4  ; write 0 to shared memory
+      88        
+      89; CHECKPINS here forever looking for pin changes
+      90 0000000c                 CHECKPINS:
+      91 0000000c 00000014FFE0E1          XOR EXOR, OLD, r31
+      92 00000010 000000D10EE103          QBBS A_CHANGED, EXOR, A ; Branch if CHA has toggled
+      93 00000014 000000D10FE109          QBBS B_CHANGED, EXOR, B ; Branch if CHB has toggled
+      94 00000018 0000007F0000FD          QBA CHECKPINS
+      95        
+      96        
+      97 0000001c                 A_CHANGED:
+      98 0000001c 00000010FFFFE0          MOV OLD, r31                    ; update old value now that something changed
+      99 00000020 000000C90EFF0D          QBBC A_FELL,  CH, A             ; Branch if CHA has fallen
+     100 00000024 000000D10FFF16          QBBS DECREMENT, CH, B           ; A has risen, if B is HIGH, decrement
+     101 00000028                         increment                               ; otherwise increment
+1        00000028 00000091403C82          LBCO    &r2, C28, 64, 4 ; load existing counter from shared memory
+1        0000002c 0000000101E2E2          ADD     r2, r2, 1               ; increment
+1        00000030 00000081403C82          SBCO    &r2, C28, 64, 4 ; write to shared memory
+1        00000034 0000007F0000F6          QBA CHECKPINS                           ; jump back to main CHECKPINS
+     102        
+     103 00000038                 B_CHANGED:
+     104 00000038 00000010FFFFE0          MOV OLD, r31                    ; update old value now that something changed
+     105 0000003c 000000C90FFF0B          QBBC B_FELL,  CH, B             ; Branch if CHB has fallen
+     106 00000040 000000D10EFF13          QBBS INCREMENT, CH, A           ; ch B has risen, if A is HIGH, increment
+PRU Assembler Unix v2.1.4 Fri Jun  9 01:24:28 2017
+
+Tools Copyright (c) 2012-2015 Texas Instruments Incorporated
+pru0-encoder.asm                                                     PAGE    3
+
+     107 00000044                         decrement                               ; otherwise decrement
+1        00000044 00000091403C82          LBCO    &r2, C28, 64, 4 ; load existing counter from shared memory
+1        00000048 0000000501E2E2          SUB     r2, r2, 1               ; subtract 1
+1        0000004c 00000081403C82          SBCO    &r2, C28, 64, 4 ; write to shared memory
+1        00000050 0000007F0000EF          QBA CHECKPINS                           ;/ jump back to main CHECKPINS
+     108        
+     109 00000054                 A_FELL:                                         ; CHA has fallen, check CHB
+     110 00000054 000000C90FFF0A          QBBC DECREMENT, CH, B           ; if CHB is clear (low) decrement
+     111 00000058                         increment                               ; CHB must be high, so decrement counter
+1        00000058 00000091403C82          LBCO    &r2, C28, 64, 4 ; load existing counter from shared memory
+1        0000005c 0000000101E2E2          ADD     r2, r2, 1               ; increment
+1        00000060 00000081403C82          SBCO    &r2, C28, 64, 4 ; write to shared memory
+1        00000064 0000007F0000EA          QBA CHECKPINS                           ; jump back to main CHECKPINS
+     112        
+     113 00000068                 B_FELL:                                         ; CHB has fallen, check CHA
+     114 00000068 000000C90EFF09          QBBC INCREMENT, CH, A           ; if CHA is clear (low) decrement
+     115 0000006c                         decrement
+1        0000006c 00000091403C82          LBCO    &r2, C28, 64, 4 ; load existing counter from shared memory
+1        00000070 0000000501E2E2          SUB     r2, r2, 1               ; subtract 1
+1        00000074 00000081403C82          SBCO    &r2, C28, 64, 4 ; write to shared memory
+1        00000078 0000007F0000E5          QBA CHECKPINS                           ;/ jump back to main CHECKPINS
+     116
+     117        
+     118 0000007c                 DECREMENT:
+     119 0000007c                         decrement
+1        0000007c 00000091403C82          LBCO    &r2, C28, 64, 4 ; load existing counter from shared memory
+1        00000080 0000000501E2E2          SUB     r2, r2, 1               ; subtract 1
+1        00000084 00000081403C82          SBCO    &r2, C28, 64, 4 ; write to shared memory
+1        00000088 0000007F0000E1          QBA CHECKPINS                           ;/ jump back to main CHECKPINS
+     120
+     121 0000008c                 INCREMENT:
+     122 0000008c                         increment
+1        0000008c 00000091403C82          LBCO    &r2, C28, 64, 4 ; load existing counter from shared memory
+1        00000090 0000000101E2E2          ADD     r2, r2, 1               ; increment
+1        00000094 00000081403C82          SBCO    &r2, C28, 64, 4 ; write to shared memory
+1        00000098 0000007F0000DD          QBA CHECKPINS                           ; jump back to main CHECKPINS
+     123
+     124                
+     125 0000009c 0000002A000000          HALT    ; we should never actually get here
+     126        
+
+No Assembly Errors, No Assembly Warnings
