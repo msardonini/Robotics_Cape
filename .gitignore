@@ -7,7 +7,7 @@ examples/flyMS/obj/*
 test_result/*
 examples/flyMS/bin/*
 
-
+pru_firmware/bin/
 *.pydevproject
 .project
 .metadata
