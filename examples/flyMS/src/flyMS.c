@@ -91,7 +91,6 @@ float 					yaw_offset[3] = {0, 0, YAW_OFFSET};
  
 int flight_core(void * ptr){
 	//debug_struct_real.flag2 = 12;
-	imu_err_count = 0;
 	//control_variables_t *STATE = (control_variables_t*)ptr;
 	//printf("pointer value %f\n", STATE->pitch);
 	
@@ -658,7 +657,7 @@ int main(int argc, char *argv[]){
 	// set up IMU configuration
 	rc_imu_config_t imu_config = rc_default_imu_config();
 	imu_config.dmp_sample_rate = SAMPLE_RATE;
-	imu_config.orientation = ORIENTATION_Z_UP;
+	imu_config.orientation = ORIENTATION_Z_DOWN;
 	imu_config.accel_fsr = A_FSR_2G;
 	imu_config.enable_magnetometer=1;
 	
