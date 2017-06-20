@@ -236,7 +236,6 @@ int flight_core(void * ptr){
 			//Set the throttle
 			control.throttle=(rc_get_dsm_ch_normalized(1)+1)* 0.5f *
 					(flight_config.max_throttle-flight_config.min_throttle)+flight_config.min_throttle;
-		
 			//Keep the aircraft at a constant height while making manuevers 
 			control.throttle *= 1/(cos(control.pitch)*cos(control.roll));
 		
@@ -657,7 +656,7 @@ int main(int argc, char *argv[]){
 	// set up IMU configuration
 	rc_imu_config_t imu_config = rc_default_imu_config();
 	imu_config.dmp_sample_rate = SAMPLE_RATE;
-	imu_config.orientation = ORIENTATION_Z_DOWN;
+	imu_config.orientation = ORIENTATION_Z_UP;
 	imu_config.accel_fsr = A_FSR_2G;
 	imu_config.enable_magnetometer=1;
 	

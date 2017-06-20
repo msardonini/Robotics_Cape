@@ -8,6 +8,7 @@ test_result/*
 
 
 bin/
+*.asm
 !examples/flyMS/bin/
 !examples/flyMS/bin/.gitkeep
 *.pydevproject
@@ -255,6 +256,4 @@ examples/rc_test_vector/rc_test_vector
 examples/rc_uart_loopback/rc_uart_loopback
 examples/rc_version/rc_version
 libraries/.rej
-pru_firmware/main_pru0.asm
-pru_firmware/main_pru1.asm
 roboticscape_service/rc_startup_routine/rc_startup_routine

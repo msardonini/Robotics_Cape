@@ -75,7 +75,7 @@ int main(int argc, char *argv[]){
 	int all = 1;	// set to 0 if a channel -c  argument is given 
 	test_mode_t mode = DISABLED; //start mode disabled
 	int power_en = 0; // change to 1 if user wishes to enable power rail
-	int frequency_hz = 50; // default 50hz frequency to send pulses
+	int frequency_hz = 200; // default 50hz frequency to send pulses
 	int toggle = 0;
 	int i;
 
@@ -258,7 +258,8 @@ int main(int argc, char *argv[]){
 		}
 	}
 	
-	// Main loop runs at frequency_hz
+	// Main loop runs at 
+	
 	while(rc_get_state()!=EXITING){
 		switch(mode){
 			
