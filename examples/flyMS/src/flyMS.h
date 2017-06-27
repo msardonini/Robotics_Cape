@@ -33,7 +33,8 @@ either expressed or implied, of the FreeBSD Project.
 #include "../../../libraries/roboticscape.h"
 #include "filter.h"
 #include "config.h"
-
+#include "logger.h"
+#include "gps.h"
 
 #ifndef FLIGHT_DEFS_H
 #define FLIGHT_DEFS_H
@@ -230,4 +231,12 @@ int init_rotation_matrix(tranform_matrix_t *transform);
 void* LED_thread(void *ptr);
 void init_esc_hardware();
 void* quietEscs(void *ptr);
+int flyMS_shutdown(uint8_t* quiet_escs, 
+					logger_t *logger, 
+					GPS_data_t *GPS_data, 
+					pthread_t *kalman_thread, 
+					pthread_t *led_thread,
+					pthread_t *core_logging_thread,
+					pthread_t *quiet_esc_thread);
+
 #endif

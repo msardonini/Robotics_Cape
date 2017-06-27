@@ -29,6 +29,7 @@ either expressed or implied, of the FreeBSD Project.
 
 
 #include "flyMS.h"
+#include "logger.h"
 #include <pthread.h>
 #include "gps.h"
 #include <inttypes.h>
@@ -158,11 +159,11 @@ void* LED_thread(void *ptr){
 // Send a zero command to the ESC's to shut them up when not running flight_core
 void* quietEscs(void *ptr){
 	
-	uint8_t *flight_core_running= (uint8_t*)ptr;
+	uint8_t *quiet_escs= (uint8_t*)ptr;
 	
 	while(rc_get_state()!=EXITING)
 	{
-		if (!*flight_core_running)
+		if (*quiet_escs)
 		{
 			zero_escs();
 		}
@@ -170,7 +171,7 @@ void* quietEscs(void *ptr){
 	}
 	
 	//keep sending a zero command until program has exitied
-	while(!*flight_core_running)
+	while(*quiet_escs)
 	{	
 		zero_escs();	
 		usleep(20000);
@@ -347,3 +348,47 @@ void* barometer_monitor(void* ptr){
 	}
 	return NULL;
 }
+
+
+
+int flyMS_shutdown(uint8_t* quiet_escs, logger_t *logger, 
+					GPS_data_t *GPS_data, 
+					pthread_t *kalman_thread, 
+					pthread_t *led_thread,
+					pthread_t *core_logging_thread,
+					pthread_t *quiet_esc_thread)
+{
+	
+	*quiet_escs = 1;
+	
+	stop_core_log(&logger->core_logger);// finish writing core_log
+	
+	//Join the threads for a safe process shutdown
+	if(GPS_data->GPS_init_check == 0)
+	{
+		join_GPS_thread(GPS_data);
+		printf("GPS thread joined\n");
+		pthread_join(*kalman_thread, NULL);
+		printf("Kalman thread joined\n");
+	}
+	pthread_join(*led_thread, NULL);
+	printf("LED thread joined\n");
+	pthread_join(*core_logging_thread, NULL);
+	printf("Logging thread joined\n");
+	  
+	static char* StateStrings[] = {	"UNINITIALIZED", "RUNNING", 
+									"PAUSED", "EXITING" };
+	fprintf(logger->Error_logger,"Exiting program, system state is %s\n", StateStrings[rc_get_state()]);
+	fflush(stdout);
+
+	// Close the log files
+	close(GPS_data->GPS_file);
+	fclose(logger->GPS_logger);
+	
+	*quiet_escs = 0;
+	pthread_join(*quiet_esc_thread, NULL);
+	printf("Quiet Esc thread joined\n");
+	return 0;
+}
+
+

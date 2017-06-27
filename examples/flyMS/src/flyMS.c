@@ -1,5 +1,5 @@
 /*
-Copyright (c) 2014, Mike Sardonini
+Copyright (c) 2017, Mike Sardonini
 All rights reserved.
 
 Redistribution and use in source and binary forms, with or without
@@ -29,7 +29,7 @@ either expressed or implied, of the FreeBSD Project.
 
 
 // flyMS.c Control Program to fly quadcopter
-// By Michael Sardonini, with help from James Strawson
+// By Michael Sardonini
 
 
 
@@ -631,8 +631,8 @@ int main(int argc, char *argv[]){
 	}
  
 	
-	uint8_t flight_core_running = 0;
-	pthread_create(&quiet_esc_thread, NULL, quietEscs, &flight_core_running);
+	uint8_t quiet_escs = 1;
+	pthread_create(&quiet_esc_thread, NULL, quietEscs, &quiet_escs);
 
 	if(flight_config.enable_barometer)
 	{
@@ -656,16 +656,9 @@ int main(int argc, char *argv[]){
 	// set up IMU configuration
 	rc_imu_config_t imu_config = rc_default_imu_config();
 	imu_config.dmp_sample_rate = SAMPLE_RATE;
-	imu_config.orientation = ORIENTATION_Z_UP;
+	imu_config.orientation = get_orientation_config(flight_config.imu_orientation);
 	imu_config.accel_fsr = A_FSR_2G;
 	imu_config.enable_magnetometer=1;
-	
-//	debug_struct_t //debug_struct_real;
-	//memset(&debug_struct_real,0,sizeof(debug_struct_t));
-//	debug_struct_t *debug_struct = &debug_struct_real;
-//	debug_struct->Error_logger = &logger.Error_logger;	
-//	memset(debug_struct->flag1,0,sizeof(int));	
-//	memset(debug_struct->flag2,0,sizeof(int));
 
 	// start imu
 	if(rc_initialize_imu_dmp(&imu_data, imu_config, (void*)NULL)){
@@ -718,7 +711,7 @@ int main(int argc, char *argv[]){
 	sleep(2); //wait for the IMU to level off	
 
 	//Start the control program
-	flight_core_running = 1;
+	quiet_escs = 0;
 	rc_set_imu_interrupt_func(&flight_core);
 	
 	printf("Starting \n");
@@ -731,39 +724,16 @@ int main(int argc, char *argv[]){
 			//fprintf(logger.Error_logger,"Error! IMU read failed for more than 5 consecutive timesteps. time: = %f number of missed reads: %u, Error Flag %d \n",control.time,imu_err_count, debug_struct->flag2);
 			fprintf(logger.Error_logger,"Error! IMU read failed for more than 5 consecutive timesteps. time: = %f number of missed reads: %u \n",control.time,imu_err_count);
 		}
-
-		//if(imu_err_count > 5) debug_struct->flag1=1;
-		//else debug_struct->flag1 = 0;
 	}
-	flight_core_running = 0;
 	
-	stop_core_log(&logger.core_logger);// finish writing core_log
+	flyMS_shutdown(&quiet_escs, 
+					&logger, 
+					&GPS_data, 
+					&kalman_thread, 
+					&led_thread,
+					&core_logging_thread,
+					&quiet_esc_thread);
 	
-	//Join the threads for a safe process shutdown
-	if(GPS_data.GPS_init_check == 0)
-	{
-		join_GPS_thread(&GPS_data);
-		printf("GPS thread joined\n");
-		pthread_join(kalman_thread, NULL);
-		printf("Kalman thread joined\n");
-	}
-	pthread_join(led_thread, NULL);
-	printf("LED thread joined\n");
-	pthread_join(core_logging_thread, NULL);
-	printf("Logging thread joined\n");
-	  
-	static char* StateStrings[] = {	"UNINITIALIZED", "RUNNING", 
-									"PAUSED", "EXITING" };
-	fprintf(logger.Error_logger,"Exiting program, system state is %s\n", StateStrings[rc_get_state()]);
-	fflush(stdout);
-
-	// Close the log files
-	close(GPS_data.GPS_file);
-	fclose(logger.GPS_logger);
-	
-	flight_core_running = 1;
-	pthread_join(quiet_esc_thread, NULL);
-	printf("Quiet Esc thread joined\n");
 	rc_cleanup();
 	return 0;
 	}

@@ -32,7 +32,6 @@ either expressed or implied, of the FreeBSD Project.
 #include <stdlib.h>
 #include <stdio.h>
 #include <stdint.h>
-
 #define CONFIG_FILE "flight_config.txt"
 #define CONFIG_DIRECTORY "/root/Robotics_Cape/config_files/"
 
@@ -47,6 +46,7 @@ either expressed or implied, of the FreeBSD Project.
 	X(int,  "%d", enable_logging,		1		)\
 	X(int,  "%d", enable_debug_mode,	0		)\
 	X(int,  "%d", enable_autonomy,		0		)\
+	X(int,  "%d", imu_orientation,		1		)\
 												\
 	X(float,  "%f", alt_KP,				0		)\
 	X(float,  "%f", alt_KD, 			0		)\
@@ -138,5 +138,8 @@ int load_core_config(core_config_t* config);
 *	creates a new file and returns a struct containing the default values
 ************************************************************************/
 int create_default_core_config_file(core_config_t* config);
+
+
+rc_imu_orientation_t get_orientation_config(int val);
 
 #endif

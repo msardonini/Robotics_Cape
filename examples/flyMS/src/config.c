@@ -30,9 +30,9 @@ either expressed or implied, of the FreeBSD Project.
 
 #include <stdio.h>
 #include <stdlib.h>
-#include "config.h"
 #include <string.h>
-
+#include "../../../libraries/roboticscape.h"
+#include "config.h"
 /************************************************************************
 * 	print_core_config()
 *	print configuration table to console
@@ -164,4 +164,45 @@ int create_default_core_config_file(core_config_t* config){
 	
 	//fclose(f);
 	return 0;
+}
+
+
+
+
+/*************************************************************************
+*	get_orientation_config
+*	translates the value in the config file to the enum for imu orientation
+*************************************************************************/
+
+rc_imu_orientation_t get_orientation_config(int val)
+{
+	rc_imu_orientation_t orientation;
+	switch(val)
+	{
+		case 1:
+			orientation = ORIENTATION_Z_UP;
+			break;
+		case 2:
+			orientation = ORIENTATION_Z_DOWN;
+			break;
+		case 3:
+			orientation = ORIENTATION_X_UP;
+			break;
+		case 4:
+			orientation = ORIENTATION_X_DOWN;
+			break;
+		case 5:
+			orientation = ORIENTATION_Y_UP;
+			break;
+		case 6:
+			orientation = ORIENTATION_Y_DOWN;
+			break;
+		case 7:
+			orientation = ORIENTATION_X_FORWARD;
+			break;
+		case 8:
+			orientation = ORIENTATION_X_BACK;
+			break;
+	}
+	return orientation;
 }
