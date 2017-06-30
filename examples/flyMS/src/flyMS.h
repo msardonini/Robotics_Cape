@@ -189,13 +189,6 @@ typedef struct tranform_matrix_t{
 	rc_vector_t 	dmp_drone, gyro_drone, accel_drone;
 }tranform_matrix_t;
 
-typedef struct pru_client_data_t{
-	uint8_t 	send_flag;
-	float 		u[4];
-	
-}pru_client_data_t;
-
-
 	
 typedef struct filters_t{
 	digital_filter_t			*pitch_rate_PD;
@@ -237,13 +230,11 @@ int init_rotation_matrix(tranform_matrix_t *transform);
 void* LED_thread(void *ptr);
 void init_esc_hardware();
 void* quietEscs(void *ptr);
-int flyMS_shutdown(uint8_t* quiet_escs, 
-					logger_t *logger, 
+int flyMS_shutdown(			logger_t *logger, 
 					GPS_data_t *GPS_data, 
 					pthread_t *kalman_thread, 
 					pthread_t *led_thread,
-					pthread_t *core_logging_thread,
-					pthread_t *quiet_esc_thread);
+					pthread_t *core_logging_thread);
 void* pru_sender(void* ptr);
 
 #endif

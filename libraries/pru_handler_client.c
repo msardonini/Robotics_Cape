@@ -6,9 +6,46 @@
 #include <unistd.h>
 #include <errno.h>
 #include <string.h>
+#include <pthread.h>
 #include <sys/types.h>
+#include "roboticscape.h"
 #include "pru_handler_client.h"
+#include <unistd.h>
 
+
+//Make this pthread variable global to this C file so we can join()
+pthread_t pru_sender_thread;
+
+int start_pru_client(pru_client_data_t* pru_client_data)
+{
+
+	//Check to see if the pru server is runningi, if not start it
+	if(access(PRU_PID_FILE, F_OK) == -1)
+	{
+		printf("Pru handler is not runnining, starting a new process now");
+		system("nohup pru_handler >/dev/null 2>&1 &");
+		//Give it some time to initialize
+		sleep(1);
+		
+		//Check again to make sure it's on
+		if(access(PRU_PID_FILE, F_OK) == -1)
+		{
+			printf("Error! pru_handler will not start\n");
+			return -1;
+		}
+	}
+	if(pthread_create(&pru_sender_thread, NULL, pru_sender, pru_client_data))
+	{
+		printf("Error starting pru_sender thread\n");
+		return -1;
+	}
+	return 0;
+}
+
+int join_pru_client()
+{
+	return pthread_join(pru_sender_thread, NULL);
+}
 
 
 void* pru_sender(void* ptr){
@@ -44,7 +81,6 @@ void* pru_sender(void* ptr){
     } 	
 	uint16_t tmp16 = 0x0000;
 	int i;
-	printf("made it to the while \n");
     while (rc_get_state()!=EXITING)
     {
 		if(client_data->send_flag)

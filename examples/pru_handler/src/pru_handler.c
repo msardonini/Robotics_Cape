@@ -248,7 +248,7 @@ int main(int argc, char *argv[])
 	}
     }
         close(connfd);
-	
+	remove(PID_FILE_PRU);
 	
 	return 0;
 }

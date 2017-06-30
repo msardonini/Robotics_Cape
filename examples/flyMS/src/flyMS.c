@@ -36,7 +36,7 @@ either expressed or implied, of the FreeBSD Project.
 #define LAT_ACCEL_BIAS -0.0177
 #define LON_ACCEL_BIAS  0.0063
 #define ALT_ACCEL_BIAS  0.0000
-#define YAW_OFFSET	  	1.106
+#define YAW_OFFSET	  1.106
 
 
 
@@ -62,7 +62,7 @@ either expressed or implied, of the FreeBSD Project.
 #include "logger.h"
 #include "config.h"
 #include "flyMS.h"
-
+#include "../../../libraries/pru_handler_client.h"
 
 
 int flight_core(void * ptr);
@@ -610,8 +610,6 @@ int main(int argc, char *argv[]){
 	pthread_t led_thread;
 	pthread_t kalman_thread;
 	pthread_t core_logging_thread;
-	pthread_t quiet_esc_thread;
-	pthread_t pru_sender_thread;
 
 	// load flight_core settings
 	if(load_core_config(&flight_config)){
@@ -638,9 +636,7 @@ int main(int argc, char *argv[]){
 	}
  
 	
-	uint8_t quiet_escs = 1;
-	//pthread_create(&quiet_esc_thread, NULL, quietEscs, &quiet_escs);
-	pthread_create(&pru_sender_thread, NULL, pru_sender, &pru_client_data);
+	start_pru_client(&pru_client_data);
 
 	if(flight_config.enable_barometer)
 	{
@@ -708,7 +704,6 @@ int main(int argc, char *argv[]){
 	}
 	
 	rc_disable_servo_power_rail();
-	init_esc_hardware();	 
 	 
 	//Start the mutex lock to prevent threads from interfering
 	if(pthread_mutex_init(&function_control.lock,NULL))
@@ -719,7 +714,6 @@ int main(int argc, char *argv[]){
 	sleep(2); //wait for the IMU to level off	
 
 	//Start the control program
-	quiet_escs = 0;
 	rc_set_imu_interrupt_func(&flight_core);
 	
 	printf("Starting \n");
@@ -734,13 +728,11 @@ int main(int argc, char *argv[]){
 		}
 	}
 	
-	flyMS_shutdown(&quiet_escs, 
-					&logger, 
+	flyMS_shutdown( 		&logger, 
 					&GPS_data, 
 					&kalman_thread, 
 					&led_thread,
-					&core_logging_thread,
-					&quiet_esc_thread);
+					&core_logging_thread);
 	
 	rc_cleanup();
 	return 0;

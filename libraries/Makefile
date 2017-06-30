@@ -49,6 +49,7 @@ install:
 	$(INSTALLDIR) $(DESTDIR)$(prefix)/include
 	$(INSTALL) roboticscape.h $(DESTDIR)$(prefix)/include/
 	$(INSTALL) rc_usefulincludes.h $(DESTDIR)$(prefix)/include/
+	$(INSTALL) pru_handler_client.h $(DESTDIR)$(prefix)/include/
 	@# library .so
 	$(INSTALLDIR) $(DESTDIR)$(prefix)/lib
 	$(INSTALL) $(TARGET) $(DESTDIR)$(prefix)/lib
@@ -69,6 +70,7 @@ clean:
 uninstall:
 	$(RM) $(DESTDIR)$(prefix)/lib/$(TARGET)
 	$(RM) $(DESTDIR)$(prefix)/include/roboticscape.h
+	$(RM) $(DESTDIR)$(prefix)/include/pru_handler_client.h
 	$(RM) $(DESTDIR)$(prefix)/include/roboticscape-defs.h
 	$(RM) $(DESTDIR)$(prefix)/include/roboticscape-usefulincludes.h
 	@echo " "

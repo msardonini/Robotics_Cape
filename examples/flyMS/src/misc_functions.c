@@ -41,6 +41,7 @@ either expressed or implied, of the FreeBSD Project.
 #include <pthread.h>
 #include "gps.h"
 #include <inttypes.h>
+#include "../../../libraries/pru_handler_client.h"
 //Coordinate system transformations matrices
 
 
@@ -164,28 +165,6 @@ void* LED_thread(void *ptr){
   }
 	
 
-// Send a zero command to the ESC's to shut them up when not running flight_core
-void* quietEscs(void *ptr){
-	
-	uint8_t *quiet_escs= (uint8_t*)ptr;
-	
-	while(rc_get_state()!=EXITING)
-	{
-		if (*quiet_escs)
-		{
-			zero_escs();
-		}
-		usleep(20000);
-	}
-	
-	//keep sending a zero command until program has exitied
-	while(*quiet_escs)
-	{	
-		zero_escs();	
-		usleep(20000);
-	}
-	return ptr;
-  }
 	
 
 
@@ -322,131 +301,14 @@ int init_rotation_matrix(tranform_matrix_t *transform){
 	return 0;
 }
 
-void zero_escs(){
-	int i;
-	for (i=0;i<8;i++){
-		//rc_send_esc_pulse_normalized(i+1, 0);	
-	}
-}
 
-
-void init_esc_hardware(){
-	uint8_t p;
-	for (p = 0; p < 100; p++)
-	{
-		//rc_send_esc_pulse_normalized_all(0); 
-	usleep(1000000/100); //run at about 50 hz
-	}
-}
-
-
-void* barometer_monitor(void* ptr){
-	control_variables_t *control= (control_variables_t*)control;
-		
-	while(rc_get_state()!=EXITING)
-	{
-		// perform the i2c reads to the sensor, this takes a bit of time
-		if(rc_read_barometer()<0){
-			printf("\rERROR: Can't read Barometer");
-			fflush(stdout);
-			continue;
-		}
-		control->baro_alt = rc_bmp_get_altitude_m();
-		usleep(1000000/BMP_CHECK_HZ);
-	}
-	return NULL;
-}
-
-void* pru_sender(void* ptr){
-	
-	pru_client_data_t *client_data = (pru_client_data_t*) ptr;
-	int sockfd = 0;
-    char sendBuff[16];
-    struct sockaddr_in serv_addr; 
-
-    memset(sendBuff, '0', sizeof(sendBuff));
-    if((sockfd = socket(AF_INET, SOCK_STREAM, 0)) < 0)
-    {
-        printf("\n Error : Could not create socket \n");
-        return NULL;
-    } 
-
-    memset(&serv_addr, '0', sizeof(serv_addr)); 
-
-    serv_addr.sin_family = AF_INET;
-    serv_addr.sin_port = htons(5000); 
-
-   // if(inet_pton(AF_INET, argv[1], &serv_addr.sin_addr)<=0)
-    if(inet_pton(AF_INET, "127.0.0.1" , &serv_addr.sin_addr)<=0)
-    {
-        printf("\n inet_pton error occured\n");
-        return NULL;
-    } 
-
-    if( connect(sockfd, (struct sockaddr *)&serv_addr, sizeof(serv_addr)) < 0)
-    {
-       printf("\n Error : Connect Failed \n");
-       return NULL;
-    } 	
-	uint16_t tmp16 = 0x0000;
-	int i;
-	printf("made it to the while \n");
-    while (rc_get_state()!=EXITING)
-    {
-		if(client_data->send_flag)
-		{				
-			sendBuff[0] = 0xAA;
-			sendBuff[1] = 0xBB;
-			sendBuff[10] = 0xEE;
-			sendBuff[11] = 0xFF;
-			
-			for (i = 0; i < 4 ; i++) 
-			{
-                                if (client_data->u[i] == 0.0f) tmp16 = 0;
-                                else tmp16 = (uint16_t)(client_data->u[i]*65536.0f)-1;
-			
-				sendBuff[2*i+2] = tmp16 & 0xFF;
-				sendBuff[2*i+2] = tmp16 >> 8;
-			}			
-			write(sockfd, sendBuff, sizeof(sendBuff)-1);
-			client_data->send_flag = 0;
-		}
-		usleep(2500); //run at 400hz just to check
-    }
-	
-	//Issue the shutdown command to the pru handler
-	for (i = 0; i < 4; i++)
-	{
-		sendBuff[0] = 0xAA;
-		sendBuff[1] = 0xBB;
-		sendBuff[10] = 0xEE;
-		sendBuff[11] = 0xFF;
-		sendBuff[2] = 's';
-		sendBuff[3] = 'h';
-		sendBuff[4] = 'u';
-		sendBuff[5] = 't';
-		sendBuff[6] = 'd';
-		sendBuff[7] = 'o';
-		sendBuff[8] = 'w';
-		sendBuff[9] = 'n';
-		write(sockfd, sendBuff, sizeof(sendBuff)-1);
-		usleep(10000);
-	}
-	
-	return NULL;
-}
-
-
-
-int flyMS_shutdown(uint8_t* quiet_escs, logger_t *logger, 
+int flyMS_shutdown(			 logger_t *logger, 
 					GPS_data_t *GPS_data, 
 					pthread_t *kalman_thread, 
 					pthread_t *led_thread,
-					pthread_t *core_logging_thread,
-					pthread_t *quiet_esc_thread)
+					pthread_t *core_logging_thread)
 {
 	
-	*quiet_escs = 1;
 	
 	stop_core_log(&logger->core_logger);// finish writing core_log
 	
@@ -471,10 +333,7 @@ int flyMS_shutdown(uint8_t* quiet_escs, logger_t *logger,
 	// Close the log files
 	close(GPS_data->GPS_file);
 	fclose(logger->GPS_logger);
-	
-	*quiet_escs = 0;
-	pthread_join(*quiet_esc_thread, NULL);
-	printf("Quiet Esc thread joined\n");
+	join_pru_client();	
 	return 0;
 }
 

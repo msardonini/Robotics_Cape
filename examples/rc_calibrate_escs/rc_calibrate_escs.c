@@ -18,13 +18,7 @@
 
 #include "../../libraries/rc_usefulincludes.h"
 #include "../../libraries/roboticscape.h"
-
-typedef struct pru_client_data_t{
-         uint8_t         send_flag;
-         float           u[4];
- 
-}pru_client_data_t;
-void *pru_sender(void* ptr);
+#include "../../libraries/pru_handler_client.h"
 
 float width; // global variable for normalized pulse width to send
 pru_client_data_t pru_client_data;
@@ -48,9 +42,7 @@ int main(){
 		return -1;
 	}
 
-	pthread_t pru_sender_thread;
-
-	pthread_create(&pru_sender_thread, NULL, pru_sender, &pru_client_data);
+	start_pru_client(&pru_client_data);
 
 	printf("\nDISCONNECT PROPELLERS FROM MOTORS\n");
 	printf("DISCONNECT POWER FROM ESCS\n");
@@ -89,11 +81,12 @@ int main(){
 END:
 	rc_set_state(EXITING); // this tells the send_pulses thread to stop
 	pthread_join(send_pulse_thread, NULL); // wait for it to stop
+	join_pru_client();
 	rc_cleanup();
 	return 0;
 }
 
-
+/*
 void* pru_sender(void* ptr){
 	
 	pru_client_data_t *client_data = (pru_client_data_t*) ptr;
@@ -174,3 +167,4 @@ void* pru_sender(void* ptr){
 }
 
 
+*/
