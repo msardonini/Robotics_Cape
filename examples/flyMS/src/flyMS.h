@@ -189,6 +189,12 @@ typedef struct tranform_matrix_t{
 	rc_vector_t 	dmp_drone, gyro_drone, accel_drone;
 }tranform_matrix_t;
 
+typedef struct pru_client_data_t{
+	uint8_t 	send_flag;
+	float 		u[4];
+	
+}pru_client_data_t;
+
 
 	
 typedef struct filters_t{
@@ -238,5 +244,6 @@ int flyMS_shutdown(uint8_t* quiet_escs,
 					pthread_t *led_thread,
 					pthread_t *core_logging_thread,
 					pthread_t *quiet_esc_thread);
+void* pru_sender(void* ptr);
 
 #endif

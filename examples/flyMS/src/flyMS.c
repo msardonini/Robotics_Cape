@@ -82,6 +82,7 @@ accel_data_t 			accel_data;			//A struct which is given to kalman.c
 logger_t				logger;
 tranform_matrix_t		transform;
 core_config_t 			flight_config;
+pru_client_data_t		pru_client_data;
 uint16_t 				imu_err_count;
 rc_imu_data_t				imu_data;			//Struct to relay all IMU info from driver to here
 float 					accel_bias[3] = {LAT_ACCEL_BIAS, LON_ACCEL_BIAS, ALT_ACCEL_BIAS};
@@ -461,14 +462,19 @@ int flight_core(void * ptr){
 		//Send Commands to Motors
 		if(rc_get_state()!=EXITING){
 			for(i=0;i<4;i++){
-				rc_send_esc_pulse_normalized(i+1,control.u[i]);
+				//rc_send_esc_pulse_normalized(i+1,control.u[i]);
+				pru_client_data.u[i] = control.u[i];
+			//	printf(" %f, ", pru_client_data.u[i]);
+				pru_client_data.send_flag = 1;
 			}
 		}
 		else{
 			for(i=0;i<4;i++){
 				control.u[i] = 0;
-				rc_send_esc_pulse_normalized(i+1,control.u[i]);
-			}	
+				//rc_send_esc_pulse_normalized(i+1,control.u[i]);
+				pru_client_data.u[i] = 0;
+				pru_client_data.send_flag = 1;
+			}
 		}
 		if(control.kill_switch[0] < .5) {
 			printf("\nKill Switch Hit! Shutting Down\n");
@@ -525,10 +531,10 @@ int flight_core(void * ptr){
 	//	printf("vel %2.2f ",lidar_data.d_altitude[0]);		
 	//	printf("H_d %3.3f ", control.height_damping);
 	//	printf("Alt_ref %3.1f ",control.alt_ref);
-	//	printf(" U1:  %2.2f ",control.u[0]);
-	//	printf(" U2: %2.2f ",control.u[1]);
-	//	printf(" U3:  %2.2f ",control.u[2]);
-	//	printf(" U4: %2.2f ",control.u[3]);	
+		printf(" U1:  %2.2f ",control.u[0]);
+		printf(" U2: %2.2f ",control.u[1]);
+		printf(" U3:  %2.2f ",control.u[2]);
+		printf(" U4: %2.2f ",control.u[3]);	
 		printf(" Throt %2.2f ", control.throttle);
 	//	printf("Aux %2.1f ", setpoint.Aux[0]);
 	//	printf("function: %f",rc_get_dsm_ch_normalized(6));
@@ -605,6 +611,7 @@ int main(int argc, char *argv[]){
 	pthread_t kalman_thread;
 	pthread_t core_logging_thread;
 	pthread_t quiet_esc_thread;
+	pthread_t pru_sender_thread;
 
 	// load flight_core settings
 	if(load_core_config(&flight_config)){
@@ -632,7 +639,8 @@ int main(int argc, char *argv[]){
  
 	
 	uint8_t quiet_escs = 1;
-	pthread_create(&quiet_esc_thread, NULL, quietEscs, &quiet_escs);
+	//pthread_create(&quiet_esc_thread, NULL, quietEscs, &quiet_escs);
+	pthread_create(&pru_sender_thread, NULL, pru_sender, &pru_client_data);
 
 	if(flight_config.enable_barometer)
 	{

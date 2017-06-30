@@ -141,12 +141,14 @@ int rc_initialize(){
 		fprintf(stderr,"ERROR: failed to start button threads\n");
 		return -1;
 	}
-
+	
+	/*
 	// start PRU
 	#ifdef DEBUG
 	printf("Initializing: PRU\n");
 	#endif
 	initialize_pru();
+	*/
 
 	// create new pid file with process id
 	#ifdef DEBUG
