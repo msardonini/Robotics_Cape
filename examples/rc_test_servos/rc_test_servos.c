@@ -34,6 +34,7 @@
 
 #include "../../libraries/rc_usefulincludes.h"
 #include "../../libraries/roboticscape.h"
+#include "../../libraries/pru_handler_client.h"
 
 typedef enum test_mode_t{
 	DISABLED,
@@ -78,7 +79,7 @@ int main(int argc, char *argv[]){
 	int frequency_hz = 200; // default 50hz frequency to send pulses
 	int toggle = 0;
 	int i;
-
+	pru_client_data_t pru_client_data;
 	// parse arguments
 	opterr = 0;
 	while ((c = getopt(argc, argv, "c:f:vrp:e:u:s:h")) != -1){
@@ -120,6 +121,7 @@ int main(int argc, char *argv[]){
 			
 		case 'e': // esc throttle option
 			if(mode!=DISABLED) print_usage();
+			start_pru_client(&pru_client_data);
 			esc_throttle = atof(optarg);
 			if(esc_throttle<=1 && esc_throttle>=0){
 				mode = ESC;
@@ -209,9 +211,9 @@ int main(int argc, char *argv[]){
 	// if driving an ESC, send throttle of 0 first
 	// otherwise it will go into calibration mode
 	if(mode==ESC || mode==RADIO){
-		if(all) rc_send_esc_pulse_normalized_all(0);
-		else rc_send_esc_pulse_normalized(ch,0);
-		rc_usleep(50/1000000);
+		//if(all) rc_send_esc_pulse_normalized_all(0);
+		//else rc_send_esc_pulse_normalized(ch,0);
+		//rc_usleep(50/1000000);
 	}
 	
 	
@@ -259,7 +261,6 @@ int main(int argc, char *argv[]){
 	}
 	
 	// Main loop runs at 
-	
 	while(rc_get_state()!=EXITING){
 		switch(mode){
 			
@@ -269,8 +270,17 @@ int main(int argc, char *argv[]){
 			break;
 			
 		case ESC:
-			if(all) rc_send_esc_pulse_normalized_all(esc_throttle);
-			else rc_send_esc_pulse_normalized(ch, esc_throttle);
+			if(all) 
+			{
+				for (i=0;i<8;i++) pru_client_data.u[i] = esc_throttle;
+				pru_client_data.send_flag = 1;
+			}
+			else
+			{
+				pru_client_data.u[ch-1] = esc_throttle;
+				pru_client_data.send_flag = 1;
+//				rc_send_esc_pulse_normalized(ch, esc_throttle);
+			}				
 			break;
 
 		case RADIO:
@@ -296,8 +306,17 @@ int main(int argc, char *argv[]){
 				}
 			}
 			fflush(stdout);
-			if(all) rc_send_esc_pulse_normalized_all(esc_throttle);
-			else rc_send_esc_pulse_normalized(ch, esc_throttle);
+			if(all) 
+			{
+				for (i=0;i<8;i++) pru_client_data.u[i] = esc_throttle;
+				pru_client_data.send_flag = 1;
+			}
+			else
+			{
+				pru_client_data.u[ch-1] = esc_throttle;
+				pru_client_data.send_flag = 1;
+//				rc_send_esc_pulse_normalized(ch, esc_throttle);
+			}		
 			break;
 
 			

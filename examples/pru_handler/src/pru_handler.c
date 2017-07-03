@@ -194,7 +194,7 @@ int main(int argc, char *argv[])
 		connfd = accept(listenfd, (struct sockaddr*)NULL, NULL);
 		if (connfd >=0) break;
 		usleep(20000);
-		rc_send_esc_pulse_normalized_all(0);
+		rc_send_esc_pulse_normalized_all(-0.09);
 
 	}
 	while(pru_get_state()!=PRUEXITING)
@@ -207,7 +207,7 @@ int main(int argc, char *argv[])
 	if (n <= 0)
 	{
 		printf("Timeout detected!! \n");
-		rc_send_esc_pulse_normalized_all(0);
+		rc_send_esc_pulse_normalized_all(-0.09);
 	}
 	else
 	{
@@ -236,10 +236,10 @@ int main(int argc, char *argv[])
 			else
 			{
 			printf("Sending Values: ");
-				for (i = 0; i < 4; i++)
+				for (i = 0; i < 8; i++)
 				{ 
 					val[i] = ((float)((rcvBuff[2*i+2] << 8) + rcvBuff[2*i+3]))/65536.0f;
-					rc_send_esc_pulse_normalized(i+4,val[i]);
+					rc_send_esc_pulse_normalized(i+1,val[i]);
 					printf(" %f, ", val[i]);
 				}
 			printf("\n");

@@ -273,7 +273,7 @@ int rc_send_esc_pulse_normalized(int ch, float input){
 		printf("ERROR: normalized input must be between 0 & 1\n");
 		return -1;
 	}
-	float micros = 1000.0 + (input*1000.0);
+	int micros = 1100 + (int)(input*800.0);
 	return rc_send_servo_pulse_us(ch, micros);
 }
 
