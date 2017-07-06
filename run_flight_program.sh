@@ -22,9 +22,9 @@ done
 i="0"
 while [ $i -lt $j ]
 do
-	flyMS > /dev/null
+#	flyMS > /dev/null
 	((i++))
-	sleep 1
+#	sleep 1
 done
 
 

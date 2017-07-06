@@ -32,18 +32,6 @@ either expressed or implied, of the FreeBSD Project.
 // By Michael Sardonini
 
 
-
-#define LAT_ACCEL_BIAS -0.0177
-#define LON_ACCEL_BIAS  0.0063
-#define ALT_ACCEL_BIAS  0.0000
-#define YAW_OFFSET	  1.106
-
-
-
-#define PITCH_ROLL_RATE_KI .05
-#define YAW_KI 0.05
-
-
 #include <errno.h>
 #include <string.h>
 #include <stdio.h>
@@ -66,8 +54,6 @@ either expressed or implied, of the FreeBSD Project.
 
 
 int flight_core(void * ptr);
-//void* kalman_filter(void*ptr);
-//int initialize_structs(accel_data_t *tmp, GPS_data_t *tmp2);
 
 
 /************************************************************************
@@ -80,23 +66,112 @@ function_control_t 		function_control;	//Structure to store variables which cont
 filters_t				filters;			//Struct to contain all the filters
 accel_data_t 			accel_data;			//A struct which is given to kalman.c
 logger_t				logger;
-tranform_matrix_t		transform;
+transform_matrix_t		transform;
 core_config_t 			flight_config;
 pru_client_data_t		pru_client_data;
+flyMS_threads_t			flyMS_threads;
 uint16_t 				imu_err_count;
-rc_imu_data_t				imu_data;			//Struct to relay all IMU info from driver to here
+rc_imu_data_t			imu_data;			//Struct to relay all IMU info from driver to here
 float 					accel_bias[3] = {LAT_ACCEL_BIAS, LON_ACCEL_BIAS, ALT_ACCEL_BIAS};
-float 					yaw_offset[3] = {0, 0, YAW_OFFSET};
- //debug_struct_t debug_struct_real;
- 
+
+void * setpoint_manager(void* ptr)
+{
+	while(rc_get_state()!=EXITING)
+	{
+		/**********************************************************
+		*           Read the RC Controller for Commands           *
+		**********************************************************/
+	
+		if(rc_is_new_dsm_data()){
+			//Reset the timout counter back to zero
+			function_control.dsm2_timeout=0;
+			
+			//Set roll reference value
+			//DSM2 Receiver is inherently positive to the left
+			setpoint.roll_ref=-rc_get_dsm_ch_normalized(2)*MAX_ROLL_RANGE;	
+			
+			//Set the pitch reference value
+			setpoint.pitch_ref=rc_get_dsm_ch_normalized(3)*MAX_PITCH_RANGE;
+			
+			//Convert from Drone Coordinate System to User Coordinate System
+			float P_R_MAG=pow(pow(setpoint.roll_ref,2)+pow(setpoint.pitch_ref,2),0.5);
+			float Theta_Ref=atan2f(setpoint.pitch_ref,setpoint.roll_ref);
+			setpoint.roll_ref =P_R_MAG*cos(Theta_Ref-control.yaw[0]+control.yaw_ref_offset);
+			setpoint.pitch_ref=P_R_MAG*sin(Theta_Ref-control.yaw[0]+control.yaw_ref_offset);
+			
+			
+			//Set Yaw, RC Controller acts on Yaw velocity, save a history for integration
+			//Apply the integration outside of current if statement, needs to run at 200Hz
+			setpoint.yaw_rate_ref[1]=setpoint.yaw_rate_ref[0];		
+			setpoint.yaw_rate_ref[0]=rc_get_dsm_ch_normalized(4)*MAX_YAW_RATE;
+			
+			//Apply a deadzone to keep integrator from wandering
+			if(fabs(setpoint.yaw_rate_ref[0])<0.05) {
+				setpoint.yaw_rate_ref[0]=0;
+			}
+			//Kill Switch
+			control.kill_switch[0]=rc_get_dsm_ch_normalized(5)/2;
+			
+			//Auxillary Switch
+			setpoint.Aux[1] = setpoint.Aux[0];
+			setpoint.Aux[0]= rc_get_dsm_ch_normalized(6); 
+			
+			//Set the throttle
+			control.throttle=(rc_get_dsm_ch_normalized(1)+1)* 0.5f *
+					(flight_config.max_throttle-flight_config.min_throttle)+flight_config.min_throttle;
+			//Keep the aircraft at a constant height while making manuevers 
+			control.throttle *= 1/(cos(control.pitch)*cos(control.roll));
+			
+			//Future work, set variables for autonomous flight
+			if(setpoint.Aux[0] < 0 && flight_config.enable_autonomy)
+			{ 
+				setpoint.altitudeSetpointRate = rc_get_dsm_ch_normalized(1) * MAX_ALT_SPEED;
+				//Apply a deadzone for altitude hold
+				if(fabs(setpoint.altitudeSetpointRate - control.standing_throttle)<0.05)
+				{
+					setpoint.altitudeSetpointRate=0;
+				}
+				//Detect if this is the first iteration switching to controlled flight
+				if (setpoint.Aux[1] > 0) 
+				{
+					function_control.altitudeHoldFirstIteration = 1;
+				}
+				function_control.altitudeHold = 1;
+			}
+			else  
+			{
+				function_control.altitudeHold = 0;
+			}
+		}
+		
+		//check to make sure too much time hasn't gone by since hearing the RC
+		else{
+			if(!flight_config.enable_debug_mode)
+			{
+				function_control.dsm2_timeout=function_control.dsm2_timeout+1;
+				if(function_control.dsm2_timeout>1.5/DT) {
+					printf("\nLost Connection with Remote!! Shutting Down Immediately \n");	
+					fprintf(logger.Error_logger,"\nLost Connection with Remote!! Shutting Down Immediately \n");	
+					rc_set_state(EXITING);
+				}
+			}
+		}
+		//Finally Update the integrator on the yaw reference value
+		setpoint.yaw_ref[1]=setpoint.yaw_ref[0];
+		setpoint.yaw_ref[0]=setpoint.yaw_ref[1]+(setpoint.yaw_rate_ref[0]+setpoint.yaw_rate_ref[1])*DT/2;
+		
+		usleep(5000); //Run at 200Hz
+	}	
+	return NULL;
+}
+
+
  
 int flight_core(void * ptr){
-	//debug_struct_real.flag2 = 12;
 	//control_variables_t *STATE = (control_variables_t*)ptr;
 	//printf("pointer value %f\n", STATE->pitch);
 	
 	static rc_vector_t *X_state_Lat1, *X_state_Lon1;
-	//debug_struct_real.flag2 = 13;
 	//Keep an i for loops
 	static uint8_t i=0, i1=0;
 	
@@ -104,7 +179,6 @@ int flight_core(void * ptr){
 	static uint8_t First_Iteration=1, First_Iteration_GPS=1;
 	
 	static float initial_alt = 0;
-//debug_struct_real.flag2 = 14;
 	//Initialize some variables if it is the first iteration
 	if(First_Iteration){
 		clock_gettime(CLOCK_MONOTONIC, &function_control.start_time); //Set the reference time to the first iteration
@@ -118,18 +192,14 @@ int flight_core(void * ptr){
 		fprintf(logger.GPS_logger,"time,deg_lon,min_lon,deg_lat,min_lat,speed,direction,gps_alt,hdop,fix\n");
 		printf("First Iteration ");
 		}
-//debug_struct_real.flag2 = 15;
-	//Keep all other threads from interfering from this point until unlock
-	//pthread_mutex_lock(&function_control.lock);
 
 	/**********************************************************
 	*    Read the IMU for Rotational Position and Velocity    *
 	**********************************************************/
-	//debug_struct_real.flag2 = 16;
 	//Bring 3 axes of accel, gyro and angle data in to this program
 	for (i=0;i<3;i++) 
 	{	
-		transform.dmp_imu.d[i] = imu_data.fused_TaitBryan[i] + yaw_offset[i];
+		transform.dmp_imu.d[i] = imu_data.fused_TaitBryan[i];
 		transform.gyro_imu.d[i] = imu_data.gyro[i] * DEG_TO_RAD;
 		transform.accel_imu.d[i] = imu_data.accel[i];
 	}
@@ -141,7 +211,7 @@ int flight_core(void * ptr){
 	//Subtract the gravity vector component from lat/lon accel
 	transform.accel_drone.d[0]+= 9.8 * sin(transform.dmp_drone.d[0]);
 	transform.accel_drone.d[1]+= 9.8 * sin(transform.dmp_drone.d[1]);
-	//debug_struct_real.flag2 = 17;
+
 	//lowpass the accel data and subtract the biases
 	accel_data.accel_Lat	= update_filter(filters.LPF_Accel_Lat,transform.accel_drone.d[0]-accel_bias[0]);
 	accel_data.accel_Lon	= update_filter(filters.LPF_Accel_Lon,transform.accel_drone.d[1]-accel_bias[1]);
@@ -152,7 +222,7 @@ int flight_core(void * ptr){
 	control.roll 			= update_filter(filters.LPF_roll,transform.dmp_drone.d[1]);
 	control.yaw[1] 			= control.yaw[0];	
 	control.yaw[0] 			= transform.dmp_drone.d[2] + control.num_wraps*2*M_PI;
-//debug_struct_real.flag2 = 18;
+
 	if(fabs(control.yaw[0] - control.yaw[1])  > 5)
 	{
 		if(control.yaw[0] > control.yaw[1]) control.num_wraps--;
@@ -163,13 +233,12 @@ int flight_core(void * ptr){
 	control.d_pitch			= transform.gyro_drone.d[0];
 	control.d_roll			= transform.gyro_drone.d[1];
 	control.d_yaw			= transform.gyro_drone.d[2];
-		//debug_struct_real.flag2 = 19;
+
 		
 	//Store some info in the accel_data struct to send to kalman filer
 	accel_data.pitch=control.pitch;
 	accel_data.roll=control.roll;
 	accel_data.yaw[0]=control.yaw[0];
-	//debug_struct_real.flag2 = 20;
 	
 	if(First_Iteration){
 		setpoint.yaw_ref[0]=control.yaw[0];
@@ -177,7 +246,6 @@ int flight_core(void * ptr){
 		control.yaw_ref_offset = control.yaw[0];
 		printf("Started \n");
 	}
-	//debug_struct_real.flag2 = 21;
 	/**********************************************************
 	*           Read the Barometer for Altitude				  *
 	**********************************************************/	
@@ -194,102 +262,13 @@ int flight_core(void * ptr){
 			i1=0;
 		}
 		control.baro_alt = update_filter(filters.LPF_baro_alt,rc_bmp_get_altitude_m() - initial_alt);
-	//debug_struct_real.flag2 = 22;
 	}
-	//debug_struct_real.flag2 = 23;
-	/**********************************************************
-	*           Read the RC Controller for Commands           *
-	**********************************************************/
-	
-	if(rc_is_new_dsm_data()){
-		//printf("DSM2 In\n");
-		//debug_struct_real.flag2 = 24;
-		//Reset the timout counter back to zero
-		function_control.dsm2_timeout=0;
-		
-		//Set Yaw, RC Controller acts on Yaw velocity, save a history for integration
-		setpoint.yaw_rate_ref[1]=setpoint.yaw_rate_ref[0];		
-		setpoint.yaw_rate_ref[0]=rc_get_dsm_ch_normalized(4)*MAX_YAW_RATE;
-		
-		//Apply a deadzone to keep integrator from wandering
-		if(fabs(setpoint.yaw_rate_ref[0])<0.05) {
-			setpoint.yaw_rate_ref[0]=0;
-		}
-		
-		//Kill Switch
-		control.kill_switch[0]=rc_get_dsm_ch_normalized(5)/2;
-		
-		//Auxillary Switch
-		setpoint.Aux[1] = setpoint.Aux[0];
-		setpoint.Aux[0]=rc_get_dsm_ch_normalized(6); 
-		
-		setpoint.roll_ref=-rc_get_dsm_ch_normalized(2)*MAX_ROLL_RANGE;	//DSM2 Receiver is inherently positive to the left
-		setpoint.pitch_ref=rc_get_dsm_ch_normalized(3)*MAX_PITCH_RANGE;
-		
-		//Convert from Drone Coordinate System to User Coordinate System
-		float P_R_MAG=pow(pow(setpoint.roll_ref,2)+pow(setpoint.pitch_ref,2),0.5);
-		float Theta_Ref=atan2f(setpoint.pitch_ref,setpoint.roll_ref);
-		setpoint.roll_ref =P_R_MAG*cos(Theta_Ref-control.yaw[0]+control.yaw_ref_offset);
-		setpoint.pitch_ref=P_R_MAG*sin(Theta_Ref-control.yaw[0]+control.yaw_ref_offset);
-//debug_struct_real.flag2 = 25;
-		if(setpoint.Aux[0]>0 || !flight_config.enable_autonomy)//Remote Controlled Flight
-		{ 
-			//Set the throttle
-			control.throttle=(rc_get_dsm_ch_normalized(1)+1)* 0.5f *
-					(flight_config.max_throttle-flight_config.min_throttle)+flight_config.min_throttle;
-			//Keep the aircraft at a constant height while making manuevers 
-			control.throttle *= 1/(cos(control.pitch)*cos(control.roll));
-		
-			function_control.altitudeHold = 0;
-		}
-		else  //Flight by GPS and/or Lidar and Barometer
-		{
-			setpoint.altitudeSetpointRate = rc_get_dsm_ch_normalized(1) * MAX_ALT_SPEED;
-			
-			if(fabs(setpoint.altitudeSetpointRate - control.standing_throttle)<0.05)
-			{
-				setpoint.altitudeSetpointRate=0;
-			}
-			
-			//Detect if this is the first iteration switching to controlled flight
-			if (setpoint.Aux[1] > 0) 
-			{
-				function_control.altitudeHoldFirstIteration = 1;
-			}
-			function_control.altitudeHold = 1;
-		}
-	}
-	else{ //check to make sure too much time hasn't gone by since hearing the RC
-		
-		if(!flight_config.enable_debug_mode)
-		{
-			function_control.dsm2_timeout=function_control.dsm2_timeout+1;
-			
-			if(function_control.dsm2_timeout>1.5/DT) {
-				printf("\nLost Connection with Remote!! Shutting Down Immediately \n");	
-				fprintf(logger.Error_logger,"\nLost Connection with Remote!! Shutting Down Immediately \n");	
-				rc_set_state(EXITING);
-			}
-		}
-	}
-	//debug_struct_real.flag2 = 26;
-	if(flight_config.enable_debug_mode && 0)
-	{
-		control.throttle = MIN_THROTTLE;
-		setpoint.Aux[0] = 0;
-		setpoint.roll_ref = 0;
-		setpoint.pitch_ref = 0;
-		setpoint.yaw_rate_ref[0] = 0;
-		setpoint.yaw_rate_ref[1] = 0;
-		setpoint.roll_ref = 0;
-	}
-	
-		//debug_struct_real.flag2 = 27;
+
+
 	/************************************************************************
 	*                   	Throttle Controller                             *
 	************************************************************************/
-	
- //debug_struct_real.flag2 = 28;
+
 //	float throttle_compensation = 1 / cos(control.roll);
 //	throttle_compensation *= 1 / cos(control.pitch);		
 
@@ -307,9 +286,6 @@ int flight_core(void * ptr){
 		control.throttle = control.uthrottle + control.standing_throttle;
 		
 	}
-
-	
-		//debug_struct_real.flag2 = 29;
 	/************************************************************************
 	* 	                  Pitch and Roll Controllers                        *
 	************************************************************************/
@@ -319,7 +295,6 @@ int flight_core(void * ptr){
 	}
 	else{
 		//Using GPS Control
-		
 		if(function_control.gps_pos_mode==0){
 			printf("gps position mode\n");
 			setpoint.lat_setpoint=GPS_data.pos_lat;
@@ -348,7 +323,6 @@ int flight_core(void * ptr){
 		
 		//control.throttle=saturateFilter(control.throttle,-0.15,0.15)+control.standing_throttle;
 	}
-	//debug_struct_real.flag2 = 30;
 	//Filter out any high freq noise coming from yaw in the CS translation
 	setpoint.filt_pitch_ref = update_filter(filters.LPF_Yaw_Ref_P,setpoint.pitch_ref);
 	setpoint.filt_roll_ref = update_filter(filters.LPF_Yaw_Ref_R,setpoint.roll_ref);
@@ -356,24 +330,15 @@ int flight_core(void * ptr){
 	//Filter out high frequency noise in Raw Gyro data
 	control.d_pitch_f = update_filter(filters.LPF_d_pitch,control.d_pitch);			
 	control.d_roll_f = update_filter(filters.LPF_d_roll,control.d_roll);
-
-	//Set the Pitch reference Setpoint
-	//control.dpitch_setpoint=((setpoint.filt_pitch_ref - control.pitch)*  
-	//				4 - control.d_pitch_f);
 	
-	control.dpitch_setpoint = update_filter(filters.pitch_PD, setpoint.filt_pitch_ref - control.pitch) - control.d_pitch_f;
+	control.dpitch_setpoint = update_filter(filters.pitch_PD, setpoint.filt_pitch_ref - control.pitch);
 	
-	//Set the Roll reference Setpoint
-	//control.droll_setpoint=((setpoint.filt_roll_ref - control.roll)* 
-	//				4 - control.d_roll_f);	
-	
-	control.droll_setpoint = update_filter(filters.roll_PD, setpoint.filt_roll_ref - control.roll) - control.d_roll_f;
+	control.droll_setpoint = update_filter(filters.roll_PD, setpoint.filt_roll_ref - control.roll);
 	
 	//Apply the PD Controllers 
-	control.upitch = update_filter(filters.pitch_rate_PD,control.dpitch_setpoint);
-	control.uroll = update_filter(filters.roll_rate_PD,control.droll_setpoint);				
+	control.upitch = update_filter(filters.pitch_rate_PD,control.dpitch_setpoint - control.d_pitch_f);
+	control.uroll = update_filter(filters.roll_rate_PD,control.droll_setpoint - control.d_roll_f);				
 	
-//debug_struct_real.flag2 = 31;
 	
 	/************************************************************************
 	*                        	Yaw Controller                              *
@@ -383,10 +348,7 @@ int flight_core(void * ptr){
 	setpoint.yaw_ref[1]=setpoint.yaw_ref[0];
 	setpoint.yaw_ref[0]=setpoint.yaw_ref[1]+(setpoint.yaw_rate_ref[0]+setpoint.yaw_rate_ref[1])*DT/2;
 
-	
 	control.uyaw = update_filter(filters.yaw_rate_PD,setpoint.yaw_ref[0]-control.yaw[0]);
-	
-//debug_struct_real.flag2 = 32;
 	
 	/************************************************************************
 	*                   	Apply the Integrators                           *
@@ -406,7 +368,6 @@ int flight_core(void * ptr){
 		control.dpitch_err_integrator=0;
 		control.dyaw_err_integrator=0;
 	}
-	//debug_struct_real.flag2 = 33;
 		
 	//only use integrators if airborne (above minimum throttle for > 1.5 seconds)
 	if(function_control.integrator_start >  400){
@@ -439,7 +400,6 @@ int flight_core(void * ptr){
 	control.u[2]=control.throttle+control.uroll+control.upitch-control.uyaw;
 	control.u[3]=control.throttle-control.uroll+control.upitch+control.uyaw;		
 
-	//debug_struct_real.flag2 = 34;
 	float largest_value = 1;
 	float smallest_value = 0;
 
@@ -455,41 +415,25 @@ int flight_core(void * ptr){
 		for(i=0;i<4;i++) control.u[i]-=offset;
 	}
 
-	//debug_struct_real.flag2 = 35;
-
 	if(!flight_config.enable_debug_mode)
 	{
 		//Send Commands to Motors
-		if(rc_get_state()!=EXITING){
-			for(i=0;i<4;i++){
-				//rc_send_esc_pulse_normalized(i+1,control.u[i]);
-				pru_client_data.u[i] = control.u[i];
-			//	printf(" %f, ", pru_client_data.u[i]);
-				pru_client_data.send_flag = 1;
-			}
+
+		for(i=0;i<4;i++){
+			pru_client_data.u[i] = control.u[i];
+			pru_client_data.send_flag = 1;
 		}
-		else{
-			for(i=0;i<4;i++){
-				control.u[i] = 0;
-				//rc_send_esc_pulse_normalized(i+1,control.u[i]);
-				pru_client_data.u[i] = 0;
-				pru_client_data.send_flag = 1;
-			}
-		}
+
 		if(control.kill_switch[0] < .5) {
 			printf("\nKill Switch Hit! Shutting Down\n");
 			fprintf(logger.Error_logger,"\nKill Switch Hit! Shutting Down\n");	
 			rc_set_state(EXITING);
 		}
-	}	
-//debug_struct_real.flag2 = 36;
-	fflush(stdout);	
-	
+	}
 	clock_gettime(CLOCK_MONOTONIC, &function_control.log_time);
 	control.time=(float)(function_control.log_time.tv_sec - function_control.start_time.tv_sec) + 
 						((float)(function_control.log_time.tv_nsec - function_control.start_time.tv_nsec) / 1000000000) ;
-	
-		//debug_struct_real.flag2 = 37;
+
 	logger.new_entry.time			= control.time;	
 	logger.new_entry.pitch			= control.pitch;	
 	logger.new_entry.roll			= control.roll;
@@ -523,8 +467,11 @@ int flight_core(void * ptr){
 	logger.new_entry.v_batt			= 0;
 	//logger.new_entry.v_batt			= rc_dc_jack_voltage();
 	log_core_data(&logger.core_logger, &logger.new_entry);
-	//debug_struct_real.flag2 = 38;
-		//Print some stuff
+
+	
+	//Print some stuff if in debug mode
+	if(flight_config.enable_debug_mode)
+	{	
 		printf("\r ");
 		printf("time %3.3f ", control.time);
 	//	printf("Alt %2.2f ",lidar_data.altitude[0]);
@@ -561,8 +508,9 @@ int flight_core(void * ptr){
 	//	printf(" Pos_Lon %2.3f ", X_state_Lon1->data[0]);
 	//	printf("control: %d",rc_get_state());
 	//	printf("Baro Alt: %f ",baro_alt);
-		
-		//debug_struct_real.flag2 = 39;
+		fflush(stdout);
+	}
+
 		/***************** Get GPS Data if available *******************/
 	if(is_new_GPS_data()){
 		
@@ -590,10 +538,6 @@ int flight_core(void * ptr){
 			GPS_data.pos_lon=GPS_data.meters_lon-control.initial_pos_lon;
 		}
 	}
-	//pthread_mutex_unlock(&function_control.lock);
-		
-	
-		//debug_struct_real.flag2 = 40;
 	return 0;
 }
 	
@@ -606,10 +550,6 @@ int main(int argc, char *argv[]){
 		return -1;
 	}	
 	
-	//Define some threads
-	pthread_t led_thread;
-	pthread_t kalman_thread;
-	pthread_t core_logging_thread;
 
 	// load flight_core settings
 	if(load_core_config(&flight_config)){
@@ -635,84 +575,20 @@ int main(int argc, char *argv[]){
 			}
 	}
  
-	
-	start_pru_client(&pru_client_data);
-
-	if(flight_config.enable_barometer)
+	if(initialize_flight_program( &flyMS_threads,
+                               &flight_config,
+                               &logger,
+                               &filters,
+                               &pru_client_data,
+                               &imu_data,
+                               &transform,
+                               &GPS_data))
 	{
-		if(rc_initialize_barometer(OVERSAMPLE, INTERNAL_FILTER)<0){
-			printf("initialize_barometer failed\n");
-			return -1;
-		}
-	}
-	
-	if(flight_config.enable_logging)
-	{
-		// start a core_log and logging thread
-		if(start_core_log(&logger)<0){
-			printf("WARNING: failed to open a core_log file\n");
-		}
-		else{
-			pthread_create(&core_logging_thread, NULL, core_log_writer, &logger.core_logger);
-		}
-	}
-	
-	// set up IMU configuration
-	rc_imu_config_t imu_config = rc_default_imu_config();
-	imu_config.dmp_sample_rate = SAMPLE_RATE;
-	imu_config.orientation = get_orientation_config(flight_config.imu_orientation);
-	imu_config.accel_fsr = A_FSR_2G;
-	imu_config.enable_magnetometer=1;
-
-	// start imu
-	if(rc_initialize_imu_dmp(&imu_data, imu_config, (void*)NULL)){
-		printf("ERROR: can't talk to IMU, all hope is lost\n");
-		rc_blink_led(RED, 5, 5);
 		return -1;
 	}
-	
-	//Initialize the remote controller
-	rc_initialize_dsm();
-	
-	if(!flight_config.enable_debug_mode)
-	{	
-		if(ready_check(&control)){
-			printf("Exiting Program \n");
-			return -1;
-		} //Toggle the kill switch a few times to signal it's ready
-	}
 
-	init_rotation_matrix(&transform); //Initialize the rotation matrix from IMU to drone
-	initialize_filters(&filters, &flight_config);
-
-	//Start the GPS thread, flash the LED's if GPS has a fix
-	if(flight_config.enable_gps)
-	{
-		GPS_data.GPS_init_check=GPS_init(argc, argv,&GPS_data);
-		
-		led_thread_t GPS_ready;
-		memset(&GPS_ready,0,sizeof(GPS_ready));
-		GPS_ready.GPS_fix_check = GPS_data.GPS_fix_check;
-		GPS_ready.GPS_init_check = GPS_data.GPS_init_check;
-		pthread_create(&led_thread, NULL, LED_thread, (void*) &GPS_ready);
-		
-		//Spawn the Kalman Filter Thread if GPS is running
-		if (GPS_data.GPS_init_check == 0)
-		{
-			pthread_create(&kalman_thread, NULL , kalman_filter, (void*) NULL);
-		}
-	}
+	printf("Debug mode value is %d\n", flight_config.enable_debug_mode);
 	
-	rc_disable_servo_power_rail();
-	 
-	//Start the mutex lock to prevent threads from interfering
-	if(pthread_mutex_init(&function_control.lock,NULL))
-	{
-		printf("Error Lock init failed\n");
-	}
-		
-	sleep(2); //wait for the IMU to level off	
-
 	//Start the control program
 	rc_set_imu_interrupt_func(&flight_core);
 	
@@ -723,17 +599,13 @@ int main(int argc, char *argv[]){
 		imu_err_count++;
 		if (imu_err_count == 5 || imu_err_count % 50 == 0)
 		{
-			//fprintf(logger.Error_logger,"Error! IMU read failed for more than 5 consecutive timesteps. time: = %f number of missed reads: %u, Error Flag %d \n",control.time,imu_err_count, debug_struct->flag2);
 			fprintf(logger.Error_logger,"Error! IMU read failed for more than 5 consecutive timesteps. time: = %f number of missed reads: %u \n",control.time,imu_err_count);
 		}
 	}
 	
 	flyMS_shutdown( 		&logger, 
 					&GPS_data, 
-					&kalman_thread, 
-					&led_thread,
-					&core_logging_thread);
-	
+					&flyMS_threads); 
 	rc_cleanup();
 	return 0;
 	}

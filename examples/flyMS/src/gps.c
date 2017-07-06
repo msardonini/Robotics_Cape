@@ -48,7 +48,7 @@ uint8_t VTG_flag;
 uint8_t GPS_data_flag;
 
 
-int GPS_init(int argc, char *argv[], GPS_data_t * GPS_data){
+int GPS_init(GPS_data_t * GPS_data){
 
 	
 
@@ -149,9 +149,10 @@ int GPS_init(int argc, char *argv[], GPS_data_t * GPS_data){
 		return -1;
 	}
 	
-	
+	int argc = 0;
+	char *argv[1];	
 	//Check for user inputs between hot, warm, cold, or factory reset starts
-	if(argc==2){
+	if(argc==2 && 0){
 			if(!strcmp(argv[1],"hot")){	
 				if(write(GPS_data->GPS_file, "$PTNLSRT,H,1,,*20<CR><LF>\r\n", 27)==27){
 						printf("Hot Start Selected. \n\n Look for >>$PTNLRRT,A*3F<< for successful confirmation from device \n\n");

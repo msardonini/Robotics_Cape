@@ -44,34 +44,115 @@ either expressed or implied, of the FreeBSD Project.
 #include "../../../libraries/pru_handler_client.h"
 //Coordinate system transformations matrices
 
+int initialize_flight_program(flyMS_threads_t *flyMS_threads,
+				core_config_t *flight_config,
+				logger_t *logger,
+				filters_t *filters,
+				pru_client_data_t *pru_client_data,
+				rc_imu_data_t *imu_data,
+				transform_matrix_t *transform,
+				GPS_data_t *GPS_data)
+{
+	pthread_create(&flyMS_threads->setpoint_manager_thread, NULL, setpoint_manager, (void*)NULL );
 
-#define PITCH_ROLL_KP 5 
-#define PITCH_ROLL_KI 2
-#define PITCH_ROLL_KD 0.175
+	int debug_mode = flight_config->enable_debug_mode;
+	// load flight_core settings
+	if(load_core_config(flight_config)){
+		printf("WARNING: no configuration file found\n");
+		printf("loading default settings\n");
+		if(create_default_core_config_file(flight_config)){
+			printf("Warning, can't write default flight_config file\n");
+		}
+	}
+	
+	flight_config->enable_debug_mode = (debug_mode || flight_config->enable_debug_mode);
+	start_pru_client(pru_client_data);
 
+	if(flight_config->enable_barometer)
+	{
+		if(rc_initialize_barometer(OVERSAMPLE, INTERNAL_FILTER)<0){
+			printf("initialize_barometer failed\n");
+			return -1;
+		}
+	}
+	
+	if(flight_config->enable_logging)
+	{
+		// start a core_log and logging thread
+		if(start_core_log(logger)<0){
+			printf("WARNING: failed to open a core_log file\n");
+		}
+		else{
+			pthread_create(&flyMS_threads->core_logging_thread, NULL, core_log_writer, &logger->core_logger);
+		}
+	}
+	
+	// set up IMU configuration
+	rc_imu_config_t imu_config = rc_default_imu_config();
+	imu_config.dmp_sample_rate = SAMPLE_RATE;
+	imu_config.orientation = get_orientation_config(flight_config->imu_orientation);
+	imu_config.accel_fsr = A_FSR_2G;
+	imu_config.enable_magnetometer=1;
 
-#define PITCH_ROLL_RATE_KP 0.015  //0.0285
-#define PITCH_ROLL_RATE_KD 0.00155 //.00175
+	// start imu
+	if(rc_initialize_imu_dmp(imu_data, imu_config, (void*)NULL)){
+		printf("ERROR: can't talk to IMU, all hope is lost\n");
+		rc_blink_led(RED, 5, 5);
+		return -1;
+	}
+	
+	//Initialize the remote controller
+	rc_initialize_dsm();
+	
+	if(!flight_config->enable_debug_mode)
+	{	
+		if(ready_check()){
+			printf("Exiting Program \n");
+			return -1;
+		} //Toggle the kill switch a few times to signal it's ready
+	}
 
-#define YAW_KP 0.5 //0.6
-#define YAW_KD 0.05
+	init_rotation_matrix(transform); //Initialize the rotation matrix from IMU to drone
+	initialize_filters(filters, flight_config);
 
+	//Start the GPS thread, flash the LED's if GPS has a fix
+	if(flight_config->enable_gps)
+	{
+		GPS_data->GPS_init_check=GPS_init(GPS_data);
+		
+		led_thread_t GPS_ready;
+		memset(&GPS_ready,0,sizeof(GPS_ready));
+		GPS_ready.GPS_fix_check = GPS_data->GPS_fix_check;
+		GPS_ready.GPS_init_check = GPS_data->GPS_init_check;
+		pthread_create(&flyMS_threads->led_thread, NULL, LED_thread, (void*) &GPS_ready);
+		
+		//Spawn the Kalman Filter Thread if GPS is running
+		if (GPS_data->GPS_init_check == 0)
+		{
+			pthread_create(&flyMS_threads->kalman_thread, NULL , kalman_filter, (void*) NULL);
+		}
+	}
+	//Should be disabled by default but we don't want to be pumping 5V into our BEC ESC output
+	rc_disable_servo_power_rail();
+	sleep(2); //wait for the IMU to level off
+	return 0;
+}
 
-
-int ready_check(control_variables_t *control){
+int ready_check(){
 	//Toggle the kill switch to get going, to ensure controlled take-off
 	//Keep kill switch down to remain operational
     int count=1;
+	float val[2] = {0.0f , 0.0f};
 	printf("Toggle the kill swtich twice and leave up to initialize\n");
 	while(count<6 && rc_get_state()!=EXITING){
 		if(rc_is_new_dsm_data()){
-			control->kill_switch[1]=control->kill_switch[0];
-			control->kill_switch[0]=rc_get_dsm_ch_normalized(5);
+			val[1]=val[0];
+			val[0]=rc_get_dsm_ch_normalized(5);
 			usleep(100000);
-			if(control->kill_switch[0] < -0.75 && control->kill_switch[1] > 0.15){
+			if(val[0] < -0.75 && val[1] > 0.35){
 			count++;
 			} 
-			if(control->kill_switch[0] > 0.75 && control->kill_switch[1] < 0.35){
+			if(val[0] > 0.75 && val[1] < 0.35){
 			count++;
 			}
 			usleep(10000);
@@ -81,10 +162,10 @@ int ready_check(control_variables_t *control){
 	}
 	
 	//make sure the kill switch is in the position to fly before starting
-	while(control->kill_switch[0] < 0.5 && rc_get_state()!=EXITING)
+	while(val[0] < 0.5 && rc_get_state()!=EXITING)
 		{
 		if(rc_is_new_dsm_data()){
-			control->kill_switch[0]=rc_get_dsm_ch_normalized(5);	
+			val[0]=rc_get_dsm_ch_normalized(5);	
 			}
 		usleep(10000);
 		}
@@ -163,15 +244,9 @@ void* LED_thread(void *ptr){
 	}
 	return NULL;
   }
-	
-
-	
 
 
 
-	
-	
-	
 /************************************************************************
 *	initialize_filters()
 *	setup of feedback controllers used in flight core
@@ -182,7 +257,6 @@ int initialize_filters(filters_t *filters, core_config_t *flight_config){
 	filters->roll_PD  = generatePID(flight_config->roll_KP, flight_config->roll_KI, flight_config->roll_KD, 0.15, DT);
 	//filters->yaw_PD   = generatePID(YAW_KP,		  0, YAW_KD,	    0.15, 0.005);
 
-	printf("Using Kp value of %f",flight_config->Dpitch_KP);
 	//PD Controller (I is done manually)
 	filters->pitch_rate_PD = generatePID(flight_config->Dpitch_KP, 0, flight_config->Dpitch_KD, 0.15, DT);
 	filters->roll_rate_PD  = generatePID(flight_config->Droll_KP, 0, flight_config->Droll_KD, 0.15, DT);
@@ -255,7 +329,7 @@ int initialize_filters(filters_t *filters, core_config_t *flight_config){
 	return 0;
 }
 
-int init_rotation_matrix(tranform_matrix_t *transform){
+int init_rotation_matrix(transform_matrix_t *transform){
 	float pitch_offset, roll_offset, yaw_offset;
 	int i,j;
 	
@@ -304,9 +378,7 @@ int init_rotation_matrix(tranform_matrix_t *transform){
 
 int flyMS_shutdown(			 logger_t *logger, 
 					GPS_data_t *GPS_data, 
-					pthread_t *kalman_thread, 
-					pthread_t *led_thread,
-					pthread_t *core_logging_thread)
+					flyMS_threads_t *flyMS_threads) 
 {
 	
 	
@@ -317,12 +389,12 @@ int flyMS_shutdown(			 logger_t *logger,
 	{
 		join_GPS_thread(GPS_data);
 		printf("GPS thread joined\n");
-		pthread_join(*kalman_thread, NULL);
+		pthread_join(flyMS_threads->kalman_thread, NULL);
 		printf("Kalman thread joined\n");
 	}
-	pthread_join(*led_thread, NULL);
+	pthread_join(flyMS_threads->led_thread, NULL);
 	printf("LED thread joined\n");
-	pthread_join(*core_logging_thread, NULL);
+	pthread_join(flyMS_threads->core_logging_thread, NULL);
 	printf("Logging thread joined\n");
 	  
 	static char* StateStrings[] = {	"UNINITIALIZED", "RUNNING", 

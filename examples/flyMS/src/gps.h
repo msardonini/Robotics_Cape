@@ -62,7 +62,7 @@ typedef struct GPS_data_t{
 GPS_data_t* get_GPS_pointer();
 float get_NMEA_field(int field, char buf[], int comma[]);
 int join_GPS_thread(GPS_data_t *GPS_data);
-int GPS_init(int argc, char *argv[], GPS_data_t * GPS_data);
+int GPS_init(GPS_data_t * GPS_data);
 uint8_t is_new_GPS_data();
 void* GPS_data_watcher(void *ptr);
 void read_raw_gps(char *buf, GPS_data_t *GPS_data);

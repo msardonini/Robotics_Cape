@@ -31,10 +31,12 @@ either expressed or implied, of the FreeBSD Project.
 #pragma once
 #include "linear_algebra.h"
 #include "../../../libraries/roboticscape.h"
+#include "../../../libraries/pru_handler_client.h"
 #include "filter.h"
 #include "config.h"
 #include "logger.h"
 #include "gps.h"
+#include "kalman.h"
 
 #ifndef FLIGHT_DEFS_H
 #define FLIGHT_DEFS_H
@@ -47,9 +49,6 @@ either expressed or implied, of the FreeBSD Project.
 // opt to use our own 2nd order filter instead.
 #define INTERNAL_FILTER	BMP_FILTER_8
 #define BMP_CHECK_HZ	1
-
-
-
 
 
 
@@ -66,6 +65,12 @@ either expressed or implied, of the FreeBSD Project.
 #define MAX_YAW_COMPONENT 0.25
 #define DEG_TO_RAD 0.01745
 #define MAX_ALT_SPEED 0.2 //in meters/second
+
+
+#define LAT_ACCEL_BIAS -0.0177
+#define LON_ACCEL_BIAS  0.0063
+#define ALT_ACCEL_BIAS  0.0000
+
 
 /************************** Orientation Matrix Constants *****************************/	
 #define cR1 cos(roll_offset)
@@ -183,11 +188,11 @@ typedef struct function_control_t{
 	timespec 			start_time, log_time; //Some Structures to use to keep track of time during flight
 	}function_control_t;
 	
-typedef struct tranform_matrix_t{
+typedef struct transform_matrix_t{
 	rc_matrix_t 	IMU_to_drone_dmp, IMU_to_drone_gyro, IMU_to_drone_accel;
 	rc_vector_t 	dmp_imu, gyro_imu, accel_imu;
 	rc_vector_t 	dmp_drone, gyro_drone, accel_drone;
-}tranform_matrix_t;
+}transform_matrix_t;
 
 	
 typedef struct filters_t{
@@ -212,29 +217,43 @@ typedef struct filters_t{
 	digital_filter_t			*LPF_baro_alt;
 }filters_t;
 
+typedef struct flyMS_threads_t{
+	pthread_t led_thread;
+	pthread_t kalman_thread;
+	pthread_t core_logging_thread;
+	pthread_t setpoint_manager_thread;
+}flyMS_threads_t;
+
 typedef struct led_thread_t{
 	uint8_t GPS_init_check;
-	uint8_t GPS_fix_check;
-	
-	
+	uint8_t GPS_fix_check;	
 }led_thread_t;
 
 
-
-int ready_check(control_variables_t *control);
+int ready_check();
 void zero_escs();
 accel_data_t* get_accel_pointer();
 void* barometer_monitor();
 int initialize_filters(filters_t *filters, core_config_t *flight_config);
-int init_rotation_matrix(tranform_matrix_t *transform);
+int init_rotation_matrix(transform_matrix_t *transform);
 void* LED_thread(void *ptr);
 void init_esc_hardware();
 void* quietEscs(void *ptr);
+int initialize_flight_program(flyMS_threads_t *flyMS_threads,
+                                core_config_t *flight_config,
+                                logger_t *logger,
+                                filters_t *filters,
+                                pru_client_data_t *pru_client_data,
+                                rc_imu_data_t *imu_data,
+                                transform_matrix_t *transform,
+                                GPS_data_t *GPS_data);
+
+
 int flyMS_shutdown(			logger_t *logger, 
 					GPS_data_t *GPS_data, 
-					pthread_t *kalman_thread, 
-					pthread_t *led_thread,
-					pthread_t *core_logging_thread);
+					flyMS_threads_t *flyMS_threads);
 void* pru_sender(void* ptr);
+void* setpoint_manager(void* ptr);
+
 
 #endif
