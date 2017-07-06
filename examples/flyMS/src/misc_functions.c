@@ -283,7 +283,7 @@ int init_rotation_matrix(tranform_matrix_t *transform){
 	rc_alloc_vector(&transform->accel_drone,3);
 	
 	
-	pitch_offset = 0; roll_offset = M_PI; yaw_offset = - M_PI;
+	pitch_offset = 0; roll_offset = M_PI; yaw_offset = 0.0f;
 	float ROTATION_MAT1[][3] = ROTATION_MATRIX1;
 	for(i=0; i<3; i++){
 		for(j=0; j<3; j++){
@@ -292,7 +292,7 @@ int init_rotation_matrix(tranform_matrix_t *transform){
 	}
 	
 	
-	pitch_offset = 0; roll_offset = M_PI; yaw_offset = - M_PI; //was -5pi/4
+	pitch_offset = 0; roll_offset = M_PI; yaw_offset = 0.0f; //was -5pi/4
 	float ROTATION_MAT2[][3] = ROTATION_MATRIX1;
 	for(i=0; i<3; i++){
 		for(j=0; j<3; j++){

@@ -159,7 +159,7 @@ int flight_core(void * ptr){
 	}
 	control.yaw[0]= transform.dmp_drone.d[2] + control.num_wraps*2*M_PI;	
 	
-	control.d_pitch			= transform.gyro_drone.d[0];
+	control.d_pitch			= -transform.gyro_drone.d[0];
 	control.d_roll			= transform.gyro_drone.d[1];
 	control.d_yaw			= transform.gyro_drone.d[2];
 		//debug_struct_real.flag2 = 19;
