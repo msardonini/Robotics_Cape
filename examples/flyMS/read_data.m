@@ -1,9 +1,9 @@
  close all; clear all; clc;
  
  filename = uigetdir;
- cd(filename)
+%  cd(filename)
 % load('flight_with_teather');e 
-nohup=dlmread('logger.csv',',',1,0);
+nohup=dlmread([ filename '/logger.csv'],',',1,0);
 
 time=nohup(:,1);
 roll=nohup(:,2);

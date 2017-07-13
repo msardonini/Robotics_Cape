@@ -112,7 +112,7 @@ int initialize_flight_program(flyMS_threads_t *flyMS_threads,
 		} //Toggle the kill switch a few times to signal it's ready
 	}
 
-	init_rotation_matrix(transform); //Initialize the rotation matrix from IMU to drone
+	init_rotation_matrix(transform, flight_config); //Initialize the rotation matrix from IMU to drone
 	initialize_filters(filters, flight_config);
 
 	//Start the GPS thread, flash the LED's if GPS has a fix
@@ -329,7 +329,7 @@ int initialize_filters(filters_t *filters, core_config_t *flight_config){
 	return 0;
 }
 
-int init_rotation_matrix(transform_matrix_t *transform){
+int init_rotation_matrix(transform_matrix_t *transform, core_config_t *flight_config){
 	float pitch_offset, roll_offset, yaw_offset;
 	int i,j;
 	
@@ -343,45 +343,29 @@ int init_rotation_matrix(transform_matrix_t *transform){
 	rc_alloc_vector(&transform->dmp_drone,3);
 	rc_alloc_vector(&transform->gyro_drone,3);
 	rc_alloc_vector(&transform->accel_drone,3);
+
+	//pitch_offset = 0; roll_offset = M_PI; yaw_offset = - M_PI;
+	pitch_offset = flight_config->pitch_offset_deg*DEG_TO_RAD; 
+	roll_offset = flight_config->roll_offset_deg*DEG_TO_RAD;
+	yaw_offset = flight_config->yaw_offset_deg*DEG_TO_RAD;
 	
-	
-	pitch_offset = 0; roll_offset = M_PI; yaw_offset = - M_PI;
 	float ROTATION_MAT1[][3] = ROTATION_MATRIX1;
 	for(i=0; i<3; i++){
 		for(j=0; j<3; j++){
 		transform->IMU_to_drone_dmp.d[i][j]=ROTATION_MAT1[i][j];
+		transform->IMU_to_drone_gyro.d[i][j]=ROTATION_MAT1[i][j];
+		transform->IMU_to_drone_accel.d[i][j]=ROTATION_MAT1[i][j];
 		}
 	}
-	
-	
-	pitch_offset = 0; roll_offset = M_PI; yaw_offset = - M_PI; //was -5pi/4
-	float ROTATION_MAT2[][3] = ROTATION_MATRIX1;
-	for(i=0; i<3; i++){
-		for(j=0; j<3; j++){
-		transform->IMU_to_drone_gyro.d[i][j]=ROTATION_MAT2[i][j];
-		}
-	}
-	
-	
-	pitch_offset = 0; roll_offset = M_PI; yaw_offset = 0.0; // M_PI/4;
-	float ROTATION_MAT3[][3] = ROTATION_MATRIX1;
-	for(i=0; i<3; i++){
-		for(j=0; j<3; j++){
-		transform->IMU_to_drone_accel.d[i][j]=ROTATION_MAT3[i][j];
-		}
-	}
-	
-	printf("Vectors and matrices initialiazed \n");
+	printf("Rotation Vectors and Matrices Initialiazed \n");
 	return 0;
 }
 
 
-int flyMS_shutdown(			 logger_t *logger, 
+int flyMS_shutdown(	logger_t *logger, 
 					GPS_data_t *GPS_data, 
 					flyMS_threads_t *flyMS_threads) 
 {
-	
-	
 	stop_core_log(&logger->core_logger);// finish writing core_log
 	
 	//Join the threads for a safe process shutdown

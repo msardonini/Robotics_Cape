@@ -88,10 +88,10 @@ void * setpoint_manager(void* ptr)
 			
 			//Set roll reference value
 			//DSM2 Receiver is inherently positive to the left
-			setpoint.roll_ref=-rc_get_dsm_ch_normalized(2)*MAX_ROLL_RANGE;	
+			setpoint.roll_ref= rc_get_dsm_ch_normalized(2)*MAX_ROLL_RANGE;	
 			
 			//Set the pitch reference value
-			setpoint.pitch_ref=rc_get_dsm_ch_normalized(3)*MAX_PITCH_RANGE;
+			setpoint.pitch_ref= -rc_get_dsm_ch_normalized(3)*MAX_PITCH_RANGE;
 			
 			//Convert from Drone Coordinate System to User Coordinate System
 			float P_R_MAG=pow(pow(setpoint.roll_ref,2)+pow(setpoint.pitch_ref,2),0.5);
@@ -208,20 +208,24 @@ int flight_core(void * ptr){
 	rc_matrix_times_col_vec(transform.IMU_to_drone_gyro, transform.gyro_imu, &transform.gyro_drone);
 	rc_matrix_times_col_vec(transform.IMU_to_drone_accel, transform.accel_imu, &transform.accel_drone);
 
-	//Subtract the gravity vector component from lat/lon accel
-	transform.accel_drone.d[0]+= 9.8 * sin(transform.dmp_drone.d[0]);
-	transform.accel_drone.d[1]+= 9.8 * sin(transform.dmp_drone.d[1]);
-
-	//lowpass the accel data and subtract the biases
-	accel_data.accel_Lat	= update_filter(filters.LPF_Accel_Lat,transform.accel_drone.d[0]-accel_bias[0]);
-	accel_data.accel_Lon	= update_filter(filters.LPF_Accel_Lon,transform.accel_drone.d[1]-accel_bias[1]);
-	accel_data.accelz		= transform.accel_drone.d[2]-accel_bias[2];
-
 	control.pitch 			= update_filter(filters.LPF_pitch,transform.dmp_drone.d[0]);
 	//control.pitch 			= dmp_drone.d[0];
 	control.roll 			= update_filter(filters.LPF_roll,transform.dmp_drone.d[1]);
 	control.yaw[1] 			= control.yaw[0];	
 	control.yaw[0] 			= transform.dmp_drone.d[2] + control.num_wraps*2*M_PI;
+
+
+	//Subtract the gravity vector component from lat/lon accel
+	//transform.accel_drone.d[0]-= 9.8 * sin(control.roll);
+	//transform.accel_drone.d[1]+= 9.8 * sin(control.pitch);
+
+	//lowpass the accel data and subtract the biases
+	accel_data.accel_x	= update_filter(filters.LPF_Accel_Lat,transform.accel_drone.d[0]-accel_bias[0]);
+	accel_data.accel_y	= update_filter(filters.LPF_Accel_Lon,transform.accel_drone.d[1]-accel_bias[1]);
+	accel_data.accel_z	= transform.accel_drone.d[2]-accel_bias[2];
+
+	accel_data.accel_x += 9.8f * sin(control.roll);
+	accel_data.accel_y -= 9.8f * sin(control.pitch);
 
 	if(fabs(control.yaw[0] - control.yaw[1])  > 5)
 	{
@@ -395,10 +399,10 @@ int flight_core(void * ptr){
 	*                 	  yellow       	    black
 	************************************************************************/
 	
-	control.u[0]=control.throttle+control.uroll-control.upitch+control.uyaw;
-	control.u[1]=control.throttle-control.uroll-control.upitch-control.uyaw;
-	control.u[2]=control.throttle+control.uroll+control.upitch-control.uyaw;
-	control.u[3]=control.throttle-control.uroll+control.upitch+control.uyaw;		
+	control.u[0]=control.throttle+control.uroll+control.upitch-control.uyaw;
+	control.u[1]=control.throttle-control.uroll+control.upitch+control.uyaw;
+	control.u[2]=control.throttle+control.uroll-control.upitch+control.uyaw;
+	control.u[3]=control.throttle-control.uroll-control.upitch-control.uyaw;		
 
 	float largest_value = 1;
 	float smallest_value = 0;
@@ -461,8 +465,8 @@ int flight_core(void * ptr){
 		logger.new_entry.kalman_lat		= X_state_Lat1->d[0];
 		logger.new_entry.kalman_lon		= X_state_Lon1->d[0];
 	}
-	logger.new_entry.accel_lat		= accel_data.accel_Lat;
-	logger.new_entry.accel_lon		= accel_data.accel_Lon;
+	logger.new_entry.accel_lat		= accel_data.accel_x;
+	logger.new_entry.accel_lon		= accel_data.accel_y;
 	logger.new_entry.baro_alt		= control.baro_alt;
 	logger.new_entry.v_batt			= 0;
 	//logger.new_entry.v_batt			= rc_dc_jack_voltage();

@@ -48,39 +48,42 @@ either expressed or implied, of the FreeBSD Project.
 	X(int,  "%d", enable_autonomy,		0		)\
 	X(int,  "%d", imu_orientation,		1		)\
 												\
-	X(float,  "%f", alt_KP,				0		)\
-	X(float,  "%f", alt_KD, 			0		)\
-	X(float,  "%f", alt_KI, 			0		)\
+	X(float,  "%f", pitch_offset_deg,	0.0f	)\
+	X(float,  "%f", roll_offset_deg,	0.0f	)\
+	X(float,  "%f", yaw_offset_deg,		0.0f	)\
+												\
+	X(float,  "%f", alt_KP,				0.0f	)\
+	X(float,  "%f", alt_KD, 			0.0f	)\
+	X(float,  "%f", alt_KI, 			0.0f	)\
 												\
 												\
-	X(float,  "%f", roll_KP,  			5		)\
-	X(float,  "%f", roll_KD,  			2		)\
-	X(float,  "%f", roll_KI, 			0.175	)\
-	X(float,  "%f", Droll_KP, 			0.0305	)\
-	X(float,  "%f", Droll_KI, 			0.5	)\
-	X(float,  "%f", Droll_KD, 			0.0014	)\
-	X(float,  "%f", max_roll_setpoint,	0.4		)\
+	X(float,  "%f", roll_KP,  			5.0f	)\
+	X(float,  "%f", roll_KD,  			0.5f	)\
+	X(float,  "%f", roll_KI, 			0.175f	)\
+	X(float,  "%f", Droll_KP, 			0.0155f	)\
+	X(float,  "%f", Droll_KI, 			0.5f	)\
+	X(float,  "%f", Droll_KD, 			0.0012f	)\
+	X(float,  "%f", max_roll_setpoint,	0.4f	)\
 												\
+	X(float,  "%f", pitch_KP,  			5.0f	)\
+	X(float,  "%f", pitch_KD,  			0.5f	)\
+	X(float,  "%f", pitch_KI, 			0.175f	)\
+	X(float,  "%f", Dpitch_KP, 			0.0155f	)\
+	X(float,  "%f", Dpitch_KI, 			0.5f	)\
+	X(float,  "%f", Dpitch_KD, 			0.0012f	)\
+	X(float,  "%f", max_pitch_setpoint,	0.4f	)\
 												\
-	X(float,  "%f", pitch_KP,  			5		)\
-	X(float,  "%f", pitch_KD,  			2		)\
-	X(float,  "%f", pitch_KI, 			0.175	)\
-	X(float,  "%f", Dpitch_KP, 			0.0305	)\
-	X(float,  "%f", Dpitch_KI, 			0.5	)\
-	X(float,  "%f", Dpitch_KD, 			0.0014	)\
-	X(float,  "%f", max_pitch_setpoint,	0.4		)\
+	X(float,  "%f", yaw_KP, 			0.5f	)\
+	X(float,  "%f", yaw_KI, 			0.05f	)\
+	X(float,  "%f", yaw_KD, 			0.05f	)\
 												\
-	X(float,  "%f", yaw_KP, 			0.5		)\
-	X(float,  "%f", yaw_KI, 			0.05	)\
-	X(float,  "%f", yaw_KD, 			0.05	)\
+	X(float,  "%f", max_yaw_rate,		3.0f	)\
+	X(float,  "%f", idle_speed,			0.3f	)\
+	X(float,  "%f", min_throttle, 		0.3f	)\
+	X(float,  "%f", max_throttle, 		0.75f	)\
 												\
-	X(float,  "%f", max_yaw_rate,		3		)\
-	X(float,  "%f", idle_speed,			0.3		)\
-	X(float,  "%f", min_throttle, 		0.3	)\
-	X(float,  "%f", max_throttle, 		0.75	)\
-												\
-	X(float,  "%f", max_vert_velocity,	3		)\
-	X(float,  "%f", max_horz_velocity, 	3		)\
+	X(float,  "%f", max_vert_velocity,	3.0f	)\
+	X(float,  "%f", max_horz_velocity, 	3.0f	)\
 												\
 	X(float,  "%f", aux1,	0	)\
 	X(float,  "%f", aux2,	0	)\

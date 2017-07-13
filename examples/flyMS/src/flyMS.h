@@ -67,9 +67,9 @@ either expressed or implied, of the FreeBSD Project.
 #define MAX_ALT_SPEED 0.2 //in meters/second
 
 
-#define LAT_ACCEL_BIAS -0.0177
-#define LON_ACCEL_BIAS  0.0063
-#define ALT_ACCEL_BIAS  0.0000
+#define LAT_ACCEL_BIAS 0.02798
+#define LON_ACCEL_BIAS -0.1173
+#define ALT_ACCEL_BIAS 0.0
 
 
 /************************** Orientation Matrix Constants *****************************/	
@@ -169,7 +169,7 @@ typedef struct setpoint_t{
 
 typedef struct accel_data_t{
 	rc_vector_t  X_state_Lat, X_state_Lon;
-	float accel_Lat, accel_Lon,accelz;// Accelerometer Values for Kalman use
+	float accel_x, accel_y, accel_z; // Accelerometer Values for Kalman use
 	float	pitch, roll, yaw[2];
 	uint8_t GPS_kal_flag;			//flag to signal that GPS data is ready 
 }accel_data_t;
@@ -235,7 +235,7 @@ void zero_escs();
 accel_data_t* get_accel_pointer();
 void* barometer_monitor();
 int initialize_filters(filters_t *filters, core_config_t *flight_config);
-int init_rotation_matrix(transform_matrix_t *transform);
+int init_rotation_matrix(transform_matrix_t *transform, core_config_t *flight_config);
 void* LED_thread(void *ptr);
 void init_esc_hardware();
 void* quietEscs(void *ptr);

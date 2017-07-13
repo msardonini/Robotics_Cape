@@ -154,9 +154,9 @@ void* kalman_filter(void *ptr){
 	{
 		debug_cout++;
 		
-		accel_mat_local.d[0]=accel_data_kal->accel_Lat;
-		accel_mat_local.d[1]=accel_data_kal->accel_Lon;
-		accel_mat_local.d[2]=accel_data_kal->accelz;
+		accel_mat_local.d[0]=accel_data_kal->accel_x;
+		accel_mat_local.d[1]=accel_data_kal->accel_y;
+		accel_mat_local.d[2]=accel_data_kal->accel_x;
 		update_rot_matrix(&Rot_matrix);
 		rc_matrix_times_col_vec(Rot_matrix, accel_mat_local, &accel_mat_global);
 
