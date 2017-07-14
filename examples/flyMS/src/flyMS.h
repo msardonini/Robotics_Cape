@@ -80,9 +80,9 @@ either expressed or implied, of the FreeBSD Project.
 #define cY1 cos(yaw_offset)
 #define sY1 sin(yaw_offset)
 
-#define ROTATION_MATRIX1		{{cP1*cY1, -cR1*sY1+sR1*sP1*cY1,  sR1*sY1+cR1*sP1*cY1}, \
-							 {cP1*sY1,  cR1*cY1+sR1*sP1*sY1, -sR1*cY1+cR1*sP1*sY1}, \
-							 {-sP1  ,  sR1*cP1,		   cR1*cP1		 }}
+#define ROTATION_MATRIX1	{{cR1*cY1, -cP1*sY1+sP1*sR1*cY1,  sP1*sY1+cP1*sR1*cY1}, \
+							 {cR1*sY1,  cP1*cY1+sP1*sR1*sY1, -sP1*cY1+cP1*sR1*sY1}, \
+							 {-sR1  ,  sP1*cR1,		   cP1*cR1		 }}
 
 /******************************* Kalman Filter Constants *****************************/							 
 #define PI 3.14
