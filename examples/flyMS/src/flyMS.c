@@ -465,8 +465,9 @@ int flight_core(void * ptr){
 		logger.new_entry.kalman_lat		= X_state_Lat1->d[0];
 		logger.new_entry.kalman_lon		= X_state_Lon1->d[0];
 	}
-	logger.new_entry.accel_lat		= accel_data.accel_x;
-	logger.new_entry.accel_lon		= accel_data.accel_y;
+	logger.new_entry.accel_x		= accel_data.accel_x;
+	logger.new_entry.accel_y		= accel_data.accel_y;
+	logger.new_entry.accel_z		= accel_data.accel_z;
 	logger.new_entry.baro_alt		= control.baro_alt;
 	logger.new_entry.v_batt			= 0;
 	//logger.new_entry.v_batt			= rc_dc_jack_voltage();
@@ -606,7 +607,7 @@ int main(int argc, char *argv[]){
 			fprintf(logger.Error_logger,"Error! IMU read failed for more than 5 consecutive timesteps. time: = %f number of missed reads: %u \n",control.time,imu_err_count);
 		}
 	}
-	
+
 	flyMS_shutdown( 		&logger, 
 					&GPS_data, 
 					&flyMS_threads); 

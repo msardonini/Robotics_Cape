@@ -61,8 +61,9 @@ either expressed or implied, of the FreeBSD Project.
     X(float,  "%f",	 lon_error		) \
     X(float,  "%f",	 kalman_lat		) \
     X(float,  "%f",	 kalman_lon		) \
-    X(float,  "%f",	 accel_lat		) \
-    X(float,  "%f",	 accel_lon		) \
+    X(float,  "%f",	 accel_x		) \
+    X(float,  "%f",  accel_y        ) \
+    X(float,  "%f",	 accel_z		) \
     X(float,  "%f",	 baro_alt		) \
     X(float,  "%f",	 v_batt			)
 	

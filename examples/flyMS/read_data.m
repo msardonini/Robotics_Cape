@@ -29,10 +29,11 @@ lat_err=nohup(:,21);
 lon_err=nohup(:,22);
 kalman_lat = nohup(:,23);
 kalman_lon = -nohup(:,24);
-accel_lat=nohup(:,25);
-accel_lon=nohup(:,26);
-baro_alt =nohup(:,27);
-v_batt =nohup(:,28);
+accel_x=nohup(:,25);
+accel_y=nohup(:,26);
+accel_z=nohup(:,27);
+baro_alt =nohup(:,28);
+v_batt =nohup(:,29);
 
 try
     nohup2=dlmread('GPS_logger.csv',',',1,0);
@@ -134,8 +135,12 @@ title('Barometer Altitude')
 
 
 figure
-plot(time,v_batt)
-title('Battery Voltage')
+hold on
+plot(time,accel_x)
+plot(time,accel_y)
+plot(time,accel_z)
+title('Accelerations')
+legend('x','y','z')
 
 if plot_gps
     figure

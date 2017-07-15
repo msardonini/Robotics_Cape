@@ -124,7 +124,7 @@ int initialize_flight_program(flyMS_threads_t *flyMS_threads,
 		memset(&GPS_ready,0,sizeof(GPS_ready));
 		GPS_ready.GPS_fix_check = GPS_data->GPS_fix_check;
 		GPS_ready.GPS_init_check = GPS_data->GPS_init_check;
-		pthread_create(&flyMS_threads->led_thread, NULL, LED_thread, (void*) &GPS_ready);
+		//pthread_create(&flyMS_threads->led_thread, NULL, LED_thread, (void*) &GPS_ready);
 		
 		//Spawn the Kalman Filter Thread if GPS is running
 		if (GPS_data->GPS_init_check == 0)
@@ -359,7 +359,7 @@ int init_rotation_matrix(transform_matrix_t *transform, core_config_t *flight_co
 	}
 
 
-	if (fligth_config->imu_orientation == 2)
+	if (flight_config->imu_orientation == 2)
 	{
 		roll_offset += 180.0f; 		
 		float ROTATION_MAT1[][3] = ROTATION_MATRIX1;
@@ -380,7 +380,6 @@ int flyMS_shutdown(	logger_t *logger,
 					flyMS_threads_t *flyMS_threads) 
 {
 	stop_core_log(&logger->core_logger);// finish writing core_log
-	
 	//Join the threads for a safe process shutdown
 	if(GPS_data->GPS_init_check == 0)
 	{
@@ -389,11 +388,8 @@ int flyMS_shutdown(	logger_t *logger,
 		pthread_join(flyMS_threads->kalman_thread, NULL);
 		printf("Kalman thread joined\n");
 	}
-	pthread_join(flyMS_threads->led_thread, NULL);
-	printf("LED thread joined\n");
 	pthread_join(flyMS_threads->core_logging_thread, NULL);
 	printf("Logging thread joined\n");
-	  
 	static char* StateStrings[] = {	"UNINITIALIZED", "RUNNING", 
 									"PAUSED", "EXITING" };
 	fprintf(logger->Error_logger,"Exiting program, system state is %s\n", StateStrings[rc_get_state()]);
@@ -402,7 +398,7 @@ int flyMS_shutdown(	logger_t *logger,
 	// Close the log files
 	close(GPS_data->GPS_file);
 	fclose(logger->GPS_logger);
-	join_pru_client();	
+	join_pru_client();
 	return 0;
 }
 
