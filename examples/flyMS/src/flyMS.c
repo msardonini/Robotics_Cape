@@ -88,7 +88,7 @@ void * setpoint_manager(void* ptr)
 			
 			//Set roll reference value
 			//DSM2 Receiver is inherently positive to the left
-			setpoint.roll_ref= rc_get_dsm_ch_normalized(2)*MAX_ROLL_RANGE;	
+			setpoint.roll_ref= -rc_get_dsm_ch_normalized(2)*MAX_ROLL_RANGE;	
 			
 			//Set the pitch reference value
 			setpoint.pitch_ref= -rc_get_dsm_ch_normalized(3)*MAX_PITCH_RANGE;

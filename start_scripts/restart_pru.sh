@@ -14,4 +14,4 @@ pru_handler &
 
 sleep 1
 
-/root/Robotics_Cape/run_flight_program.sh -r
+#/root/Robotics_Cape/run_flight_program.sh -r
