@@ -1920,6 +1920,12 @@ int data_fusion(){
 	}
 	
 	// new Yaw is the sum of low and high pass complementary filters.
+
+	if (mag_spin_counter != dmp_spin_counter)
+	{
+		mag_spin_counter = dmp_spin_counter;
+	}
+
 	newYaw = rc_march_filter(&low_pass,newMagYaw+(TWO_PI*mag_spin_counter)) \
 			+ rc_march_filter(&high_pass,newDMPYaw+(TWO_PI*dmp_spin_counter));
 	
@@ -1934,6 +1940,7 @@ int data_fusion(){
 	// store in the user-accessible fused tb angle
 	data_ptr->compass_heading = newYaw;
 	data_ptr->fused_TaitBryan[2] = newYaw;
+	data_ptr->fused_TaitBryan[2] = data_ptr->dmp_TaitBryan[2];
 	data_ptr->fused_TaitBryan[0] = data_ptr->dmp_TaitBryan[0];
 	data_ptr->fused_TaitBryan[1] = data_ptr->dmp_TaitBryan[1];
 
