@@ -173,14 +173,12 @@ int ready_check(){
 
 			val[1]=val[0];
 			val[0]=rc_get_dsm_ch_normalized(5);
-			usleep(100000);
 			if(val[0] < -0.75 && val[1] > 0.35){
 			count++;
 			} 
 			if(val[0] > 0.75 && val[1] < 0.35){
 			count++;
 			}
-			usleep(10000);
 			
 		}
 		usleep(10000);
