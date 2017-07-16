@@ -150,6 +150,7 @@ void * setpoint_manager(void* ptr)
 			{
 				function_control.dsm2_timeout=function_control.dsm2_timeout+1;
 				if(function_control.dsm2_timeout>1.5/DT) {
+					printf("Debug mode is %d \n", flight_config.enable_debug_mode); 
 					printf("\nLost Connection with Remote!! Shutting Down Immediately \n");	
 					fprintf(logger.Error_logger,"\nLost Connection with Remote!! Shutting Down Immediately \n");	
 					rc_set_state(EXITING);

@@ -53,19 +53,9 @@ int initialize_flight_program(flyMS_threads_t *flyMS_threads,
 				transform_matrix_t *transform,
 				GPS_data_t *GPS_data)
 {
-	pthread_create(&flyMS_threads->setpoint_manager_thread, NULL, setpoint_manager, (void*)NULL );
 
-	int debug_mode = flight_config->enable_debug_mode;
-	// load flight_core settings
-	if(load_core_config(flight_config)){
-		printf("WARNING: no configuration file found\n");
-		printf("loading default settings\n");
-		if(create_default_core_config_file(flight_config)){
-			printf("Warning, can't write default flight_config file\n");
-		}
-	}
 	
-	flight_config->enable_debug_mode = (debug_mode || flight_config->enable_debug_mode);
+	// flight_config->enable_debug_mode = (debug_mode || flight_config->enable_debug_mode);
 	start_pru_client(pru_client_data);
 
 	if(flight_config->enable_barometer)
@@ -112,6 +102,17 @@ int initialize_flight_program(flyMS_threads_t *flyMS_threads,
 		} //Toggle the kill switch a few times to signal it's ready
 	}
 
+	// load flight_core settings
+	if(load_core_config(flight_config)){
+		printf("WARNING: no configuration file found\n");
+		printf("loading default settings\n");
+		if(create_default_core_config_file(flight_config)){
+			printf("Warning, can't write default flight_config file\n");
+		}
+	}
+
+	pthread_create(&flyMS_threads->setpoint_manager_thread, NULL, setpoint_manager, (void*)NULL );
+
 	init_rotation_matrix(transform, flight_config); //Initialize the rotation matrix from IMU to drone
 	initialize_filters(filters, flight_config);
 
@@ -141,11 +142,35 @@ int initialize_flight_program(flyMS_threads_t *flyMS_threads,
 int ready_check(){
 	//Toggle the kill switch to get going, to ensure controlled take-off
 	//Keep kill switch down to remain operational
-    int count=1;
+    int count=1, toggle = 0, reset_toggle = 0;
 	float val[2] = {0.0f , 0.0f};
 	printf("Toggle the kill swtich twice and leave up to initialize\n");
-	while(count<6 && rc_get_state()!=EXITING){
+	while(count<6 && rc_get_state()!=EXITING)
+	{
+		
+		//Blink the green LED light to signal that the program is ready
+		reset_toggle++; // Only blink the led 1/100 the time this loop runs
+		if(toggle)
+		{
+			rc_set_led(GREEN,OFF);
+			if (reset_toggle == 20) 
+			{
+				toggle = 0;
+				reset_toggle = 0;
+			}
+		}
+		else
+		{
+			rc_set_led(GREEN,ON);
+			if (reset_toggle == 20)
+			{
+				toggle=1;
+				reset_toggle = 0;
+			}
+		}
+
 		if(rc_is_new_dsm_data()){
+
 			val[1]=val[0];
 			val[0]=rc_get_dsm_ch_normalized(5);
 			usleep(100000);
@@ -172,10 +197,12 @@ int ready_check(){
 	
 	if(rc_get_state() == EXITING)
 	{
+		printf("State set to exiting, shutting off! \n");
 		return -1;
 	}
 	
 	printf("\nInitialized! Starting program\n");
+	rc_set_led(GREEN,ON);
 	return 0;
 }
 
@@ -399,6 +426,9 @@ int flyMS_shutdown(	logger_t *logger,
 	close(GPS_data->GPS_file);
 	fclose(logger->GPS_logger);
 	join_pru_client();
+	
+	rc_set_led(GREEN,OFF);
+	rc_set_led(RED,OFF);
 	return 0;
 }
 
