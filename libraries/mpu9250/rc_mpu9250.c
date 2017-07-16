@@ -1918,10 +1918,13 @@ int data_fusion(){
 		rc_prefill_filter_outputs(&high_pass,0);
 		first_run = 0;
 	}
-	
+	/*
 	// new Yaw is the sum of low and high pass complementary filters.
 	newYaw = rc_march_filter(&low_pass,newMagYaw+(TWO_PI*mag_spin_counter)) \
 			+ rc_march_filter(&high_pass,newDMPYaw+(TWO_PI*dmp_spin_counter));
+	*/
+
+	newYaw = newDMPYaw+(TWO_PI*dmp_spin_counter)
 			
 	newYaw = fmod(newYaw,TWO_PI); // remove the effect of the spins
 	if (newYaw > PI) newYaw -= TWO_PI; // bound between +- PI
