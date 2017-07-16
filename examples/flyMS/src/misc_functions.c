@@ -55,7 +55,6 @@ int initialize_flight_program(flyMS_threads_t *flyMS_threads,
 {
 
 	
-	// flight_config->enable_debug_mode = (debug_mode || flight_config->enable_debug_mode);
 	start_pru_client(pru_client_data);
 
 	if(flight_config->enable_barometer)
@@ -102,6 +101,8 @@ int initialize_flight_program(flyMS_threads_t *flyMS_threads,
 		} //Toggle the kill switch a few times to signal it's ready
 	}
 
+	int debug_mode = flight_config->enable_debug_mode;
+	
 	// load flight_core settings
 	if(load_core_config(flight_config)){
 		printf("WARNING: no configuration file found\n");
@@ -110,6 +111,7 @@ int initialize_flight_program(flyMS_threads_t *flyMS_threads,
 			printf("Warning, can't write default flight_config file\n");
 		}
 	}
+	flight_config->enable_debug_mode = (debug_mode || flight_config->enable_debug_mode);
 
 	pthread_create(&flyMS_threads->setpoint_manager_thread, NULL, setpoint_manager, (void*)NULL );
 
