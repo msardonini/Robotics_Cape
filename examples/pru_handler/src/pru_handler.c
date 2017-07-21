@@ -207,7 +207,7 @@ int main(int argc, char *argv[])
 	if (n <= 0)
 	{
 		printf("Timeout detected!! \n");
-		rc_send_esc_pulse_normalized_all(-0.09);
+		rc_send_esc_pulse_normalized_all(0.0);
 	}
 	else
 	{

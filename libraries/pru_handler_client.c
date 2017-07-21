@@ -12,12 +12,19 @@
 #include "pru_handler_client.h"
 #include <unistd.h>
 
+#define NUM_CHANNELS 4
 
 //Make this pthread variable global to this C file so we can join()
 pthread_t pru_sender_thread;
 
 int start_pru_client(pru_client_data_t* pru_client_data)
 {
+	//start the commands at zero
+	int i;
+	for (i = 0; i < NUM_CHANNELS; i++)
+	{
+		pru_client_data->u[i] = 0;
+	}
 
 	//Check to see if the pru server is runningi, if not start it
 	if(access(PRU_PID_FILE, F_OK) == -1)
@@ -90,7 +97,7 @@ void* pru_sender(void* ptr){
 			sendBuff[10] = 0xEE;
 			sendBuff[11] = 0xFF;
 			
-			for (i = 0; i < 4 ; i++) 
+			for (i = 0; i < NUM_CHANNELS ; i++) 
 			{
 				if (client_data->u[i] == 0.0f) tmp16 = 0;
 				else tmp16 = (uint16_t)(client_data->u[i]*65536.0f)-1;
