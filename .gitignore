@@ -1,11 +1,8 @@
 config_files/*
-examples/flyMS/obj/*
 test_result/*
-
+pru_firmware/bin/
 
 *.asm
-examples/flyMS/bin/*
-!examples/flyMS/bin/.gitkeep
 *.pydevproject
 .project
 .metadata
