@@ -1,9 +1,9 @@
  close all; clear all; clc;
  
  filename = uigetdir;
-%  cd(filename)
+ cd(filename)
 % load('flight_with_teather');e 
-nohup=dlmread([ filename '/logger.csv'],',',1,0);
+nohup=dlmread('logger.csv',',',1,0);
 
 time=nohup(:,1);
 roll=nohup(:,2);
@@ -29,11 +29,11 @@ lat_err=nohup(:,21);
 lon_err=nohup(:,22);
 kalman_lat = nohup(:,23);
 kalman_lon = -nohup(:,24);
-accel_x=nohup(:,25);
-accel_y=nohup(:,26);
-accel_z=nohup(:,27);
-baro_alt =nohup(:,28);
-v_batt =nohup(:,29);
+accel_lat=nohup(:,25);
+accel_lon=nohup(:,26);
+baro_alt =nohup(:,27);
+v_batt =nohup(:,28);
+compass_heading=nohup(:,28);
 
 try
     nohup2=dlmread('GPS_logger.csv',',',1,0);
@@ -73,8 +73,8 @@ hold on
 plot(time,pitch)
 plot(time,roll,'c')
 plot(time,yaw,'g')
-plot(time,yaw_rate_ref,'k')
-legend('Pitch','Roll','Yaw','Yaw rate ref')
+plot(time,compass_heading,'k')
+legend('Pitch','Roll','Yaw','Compass Heading')
 % ylim([-pi pi])
 
 
@@ -136,11 +136,11 @@ title('Barometer Altitude')
 
 figure
 hold on
-plot(time,accel_x)
-plot(time,accel_y)
-plot(time,accel_z)
-title('Accelerations')
-legend('x','y','z')
+plot(time,accel_lat)
+plot(time,accel_lon)
+title('Acceleration')
+legend('x','y')
+
 
 if plot_gps
     figure
