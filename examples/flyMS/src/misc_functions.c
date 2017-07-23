@@ -44,6 +44,9 @@ either expressed or implied, of the FreeBSD Project.
 #include "../../../libraries/pru_handler_client.h"
 //Coordinate system transformations matrices
 
+
+uint8_t logger_running = 0;
+
 int initialize_flight_program(flyMS_threads_t *flyMS_threads,
 				core_config_t *flight_config,
 				logger_t *logger,
@@ -65,16 +68,6 @@ int initialize_flight_program(flyMS_threads_t *flyMS_threads,
 		}
 	}
 	
-	if(flight_config->enable_logging)
-	{
-		// start a core_log and logging thread
-		if(start_core_log(logger)<0){
-			printf("WARNING: failed to open a core_log file\n");
-		}
-		else{
-			pthread_create(&flyMS_threads->core_logging_thread, NULL, core_log_writer, &logger->core_logger);
-		}
-	}
 	
 	// set up IMU configuration
 	rc_imu_config_t imu_config = rc_default_imu_config();
@@ -112,6 +105,18 @@ int initialize_flight_program(flyMS_threads_t *flyMS_threads,
 		}
 	}
 	flight_config->enable_debug_mode = (debug_mode || flight_config->enable_debug_mode);
+
+	if(flight_config->enable_logging)
+	{
+		// start a core_log and logging thread
+		if(start_core_log(logger)<0){
+			printf("WARNING: failed to open a core_log file\n");
+		}
+		else{
+			pthread_create(&flyMS_threads->core_logging_thread, NULL, core_log_writer, &logger->core_logger);
+			logger_running = 1;
+		}
+	}
 
 	pthread_create(&flyMS_threads->setpoint_manager_thread, NULL, setpoint_manager, (void*)NULL );
 
@@ -406,7 +411,6 @@ int flyMS_shutdown(	logger_t *logger,
 					GPS_data_t *GPS_data, 
 					flyMS_threads_t *flyMS_threads) 
 {
-	stop_core_log(&logger->core_logger);// finish writing core_log
 	//Join the threads for a safe process shutdown
 	if(GPS_data->GPS_init_check == 0)
 	{
@@ -415,16 +419,20 @@ int flyMS_shutdown(	logger_t *logger,
 		pthread_join(flyMS_threads->kalman_thread, NULL);
 		printf("Kalman thread joined\n");
 	}
-	pthread_join(flyMS_threads->core_logging_thread, NULL);
-	printf("Logging thread joined\n");
-	static char* StateStrings[] = {	"UNINITIALIZED", "RUNNING", 
-									"PAUSED", "EXITING" };
-	fprintf(logger->Error_logger,"Exiting program, system state is %s\n", StateStrings[rc_get_state()]);
-	fflush(stdout);
+	if (logger_running)
+	{	
+		stop_core_log(&logger->core_logger);// finish writing core_log
+		pthread_join(flyMS_threads->core_logging_thread, NULL);
+		printf("Logging thread joined\n");
+		static char* StateStrings[] = {	"UNINITIALIZED", "RUNNING", 
+										"PAUSED", "EXITING" };
+		fprintf(logger->Error_logger,"Exiting program, system state is %s\n", StateStrings[rc_get_state()]);
+		fflush(stdout);
 
-	// Close the log files
-	close(GPS_data->GPS_file);
-	fclose(logger->GPS_logger);
+		// Close the log files
+		close(GPS_data->GPS_file);
+		fclose(logger->GPS_logger);
+	}
 	join_pru_client();
 	
 	rc_set_led(GREEN,OFF);

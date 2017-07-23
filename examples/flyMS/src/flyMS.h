@@ -131,6 +131,7 @@ int is_new_dsm2_dataMS();
 
 typedef struct control_variables_t{
 	float	pitch, roll, yaw[2];		// Euler angles of aircraft
+	float	compass_heading;
 	float	d_pitch, d_roll, d_yaw; 			// First derivative of Euler Angles	
 	float	d_pitch_f, d_roll_f, d_yaw_f; 		// Filtered First derivative of Eulter Angles	
 	int		mag0, mag1, mag2;					// Magnetometer Values

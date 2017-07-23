@@ -213,6 +213,7 @@ int flight_core(void * ptr){
 	control.pitch 			= update_filter(filters.LPF_pitch,transform.dmp_drone.d[0]);
 	//control.pitch 			= dmp_drone.d[0];
 	control.roll 			= update_filter(filters.LPF_roll,transform.dmp_drone.d[1]);
+	control.compass_heading = imu_data.compass_heading_raw;	
 	control.yaw[1] 			= control.yaw[0];	
 	control.yaw[0] 			= transform.dmp_drone.d[2] + control.num_wraps*2*M_PI;
 
@@ -472,6 +473,7 @@ int flight_core(void * ptr){
 	logger.new_entry.accel_z		= accel_data.accel_z;
 	logger.new_entry.baro_alt		= control.baro_alt;
 	logger.new_entry.v_batt			= 0;
+	logger.new_entry.compass_heading= control.compass_heading;
 	//logger.new_entry.v_batt			= rc_dc_jack_voltage();
 	log_core_data(&logger.core_logger, &logger.new_entry);
 
@@ -591,6 +593,10 @@ int main(int argc, char *argv[]){
                                &transform,
                                &GPS_data))
 	{
+		flyMS_shutdown( &logger, 
+						&GPS_data, 
+						&flyMS_threads); 
+		rc_cleanup();
 		return -1;
 	}
 

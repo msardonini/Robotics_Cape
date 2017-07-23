@@ -41,13 +41,17 @@ void shutdown_pru_handler(int signo);
 void shutdown_pru_handler(int signo){
          switch(signo){
          case SIGINT: // normal ctrl-c shutdown interrupt
-                 pru_set_state(PRUEXITING);
-                 printf("\nreceived SIGINT Ctrl-C\n");
-                 break;
+                pru_set_state(PRUEXITING);
+				#ifdef DEBUG
+                printf("\nreceived SIGINT Ctrl-C\n");
+                #endif
+				break;
          case SIGTERM: // catchable terminate signal
-                 pru_set_state(PRUEXITING);
-                 printf("\nreceived SIGTERM\n");
-                 break;
+                pru_set_state(PRUEXITING);
+				#ifdef DEBUG
+                printf("\nreceived SIGTERM\n");
+                #endif
+				break;
          case SIGHUP: // terminal closed or disconnected, carry on anyway
                  break;
          default:
@@ -181,9 +185,10 @@ int main(int argc, char *argv[])
 
     bind(listenfd, (struct sockaddr*)&serv_addr, sizeof(serv_addr)); 
 
-    listen(listenfd, 10); 
+    listen(listenfd, 10);
+	#ifdef DEBUG
 	printf("made it to while\n");
-	
+	#endif
 	int flags = fcntl(listenfd, F_GETFL, 0);
 	fcntl(listenfd, F_SETFL, flags | O_NONBLOCK);	
 	struct timeval tv;
@@ -206,7 +211,9 @@ int main(int argc, char *argv[])
 	n = read(connfd, rcvBuff, sizeof(rcvBuff)-1);
 	if (n <= 0)
 	{
+		#ifdef DEBUG
 		printf("Timeout detected!! \n");
+		#endif
 		rc_send_esc_pulse_normalized_all(0.0);
 	}
 	else
@@ -235,14 +242,14 @@ int main(int argc, char *argv[])
 			}
 			else
 			{
-			printf("Sending Values: ");
+			//printf("Sending Values: ");
 				for (i = 0; i < 8; i++)
 				{ 
 					val[i] = ((float)((rcvBuff[2*i+2] << 8) + rcvBuff[2*i+3]))/65536.0f;
 					rc_send_esc_pulse_normalized(i+1,val[i]);
-					printf(" %f, ", val[i]);
+					//printf(" %f, ", val[i]);
 				}
-			printf("\n");
+			//printf("\n");
 			}
 		}
 	}
