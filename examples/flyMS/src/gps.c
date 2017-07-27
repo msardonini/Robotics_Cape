@@ -327,7 +327,14 @@ void* GPS_data_watcher(void *ptr){
 }
 
 uint8_t is_new_GPS_data(){
-	return GPS_data_flag;
+	uint8_t tmp = GPS_data_flag;
+	if (GPS_data_flag)
+	{
+		GGA_flag = 0;
+		VTG_flag = 0;
+		GPS_data_flag = 0;
+	}
+	return tmp;
 }
 
 float get_NMEA_field(int field, char buf[], int comma[]){

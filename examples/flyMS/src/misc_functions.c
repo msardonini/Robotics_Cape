@@ -137,7 +137,7 @@ int initialize_flight_program(flyMS_threads_t *flyMS_threads,
 		//Spawn the Kalman Filter Thread if GPS is running
 		if (GPS_data->GPS_init_check == 0)
 		{
-			pthread_create(&flyMS_threads->kalman_thread, NULL , kalman_filter, (void*) NULL);
+			// pthread_create(&flyMS_threads->kalman_thread, NULL , kalman_filter, (void*) NULL);
 		}
 	}
 	//Should be disabled by default but we don't want to be pumping 5V into our BEC ESC output

@@ -129,6 +129,5 @@ void* pru_sender(void* ptr){
 		write(sockfd, sendBuff, sizeof(sendBuff)-1);
 		usleep(10000);
 	}
-	
 	return NULL;
 }

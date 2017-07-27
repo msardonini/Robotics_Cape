@@ -151,7 +151,6 @@ void * setpoint_manager(void* ptr)
 			{
 				function_control.dsm2_timeout=function_control.dsm2_timeout+1;
 				if(function_control.dsm2_timeout>1.5/DT) {
-					printf("Debug mode is %d \n", flight_config.enable_debug_mode); 
 					printf("\nLost Connection with Remote!! Shutting Down Immediately \n");	
 					fprintf(logger.Error_logger,"\nLost Connection with Remote!! Shutting Down Immediately \n");	
 					rc_set_state(EXITING);
@@ -170,6 +169,7 @@ void * setpoint_manager(void* ptr)
 
  
 int flight_core(void * ptr){
+	imu_err_count = 0;
 	//control_variables_t *STATE = (control_variables_t*)ptr;
 	//printf("pointer value %f\n", STATE->pitch);
 	
@@ -191,7 +191,9 @@ int flight_core(void * ptr){
 		rc_read_barometer();
 		initial_alt = rc_bmp_get_altitude_m();
 		rc_set_state(RUNNING);
+
 		fprintf(logger.GPS_logger,"time,deg_lon,min_lon,deg_lat,min_lat,speed,direction,gps_alt,hdop,fix\n");
+		fflush(logger.GPS_logger);
 		printf("First Iteration ");
 		}
 
@@ -487,11 +489,11 @@ int flight_core(void * ptr){
 	//	printf("vel %2.2f ",lidar_data.d_altitude[0]);		
 	//	printf("H_d %3.3f ", control.height_damping);
 	//	printf("Alt_ref %3.1f ",control.alt_ref);
-		printf(" U1:  %2.2f ",control.u[0]);
-		printf(" U2: %2.2f ",control.u[1]);
-		printf(" U3:  %2.2f ",control.u[2]);
-		printf(" U4: %2.2f ",control.u[3]);	
-		printf(" Throt %2.2f ", control.throttle);
+	//	printf(" U1:  %2.2f ",control.u[0]);
+	//	printf(" U2: %2.2f ",control.u[1]);
+	//	printf(" U3:  %2.2f ",control.u[2]);
+	//	printf(" U4: %2.2f ",control.u[3]);	
+	//	printf(" Throt %2.2f ", control.throttle);
 	//	printf("Aux %2.1f ", setpoint.Aux[0]);
 	//	printf("function: %f",rc_get_dsm_ch_normalized(6));
 	//	printf("num wraps %d ",control.num_wraps);
@@ -532,6 +534,7 @@ int flight_core(void * ptr){
 		fprintf(logger.GPS_logger,"%f,",GPS_data.gps_altitude);
 		fprintf(logger.GPS_logger,"%2.2f,%d",GPS_data.HDOP,GPS_data.GPS_fix);
 		fprintf(logger.GPS_logger,"\n");
+		fflush(logger.GPS_logger);
 		//	printf("%s",GPS_data.GGAbuf);
 		//	printf("%s",GPS_data.VTGbuf);
 
@@ -599,8 +602,6 @@ int main(int argc, char *argv[]){
 		rc_cleanup();
 		return -1;
 	}
-
-	printf("Debug mode value is %d\n", flight_config.enable_debug_mode);
 	
 	//Start the control program
 	rc_set_imu_interrupt_func(&flight_core);
