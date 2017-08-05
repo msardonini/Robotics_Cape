@@ -99,6 +99,9 @@ void* pru_sender(void* ptr){
 			
 			for (i = 0; i < NUM_CHANNELS ; i++) 
 			{
+				if (client_data->u[i] < 0.0f) client_data->u[i] = 0.0f;
+				else if (client_data->u[i] > 1.0f) client_data->u[i] = 1.0f;
+				
 				if (client_data->u[i] == 0.0f) tmp16 = 0;
 				else tmp16 = (uint16_t)(client_data->u[i]*65536.0f)-1;
 				

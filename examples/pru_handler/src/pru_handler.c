@@ -160,14 +160,18 @@ int init_pru_handler()
 }
 
 
-
+//#define DEBUG
 
 int main(int argc, char *argv[])
 {
-	init_pru_handler();
+	//Sleep just a little just in case the robotics_cape software has not finished initing yet
+	sleep(4);
+
+
+	float val[4];
+	int i;
 	
-	
-	
+	init_pru_handler();	
 	
 	//----------------- start server code -----------------/
 	int listenfd = 0, connfd = 0, n = 0;
@@ -189,70 +193,98 @@ int main(int argc, char *argv[])
 	#ifdef DEBUG
 	printf("made it to while\n");
 	#endif
+	
+
+
 	int flags = fcntl(listenfd, F_GETFL, 0);
 	fcntl(listenfd, F_SETFL, flags | O_NONBLOCK);	
 	struct timeval tv;
+	fd_set set;
+	struct timeval timeout;
+	int rv;
 	
+
 	start_over:
 	while(pru_get_state()!=PRUEXITING)
 	{
-		connfd = accept(listenfd, (struct sockaddr*)NULL, NULL);
-		if (connfd >=0) break;
-		usleep(20000);
-		rc_send_esc_pulse_normalized_all(-0.09);
+		FD_ZERO(&set); /* clear the set */
+		FD_SET(listenfd, &set); /* add our file descriptor to the set */
 
+		timeout.tv_sec = 0;
+		timeout.tv_usec = 200000;
+		
+		rv = select(listenfd + 1, &set, NULL, NULL, &timeout);
+		if (rv == 0)
+		{
+			#ifdef DEBUG
+			printf("timeout detected\n");
+			#endif
+		}
+		if (rv > 0)
+		{
+			connfd = accept(listenfd, (struct sockaddr*)NULL, NULL);
+			if (connfd >=0)
+			{
+				#ifdef DEBUG
+				printf("Connection Received!\n");
+				#endif	
+				break;
+			}	
+		}
+	//	rc_send_esc_pulse_normalized_all(0);
 	}
+
+	tv.tv_sec = 0;  /* 30 Secs Timeout */
+	tv.tv_usec = 30000;  // Not init'ing this can cause strange errors
+	setsockopt(connfd, SOL_SOCKET, SO_RCVTIMEO, (const char*)&tv,sizeof(struct timeval));
 	while(pru_get_state()!=PRUEXITING)
     {
-	
-		tv.tv_sec = 0;  /* 30 Secs Timeout */
-		tv.tv_usec = 30000;  // Not init'ing this can cause strange errors
-		setsockopt(connfd, SOL_SOCKET, SO_RCVTIMEO, (const char*)&tv,sizeof(struct timeval));
-	n = read(connfd, rcvBuff, sizeof(rcvBuff)-1);
-	if (n <= 0)
-	{
-		#ifdef DEBUG
-		printf("Timeout detected!! \n");
-		#endif
-		rc_send_esc_pulse_normalized_all(0.0);
-	}
-	else
-	{
-		rcvBuff[n] = 0;
-		
-		float val[4];
-		int i;
-		
-		//Only proceed if the start/end bytes come in as expected
-		if (rcvBuff[0]	== 0xAA && rcvBuff[1] == 0xBB
-			&&	rcvBuff[10] == 0xEE && rcvBuff[11] == 0xFF)
+		n = read(connfd, rcvBuff, sizeof(rcvBuff)-1);
+		if (n <= 0)
 		{
-			//Check for shutdown command
-			if (	rcvBuff[2] == 's'
-				&&	rcvBuff[3] == 'h' 
-				&&	rcvBuff[4] == 'u'
-				&&	rcvBuff[5] == 't'
-				&&	rcvBuff[6] == 'd'
-				&&	rcvBuff[7] == 'o'
-				&&	rcvBuff[8] == 'w'
-				&&	rcvBuff[9] == 'n')
+			//#ifdef DEBUG
+			//printf("Timeout detected!! \n");
+			//#endif
+			rc_send_esc_pulse_normalized_all(0.0);
+		}
+		else
+		{
+			rcvBuff[n] = 0;
+			
+			
+			//Only proceed if the start/end bytes come in as expected
+			if (rcvBuff[0]	== 0xAA && rcvBuff[1] == 0xBB
+				&&	rcvBuff[10] == 0xEE && rcvBuff[11] == 0xFF)
 			{
-				close(connfd);
-				goto start_over;
-			}
-			else
-			{
-			//printf("Sending Values: ");
-				for (i = 0; i < 8; i++)
-				{ 
-					val[i] = ((float)((rcvBuff[2*i+2] << 8) + rcvBuff[2*i+3]))/65536.0f;
-					rc_send_esc_pulse_normalized(i+1,val[i]);
-					//printf(" %f, ", val[i]);
+				//Check for shutdown command
+				if (	rcvBuff[2] == 's'
+					&&	rcvBuff[3] == 'h' 
+					&&	rcvBuff[4] == 'u'
+					&&	rcvBuff[5] == 't'
+					&&	rcvBuff[6] == 'd'
+					&&	rcvBuff[7] == 'o'
+					&&	rcvBuff[8] == 'w'
+					&&	rcvBuff[9] == 'n')
+				{
+					close(connfd);
+					#ifdef DEBUG
+					printf("Closing session! \n");
+					#endif
+					goto start_over;
 				}
-			//printf("\n");
+				else
+				{
+				//printf("Sending Values: ");
+					for (i = 0; i < 8; i++)
+					{ 
+						val[i] = ((float)((rcvBuff[2*i+2] << 8) + rcvBuff[2*i+3]))/65536.0f;
+						rc_send_esc_pulse_normalized(i+1,val[i]);
+						//printf(" %f, ", val[i]);
+					}
+				//printf("\n");
+				}
 			}
 		}
-	}
     }
         close(connfd);
 	remove(PID_FILE_PRU);

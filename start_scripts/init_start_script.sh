@@ -1,9 +1,9 @@
 #!/bin/sh
 
 
-cp restart_pru.sh /etc/init.d/
+cp start_pru_handler /etc/init.d/
 
 cd /etc/init.d/
-sudo update-rc.d restart_pru.sh defaults
+sudo update-rc.d start_pru_handler defaults
 
 

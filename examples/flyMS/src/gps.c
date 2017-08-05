@@ -110,13 +110,13 @@ int GPS_init(GPS_data_t * GPS_data){
 		usleep(300000);
 		res = read(GPS_data->GPS_file, buf, 255);
 		buf[res] = 0;  	
-		printf("No Fix, Message transmitted from Module is: %s",buf);
+		//printf("No Fix, Message transmitted from Module is: %s",buf);
 		
 	}
 	else
 	{
 		// timeout or error
-		printf("Successfully taken off of 9800 Baud, Proceeding,\n");
+		//printf("Successfully taken off of 9800 Baud, Proceeding,\n");
 	}
 	
 	//Now the device is reading faster at 57600 Baud, change settings on the beagleboard
@@ -140,7 +140,7 @@ int GPS_init(GPS_data_t * GPS_data){
 	
 		if (select(GPS_data->GPS_file + 1, &read_fds2, &write_fds2, &except_fds2, &timeout2) == 1)
 	{
-		printf("Reading at 57600 Baud successfully\n");
+		printf("GPS init successful\n");
 		}
 	else
 	{
@@ -183,15 +183,23 @@ int GPS_init(GPS_data_t * GPS_data){
 			}
 		}
 	
+	
 	usleep(50000);
 	write(GPS_data->GPS_file,"$PTNLSNM,0005,01*52\r\n",21); //NMEA message to output GGA  & VTG only
 	usleep(50000);
-	res = read(GPS_data->GPS_file, buf, 255);
-    buf[res] = 0;  		
-	printf("%s", buf);
+	//res = read(GPS_data->GPS_file, buf, 255);
+    //buf[res] = 0;  		
+	//printf("%s", buf);
 	
 	write(GPS_data->GPS_file,"$PTNLQBA*54\r\n",13); //antenna check
-	printf("Antenna query\n");
+	//printf("Antenna query\n");
+	usleep(50000); 
+	//res = read(GPS_data->GPS_file, buf, 255);
+    //buf[res] = 0;  		
+	//printf("%s", buf);
+	
+	
+	/*
 	usleep(50000); 
 	res = read(GPS_data->GPS_file, buf, 255);
     buf[res] = 0;  		
@@ -201,15 +209,12 @@ int GPS_init(GPS_data_t * GPS_data){
 	res = read(GPS_data->GPS_file, buf, 255);
     buf[res] = 0;  		
 	printf("%s", buf);
+	*/
 	
-	usleep(50000); 
-	res = read(GPS_data->GPS_file, buf, 255);
-    buf[res] = 0;  		
-	printf("%s", buf);
 	
 	//Start the GPS thread
 	pthread_create(&GPS_data->gps_thread, NULL, GPS_data_watcher, (void*) GPS_data);
-	printf("GPS Thread Started\n");
+	//printf("GPS Thread Started\n");
 	return 0;
 }
 
