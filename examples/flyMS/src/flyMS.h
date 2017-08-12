@@ -27,7 +27,6 @@ of the authors and should not be interpreted as representing official policies,
 either expressed or implied, of the FreeBSD Project.
 */
 
-
 #pragma once
 #include "linear_algebra.h"
 #include "../../../libraries/roboticscape.h"
@@ -195,6 +194,41 @@ typedef struct transform_matrix_t{
 	rc_vector_t 	dmp_drone, gyro_drone, accel_drone;
 }transform_matrix_t;
 
+typedef struct ekf_filter_input_t{
+	float mag[3];
+	float gyro[3];
+	float accel[3];
+	
+	uint8_t barometer_updated;
+	float barometer_pressure;
+
+	uint8_t gps_updated;
+	uint64_t gps_timestamp;
+	double gps_latlon[3];
+	uint8_t gps_fix;
+	uint8_t nsats;
+
+	uint8_t vehicle_land;
+
+}ekf_filter_input_t;
+
+
+typedef struct ekf_filter_output_t{
+	double ned_pos[3];
+	double ned_vel[3];
+	double ned_acc[3];
+
+	float vertical_time_deriv;
+	float gyro[3];
+
+}ekf_filter_output_t;
+
+typedef struct ekf_filter_t{
+	ekf_filter_input_t input;
+	ekf_filter_output_t output;
+
+}ekf_filter_t;
+
 	
 typedef struct filters_t{
 	digital_filter_t			*pitch_rate_PD;
@@ -207,7 +241,7 @@ typedef struct filters_t{
 	digital_filter_t         	*LPF_d_roll;
 	digital_filter_t         	*LPF_d_yaw;
 	digital_filter_t         	*LPF_Yaw_Ref_P;
-	digital_filter_t        	 *LPF_Yaw_Ref_R;
+	digital_filter_t        	*LPF_Yaw_Ref_R;
 	digital_filter_t			*Outer_Loop_TF_pitch;
 	digital_filter_t			*Outer_Loop_TF_roll;
 	digital_filter_t 			*LPF_Accel_Lat;

@@ -35,7 +35,7 @@ either expressed or implied, of the FreeBSD Project.
 #include <pthread.h>
 #include <math.h>
 #include <unistd.h>
-#include<fcntl.h>
+#include <fcntl.h>
 #include "../../../libraries/roboticscape.h"
 #include "gps.h"
 #include "kalman.h"

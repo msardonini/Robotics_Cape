@@ -1,0 +1,3 @@
+[submodule "examples/flyMS/src/Matrix"]
+	path = examples/flyMS/src/Matrix
+	url = https://github.com/PX4/Matrix.git
