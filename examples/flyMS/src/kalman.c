@@ -27,6 +27,10 @@ of the authors and should not be interpreted as representing official policies,
 either expressed or implied, of the FreeBSD Project.
 */
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 #include <stdio.h>
 #include <stdlib.h>
 
@@ -311,3 +315,7 @@ void update_rot_matrix(rc_matrix_t* Rot_matrix){
 	}
 }
 
+
+#ifdef __cplusplus
+}
+#endif

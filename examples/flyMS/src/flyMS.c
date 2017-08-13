@@ -31,6 +31,10 @@ either expressed or implied, of the FreeBSD Project.
 // flyMS.c Control Program to fly quadcopter
 // By Michael Sardonini
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 
 #include <errno.h>
 #include <string.h>
@@ -50,6 +54,7 @@ either expressed or implied, of the FreeBSD Project.
 #include "logger.h"
 #include "config.h"
 #include "flyMS.h"
+#include "ekf.h"
 #include "../../../libraries/pru_handler_client.h"
 
 
@@ -72,6 +77,7 @@ pru_client_data_t		pru_client_data;
 flyMS_threads_t			flyMS_threads;
 uint16_t 				imu_err_count;
 rc_imu_data_t			imu_data;			//Struct to relay all IMU info from driver to here
+ekf_filter_t		 	ekf_filter;
 float 					accel_bias[3] = {LAT_ACCEL_BIAS, LON_ACCEL_BIAS, ALT_ACCEL_BIAS};
 
 void * setpoint_manager(void* ptr)
@@ -272,6 +278,23 @@ int flight_core(void * ptr){
 		}
 		control.baro_alt = update_filter(filters.LPF_baro_alt,rc_bmp_get_altitude_m() - initial_alt);
 	}
+
+
+
+	/************************************************************************
+	*                   	Send data to the EKF                            *
+	************************************************************************/
+	for (i = 0; i < 3; i++)
+	{
+		ekf_filter.input.accel[i] = imu_data.mag[i];
+	}
+	ekf_filter.input.accel[0] = accel_data.accel_x;
+	ekf_filter.input.accel[1] = accel_data.accel_y;
+	ekf_filter.input.accel[2] = accel_data.accel_z;
+	ekf_filter.input.gyro[0] = control.d_pitch;
+	ekf_filter.input.gyro[1] = control.d_roll;
+	ekf_filter.input.gyro[2] = control.d_yaw;
+;
 
 
 	/************************************************************************
@@ -500,9 +523,12 @@ int flight_core(void * ptr){
 	//	printf(" Pitch_ref %2.2f ", setpoint.filt_pitch_ref);
 	//	printf(" Roll_ref %2.2f ", setpoint.filt_roll_ref);
 	//	printf(" Yaw_ref %2.2f ", setpoint.yaw_ref[0]);
-		printf(" Pitch %1.2f ", control.pitch);
-		printf(" Roll %1.2f ", control.roll);
-		printf(" Yaw %2.3f ", control.yaw[0]); 
+		// printf(" Pitch %1.2f ", control.pitch);
+		// printf(" Roll %1.2f ", control.roll);
+		// printf(" Yaw %2.3f ", control.yaw[0]); 
+		printf(" Pos N %2.3f ", ekf_filter.output.ned_pos[0]); 
+		printf(" Pos E %2.3f ", ekf_filter.output.ned_pos[1]); 
+		printf(" Pos D %2.3f ", ekf_filter.output.ned_pos[2]); 
 	//	printf(" DPitch %1.2f ", control.d_pitch_f); 
 	//	printf(" DRoll %1.2f ", control.d_roll_f);
 	//	printf(" DYaw %2.3f ", control.d_yaw); 	
@@ -594,7 +620,8 @@ int main(int argc, char *argv[]){
                                &pru_client_data,
                                &imu_data,
                                &transform,
-                               &GPS_data))
+                               &GPS_data,
+                               &ekf_filter))
 	{
 		flyMS_shutdown( &logger, 
 						&GPS_data, 
@@ -632,3 +659,8 @@ accel_data_t* get_accel_pointer(){
 GPS_data_t* get_GPS_pointer(){
 	return &GPS_data;
 }
+
+
+#ifdef __cplusplus
+}
+#endif

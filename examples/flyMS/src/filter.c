@@ -26,6 +26,10 @@ The views and conclusions contained in the software and documentation are those
 of the authors and should not be interpreted as representing official policies, 
 either expressed or implied, of the FreeBSD Project.
 */
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 #include "filter.h"
 #include <stdio.h>
 
@@ -35,7 +39,7 @@ digital_filter_t* initialize_filter(uint8_t order, float num[], float den[]){
 	uint8_t i;
 
 	digital_filter_t *filter;
-	filter=malloc(sizeof(digital_filter_t) +4*(order+1)*sizeof(float));
+	filter = (digital_filter_t *)malloc(sizeof(digital_filter_t) +4*(order+1)*sizeof(float));
 
 	filter->order=order;	
 	filter->filter_len=order+1;
@@ -210,3 +214,7 @@ void print_filter(digital_filter_t *filter)
 
 }
 
+
+#ifdef __cplusplus
+}
+#endif

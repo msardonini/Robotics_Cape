@@ -27,6 +27,10 @@ of the authors and should not be interpreted as representing official policies,
 either expressed or implied, of the FreeBSD Project.
 */
 
+#ifdef __cplusplus
+{
+#endif
+
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -361,3 +365,8 @@ void read_raw_gps(char *buf, GPS_data_t *GPS_data){
 int join_GPS_thread(GPS_data_t *GPS_data){
 	return pthread_join(GPS_data->gps_thread, NULL);
 }
+
+
+#ifdef __cplusplus
+}
+#endif

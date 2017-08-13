@@ -13,12 +13,12 @@
 # project name (generate executable with this name)
 TARGET   = flyMS
 
-CC       = gcc
+CC       = g++
 # compiling flags here
 CFLAGS	:= -c -Wall -g  
 LFLAGS	:= -lm -lrt -lpthread -lroboticscape
 # linking flags here
-LINKER   = gcc -o
+LINKER   = g++ -o
 
 INSTALL_DIR = /usr/bin/
 
@@ -29,9 +29,14 @@ INCDIR   = include
 OBJDIR   = obj
 BINDIR   = bin
 
-SOURCES  := $(wildcard $(SRCDIR)/*.c)
+SOURCES  := $(wildcard $(SRCDIR)/*.cxx)
 INCLUDES := $(wildcard $(INCDIR)/*.h)
 OBJECTS  := $(SOURCES:$(SRCDIR)/%.c=$(OBJDIR)/%.o)
+
+SOURCESCPP := $(wildcard $(SRCDIR)/*.cpp)
+INCLUDESCPP := $(wildcard $(INCDIR)/*.h)
+OBJECTSCPP  := $(SOURCESCPP:$(SRCDIR)/%.c=$(OBJDIR)/%.o)
+
 rm       = rm -f
 
 
@@ -42,6 +47,12 @@ $(BINDIR)/$(TARGET): $(OBJECTS)
 $(OBJECTS): $(OBJDIR)/%.o:$(SRCDIR)/%.c
 	@$(CC) $(CFLAGS) -c $< -o $@
 	@echo "Compiled "$<" successfully!"
+
+
+$(OBJECTSCPP): $(OBJDIR)/%.o:$(SRCDIR)/%.c
+	@$(CC) $(CFLAGS) -c $< -o $@
+	@echo "Compiled "$<" successfully!"
+
 	
 install: $(all)
 	@$(MAKE)

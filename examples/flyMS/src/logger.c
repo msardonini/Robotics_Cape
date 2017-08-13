@@ -33,6 +33,10 @@ either expressed or implied, of the FreeBSD Project.
 // sample to demonstrate logging robot data to a file
 // specifically this logs IMU sensor readings to a new log file
 
+#ifdef __cplusplus
+extern "C" 
+#endif
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -99,7 +103,7 @@ int write_core_log_entry(FILE* f, core_log_entry_t* entry){
 *	and dumps a buffer to file in one go
 ************************************************************************/
 void* core_log_writer(void* new_log){
-	core_logger_t *log = new_log;
+	core_logger_t *log = (core_logger_t *)new_log;
 	while(rc_get_state()!=EXITING){
 		int i,j;
 		if(log->needs_writing){
@@ -202,9 +206,14 @@ int stop_core_log(core_logger_t* log){
 
 
 char* concat(char *s1, char *s2){
-    char *result = malloc(strlen(s1)+strlen(s2)+1);//+1 for the zero-terminator
+    char *result = (char *)malloc(strlen(s1)+strlen(s2)+1);//+1 for the zero-terminator
     //in real code you would check for errors in malloc here
     strcpy(result, s1);
     strcat(result, s2);
     return result;
 }
+
+
+#ifdef __cplusplus
+}
+#endif

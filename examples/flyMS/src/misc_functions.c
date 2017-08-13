@@ -27,6 +27,10 @@ of the authors and should not be interpreted as representing official policies,
 either expressed or implied, of the FreeBSD Project.
 */
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
@@ -40,6 +44,7 @@ either expressed or implied, of the FreeBSD Project.
 #include "logger.h"
 #include <pthread.h>
 #include "gps.h"
+#include "ekf.h"
 #include <inttypes.h>
 #include "../../../libraries/pru_handler_client.h"
 //Coordinate system transformations matrices
@@ -54,7 +59,8 @@ int initialize_flight_program(flyMS_threads_t *flyMS_threads,
 				pru_client_data_t *pru_client_data,
 				rc_imu_data_t *imu_data,
 				transform_matrix_t *transform,
-				GPS_data_t *GPS_data)
+				GPS_data_t *GPS_data,
+				ekf_filter_t *ekf_filter)
 {
 
 	
@@ -119,6 +125,9 @@ int initialize_flight_program(flyMS_threads_t *flyMS_threads,
 	}
 
 	pthread_create(&flyMS_threads->setpoint_manager_thread, NULL, setpoint_manager, (void*)NULL );
+	
+	/* --------- Start the EKF for position estimates ----*/
+	pthread_create(&flyMS_threads->ekf_thread, NULL, run_ekf, ekf_filter );
 
 	init_rotation_matrix(transform, flight_config); //Initialize the rotation matrix from IMU to drone
 	initialize_filters(filters, flight_config);
@@ -443,4 +452,6 @@ int flyMS_shutdown(	logger_t *logger,
 
 
 
-
+#ifdef __cplusplus
+}
+#endif
