@@ -277,6 +277,10 @@ int flight_core(void * ptr){
 			i1=0;
 		}
 		control.baro_alt = update_filter(filters.LPF_baro_alt,rc_bmp_get_altitude_m() - initial_alt);
+
+		ekf_filter.input.barometer_updated = 1;
+		ekf_filter.input.barometer_pressure = control.baro_alt;
+
 	}
 
 
@@ -286,11 +290,12 @@ int flight_core(void * ptr){
 	************************************************************************/
 	for (i = 0; i < 3; i++)
 	{
+		ekf_filter.input.accel[i] = transform.accel_drone.d[i];
 		ekf_filter.input.accel[i] = imu_data.mag[i];
 	}
-	ekf_filter.input.accel[0] = accel_data.accel_x;
-	ekf_filter.input.accel[1] = accel_data.accel_y;
-	ekf_filter.input.accel[2] = accel_data.accel_z;
+	//ekf_filter.input.accel[0] = accel_data.accel_x;
+	//ekf_filter.input.accel[1] = accel_data.accel_y;
+	//ekf_filter.input.accel[2] = accel_data.accel_z;
 	ekf_filter.input.gyro[0] = control.d_pitch;
 	ekf_filter.input.gyro[1] = control.d_roll;
 	ekf_filter.input.gyro[2] = control.d_yaw;
@@ -526,9 +531,9 @@ int flight_core(void * ptr){
 		// printf(" Pitch %1.2f ", control.pitch);
 		// printf(" Roll %1.2f ", control.roll);
 		// printf(" Yaw %2.3f ", control.yaw[0]); 
-		printf(" Pos N %2.3f ", ekf_filter.output.ned_pos[0]); 
-		printf(" Pos E %2.3f ", ekf_filter.output.ned_pos[1]); 
-		printf(" Pos D %2.3f ", ekf_filter.output.ned_pos[2]); 
+		printf(" Gyro N %2.3f ", ekf_filter.output.gyro[0]); 
+		printf(" Gyro E %2.3f ", ekf_filter.output.gyro[1]); 
+		printf(" Gyro D %2.3f ", ekf_filter.output.gyro[2]); 
 	//	printf(" DPitch %1.2f ", control.d_pitch_f); 
 	//	printf(" DRoll %1.2f ", control.d_roll_f);
 	//	printf(" DYaw %2.3f ", control.d_yaw); 	
@@ -575,6 +580,18 @@ int flight_core(void * ptr){
 			GPS_data.pos_lat=GPS_data.meters_lat-control.initial_pos_lat;
 			GPS_data.pos_lon=GPS_data.meters_lon-control.initial_pos_lon;
 		}
+
+
+
+		ekf_filter.input.gps_updated = 1;
+		ekf_filter.input.gps_timestamp = control.time;
+		ekf_filter.input.gps_latlon[0] = (double)GPS_data.deg_latitude + (double)GPS_data.min_latitude / 60.0 + control.time*1E7/200;
+		ekf_filter.input.gps_latlon[1] = (double)GPS_data.deg_longitude + (double)GPS_data.min_longitude / 60.0;
+		ekf_filter.input.gps_latlon[2] = (double)GPS_data.gps_altitude;
+		ekf_filter.input.gps_fix = GPS_data.GPS_fix;
+		ekf_filter.input.nsats = 4; // Really need to fix this
+
+
 	}
 	return 0;
 }

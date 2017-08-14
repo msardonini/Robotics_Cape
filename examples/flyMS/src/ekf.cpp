@@ -89,7 +89,13 @@ void* run_ekf(void *ptr)
 		bool vision_attitude_updated = false;
 		bool vehicle_status_updated = false;
 
-		uint64_t now = 0;
+
+		
+		struct timespec log_time;
+		clock_gettime(CLOCK_MONOTONIC, &log_time);
+		uint64_t now =(uint64_t)(log_time.tv_sec) * 1E6 + 
+						((uint64_t)(log_time.tv_nsec) / 1000) ;
+		
 
 		// push imu data into estimator
 		float gyro_integral[3];
@@ -106,39 +112,39 @@ void* run_ekf(void *ptr)
 				gyro_integral, accel_integral);
 
 	
-		if (magnetomer_updated)
-		{
 
-			float mag_data_avg_ga[3];
-			// TODO These arent really the inputs to the filter, fix later
-			mag_data_avg_ga[0] = ekf_filter->input.mag[0];
-			mag_data_avg_ga[1] = ekf_filter->input.mag[1];
-			mag_data_avg_ga[2] = ekf_filter->input.mag[2];
-			accel_integral[0] = ekf_filter->input.mag[0] * DT;
+		float mag_data_avg_ga[3];
+		// TODO These arent really the inputs to the filter, fix later
+		mag_data_avg_ga[0] = ekf_filter->input.mag[0];
+		mag_data_avg_ga[1] = ekf_filter->input.mag[1];
+		mag_data_avg_ga[2] = ekf_filter->input.mag[2];
 
-			_ekf.setMagData(1000 * (uint64_t)now, mag_data_avg_ga);
-		}
+		_ekf.setMagData((uint64_t)now, mag_data_avg_ga);
+		
 
 
 			
-		if (barometer_updated) 
+		if (ekf_filter->input.barometer_updated) 
 		{
 			float balt_data_avg = ekf_filter->input.barometer_pressure;
 
 			// push to estimator
-			_ekf.setBaroData(1000 * (uint64_t)now, balt_data_avg);
+			_ekf.set_air_density(0.001f);
+			_ekf.setBaroData( (uint64_t)now, balt_data_avg);
+			printf("sending %f to ekf from baro\n", balt_data_avg);
+			ekf_filter->input.barometer_updated = 0;
 		}
 
 
 
 		// read gps data if available
-		if (gps_updated) 
+		if (ekf_filter->input.gps_updated) 
 		{
 			struct gps_message gps_msg = {};
 			gps_msg.time_usec = ekf_filter->input.gps_timestamp;
-			gps_msg.lat = ekf_filter->input.gps_latlon[0];
-			gps_msg.lon = ekf_filter->input.gps_latlon[1];
-			gps_msg.alt = ekf_filter->input.gps_latlon[2];
+			gps_msg.lat = (int32_t)(ekf_filter->input.gps_latlon[0]*1E7);
+			gps_msg.lon = (int32_t)(ekf_filter->input.gps_latlon[1]*1E7);
+			gps_msg.alt = (int32_t)(ekf_filter->input.gps_latlon[3]*1E3);
 			gps_msg.fix_type = ekf_filter->input.gps_fix;
 			// gps_msg.eph = gps.eph;
 			// gps_msg.epv = gps.epv;
@@ -151,14 +157,16 @@ void* run_ekf(void *ptr)
 			gps_msg.nsats = ekf_filter->input.nsats;
 			//TODO add gdop to gps topic
 			gps_msg.gdop = 0.0f;
+			
 
 			_ekf.setGpsData(ekf_filter->input.gps_timestamp, &gps_msg);
-
+			ekf_filter->input.gps_updated = 0;
 		}
 
 
 		// let the EKF know if the vehicle motion is that of a fixed wing (forward flight only relative to wind)
 		_ekf.set_is_fixed_wing(0);
+		_ekf.set_in_air_status(1);
 
 		if (optical_flow_updated) {
 			// flow_message flow;
@@ -204,9 +212,11 @@ void* run_ekf(void *ptr)
 
 
 		/* ------------ Run the EKF and Output the data -------- */ 
+//			printf("Update Successful \n");
 		if (_ekf.update()) 
 		{
 
+			printf("Update Successful \n");
 			matrix::Quaternion<float> q;
 			_ekf.copy_quaternion(q.data());
 

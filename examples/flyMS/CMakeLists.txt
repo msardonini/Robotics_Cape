@@ -28,6 +28,7 @@ set(SRCS
 
 	#-Werror
 
+add_definitions(-DPOSIX_SHARED)
 
 add_compile_options(
 	-std=c++11
