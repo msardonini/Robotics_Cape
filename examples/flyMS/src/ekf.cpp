@@ -59,38 +59,30 @@ extern "C"{
 #include "flyMS.h"
 }
 
-
-
-
 Ekf _ekf;
-
-
-
 
 void* run_ekf(void *ptr)
 {
 	ekf_filter_t* ekf_filter = (ekf_filter_t*) ptr;
 
 	Vector3f _vel_body_wind;
-	float _acc_hor_filt;
+//	float _acc_hor_filt;
 	while (rc_get_state()!=EXITING) 
 	// while (1) 
 	{
 
-		bool gps_updated = false;
-		bool magnetomer_updated = false;
-		bool barometer_updated = false;
+	//	bool gps_updated = false;
+	//	bool magnetomer_updated = false;
+	//	bool barometer_updated = false;
 		
-		bool airspeed_updated = false;
+	//	bool airspeed_updated = false;
 		bool optical_flow_updated = false;
 		bool range_finder_updated = false;
 		bool vehicle_land_detected_updated = false;
 		bool vision_position_updated = false;
 		bool vision_attitude_updated = false;
-		bool vehicle_status_updated = false;
+//		bool vehicle_status_updated = false;
 
-
-		
 		struct timespec log_time;
 		clock_gettime(CLOCK_MONOTONIC, &log_time);
 		uint64_t now =(uint64_t)(log_time.tv_sec) * 1E6 + 
@@ -99,16 +91,16 @@ void* run_ekf(void *ptr)
 
 		// push imu data into estimator
 		float gyro_integral[3];
-		float gyro_dt = DT;
+		//float gyro_dt = DT;
 		gyro_integral[0] = ekf_filter->input.gyro[0] * DT;
 		gyro_integral[1] = ekf_filter->input.gyro[1] * DT;
 		gyro_integral[2] = ekf_filter->input.gyro[2] * DT;
 		float accel_integral[3];
-		float accel_dt =  DT;
+		//float accel_dt =  DT;
 		accel_integral[0] = ekf_filter->input.accel[0] * DT;
 		accel_integral[1] = ekf_filter->input.accel[1] * DT;
 		accel_integral[2] = ekf_filter->input.accel[2] * DT;
-		_ekf.setIMUData(now, DT, DT,
+		_ekf.setIMUData(now, 5000, 5000,
 				gyro_integral, accel_integral);
 
 	
@@ -131,7 +123,6 @@ void* run_ekf(void *ptr)
 			// push to estimator
 			_ekf.set_air_density(0.001f);
 			_ekf.setBaroData( (uint64_t)now, balt_data_avg);
-			printf("sending %f to ekf from baro\n", balt_data_avg);
 			ekf_filter->input.barometer_updated = 0;
 		}
 
@@ -145,7 +136,9 @@ void* run_ekf(void *ptr)
 			gps_msg.lat = (int32_t)(ekf_filter->input.gps_latlon[0]*1E7);
 			gps_msg.lon = (int32_t)(ekf_filter->input.gps_latlon[1]*1E7);
 			gps_msg.alt = (int32_t)(ekf_filter->input.gps_latlon[3]*1E3);
-			gps_msg.fix_type = ekf_filter->input.gps_fix;
+			
+			gps_msg.fix_type = 3;
+			//gps_msg.fix_type = ekf_filter->input.gps_fix;
 			// gps_msg.eph = gps.eph;
 			// gps_msg.epv = gps.epv;
 			// gps_msg.sacc = gps.s_variance_m_s;
@@ -216,7 +209,7 @@ void* run_ekf(void *ptr)
 		if (_ekf.update()) 
 		{
 
-			printf("Update Successful \n");
+	//		printf("Update Successful \n");
 			matrix::Quaternion<float> q;
 			_ekf.copy_quaternion(q.data());
 
@@ -226,7 +219,7 @@ void* run_ekf(void *ptr)
 			float pos_d_deriv;
 			_ekf.get_pos_d_deriv(&pos_d_deriv);
 
-			float gyro_rad[3];
+		//	float gyro_rad[3];
 
 			
 			// generate control state data
@@ -235,15 +228,15 @@ void* run_ekf(void *ptr)
 
 
 			/* --------------   Estimate for Gyro Data ---------*/
-			gyro_rad[0] = ekf_filter->input.gyro[0]  - gyro_bias[0];
-			gyro_rad[1] = ekf_filter->input.gyro[1]  - gyro_bias[1];
-			gyro_rad[2] = ekf_filter->input.gyro[2]  - gyro_bias[2];
+			ekf_filter->output.gyro[0] = ekf_filter->input.gyro[0]  - gyro_bias[0];
+			ekf_filter->output.gyro[1] = ekf_filter->input.gyro[1]  - gyro_bias[1];
+			ekf_filter->output.gyro[2] = ekf_filter->input.gyro[2]  - gyro_bias[2];
 
 
 			// Velocity in body frame
 			Vector3f v_n(velocity);
 			matrix::Dcm<float> R_to_body(q.inversed());
-			Vector3f v_b = R_to_body * v_n;
+		//	Vector3f v_b = R_to_body * v_n;
 
 
 			// Calculate velocity relative to wind in body frame
@@ -256,9 +249,12 @@ void* run_ekf(void *ptr)
 			/* --------------   Estimate for Local Position Data ---------*/
 			float position[3];
 			_ekf.get_position(position);
-			ekf_filter->output.ned_pos[0] = (_ekf.local_position_is_valid()) ? position[0] : 0.0f;
-			ekf_filter->output.ned_pos[1] = (_ekf.local_position_is_valid()) ? position[1] : 0.0f;
+			//ekf_filter->output.ned_pos[0] = (_ekf.local_position_is_valid()) ? position[0] : 0.0f;
+			//ekf_filter->output.ned_pos[1] = (_ekf.local_position_is_valid()) ? position[1] : 0.0f;
 
+			ekf_filter->output.ned_pos[0] = position[0];
+			ekf_filter->output.ned_pos[1] = position[1];
+			ekf_filter->output.ned_pos[2] = position[2];
 			/* --------------   Estimate for Velocity Data ---------*/
 
 			// Velocity of body origin in local NED frame (m/s)
@@ -285,7 +281,7 @@ void* run_ekf(void *ptr)
 		}
 		usleep(5000);
 	}
-
+	return NULL;
 }
 
 // Ekf2 *Ekf2::instantiate(int argc, char *argv[])

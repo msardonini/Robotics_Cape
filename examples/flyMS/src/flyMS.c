@@ -267,7 +267,7 @@ int flight_core(void * ptr){
 	if (flight_config.enable_barometer)
 	{		
 		i1++;
-		if (i1 == 8) // Only read the barometer at 25Hz
+		if (i1 == 5) // Only read the barometer at 25Hz
 		{
 			// perform the i2c reads to the sensor, this takes a bit of time
 			if(rc_read_barometer()<0){
@@ -531,9 +531,9 @@ int flight_core(void * ptr){
 		// printf(" Pitch %1.2f ", control.pitch);
 		// printf(" Roll %1.2f ", control.roll);
 		// printf(" Yaw %2.3f ", control.yaw[0]); 
-		printf(" Gyro N %2.3f ", ekf_filter.output.gyro[0]); 
-		printf(" Gyro E %2.3f ", ekf_filter.output.gyro[1]); 
-		printf(" Gyro D %2.3f ", ekf_filter.output.gyro[2]); 
+		printf(" Gyro N %2.3f ", ekf_filter.output.ned_pos[0]); 
+		printf(" Gyro E %2.3f ", ekf_filter.output.ned_pos[1]); 
+		printf(" Gyro D %2.3f ", ekf_filter.output.ned_pos[2]); 
 	//	printf(" DPitch %1.2f ", control.d_pitch_f); 
 	//	printf(" DRoll %1.2f ", control.d_roll_f);
 	//	printf(" DYaw %2.3f ", control.d_yaw); 	
@@ -584,8 +584,8 @@ int flight_core(void * ptr){
 
 
 		ekf_filter.input.gps_updated = 1;
-		ekf_filter.input.gps_timestamp = control.time;
-		ekf_filter.input.gps_latlon[0] = (double)GPS_data.deg_latitude + (double)GPS_data.min_latitude / 60.0 + control.time*1E7/200;
+		ekf_filter.input.gps_timestamp = control.time*1E6;
+		ekf_filter.input.gps_latlon[0] = (double)GPS_data.deg_latitude + (double)GPS_data.min_latitude / 60.0;// + control.time*1E7/20000;
 		ekf_filter.input.gps_latlon[1] = (double)GPS_data.deg_longitude + (double)GPS_data.min_longitude / 60.0;
 		ekf_filter.input.gps_latlon[2] = (double)GPS_data.gps_altitude;
 		ekf_filter.input.gps_fix = GPS_data.GPS_fix;
