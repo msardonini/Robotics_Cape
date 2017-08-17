@@ -84,6 +84,19 @@ void * setpoint_manager(void* ptr)
 {
 	while(rc_get_state()!=EXITING)
 	{
+
+
+	/******************************************************************
+				Grab the time for Periphal Apps and Logs 			  *
+	******************************************************************/
+
+	clock_gettime(CLOCK_MONOTONIC, &function_control.log_time);
+	control.time=(float)(function_control.log_time.tv_sec 
+			- function_control.start_time.tv_sec) 
+			+ ((float)(function_control.log_time.tv_nsec 
+				- function_control.start_time.tv_nsec) / 1E9f) ;
+
+
 		/**********************************************************
 		*           Read the RC Controller for Commands           *
 		**********************************************************/
@@ -279,7 +292,7 @@ int flight_core(void * ptr){
 		control.baro_alt = update_filter(filters.LPF_baro_alt,rc_bmp_get_altitude_m() - initial_alt);
 
 		ekf_filter.input.barometer_updated = 1;
-		ekf_filter.input.barometer_pressure = control.baro_alt;
+		ekf_filter.input.barometer_alt = control.baro_alt;
 
 	}
 
@@ -291,7 +304,7 @@ int flight_core(void * ptr){
 	for (i = 0; i < 3; i++)
 	{
 		ekf_filter.input.accel[i] = transform.accel_drone.d[i];
-		ekf_filter.input.accel[i] = imu_data.mag[i];
+		ekf_filter.input.accel[i] = imu_data.mag[i] * MICROTESLA_TO_GAUSS;
 	}
 	//ekf_filter.input.accel[0] = accel_data.accel_x;
 	//ekf_filter.input.accel[1] = accel_data.accel_y;
@@ -299,6 +312,7 @@ int flight_core(void * ptr){
 	ekf_filter.input.gyro[0] = control.d_pitch;
 	ekf_filter.input.gyro[1] = control.d_roll;
 	ekf_filter.input.gyro[2] = control.d_yaw;
+	ekf_filter.input.IMU_timestamp = control.time;
 ;
 
 
@@ -467,9 +481,6 @@ int flight_core(void * ptr){
 			rc_set_state(EXITING);
 		}
 	}
-	clock_gettime(CLOCK_MONOTONIC, &function_control.log_time);
-	control.time=(float)(function_control.log_time.tv_sec - function_control.start_time.tv_sec) + 
-						((float)(function_control.log_time.tv_nsec - function_control.start_time.tv_nsec) / 1000000000) ;
 
 	logger.new_entry.time			= control.time;	
 	logger.new_entry.pitch			= control.pitch;	
@@ -589,7 +600,7 @@ int flight_core(void * ptr){
 		ekf_filter.input.gps_latlon[1] = (double)GPS_data.deg_longitude + (double)GPS_data.min_longitude / 60.0;
 		ekf_filter.input.gps_latlon[2] = (double)GPS_data.gps_altitude;
 		ekf_filter.input.gps_fix = GPS_data.GPS_fix;
-		ekf_filter.input.nsats = 4; // Really need to fix this
+		ekf_filter.input.nsats = 10; // Really need to fix this
 
 
 	}

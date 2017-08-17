@@ -52,6 +52,7 @@ either expressed or implied, of the FreeBSD Project.
 
 
 #define SAMPLE_RATE	200
+#define MICROTESLA_TO_GAUSS 0.01
 #define DT 0.005
 #define Integrator_TH 0.55
 #define MAX_PITCH_RANGE 0.666 // in radians
@@ -195,12 +196,14 @@ typedef struct transform_matrix_t{
 }transform_matrix_t;
 
 typedef struct ekf_filter_input_t{
+	uint64_t IMU_timestamp;
 	float mag[3];
 	float gyro[3];
 	float accel[3];
 	
+	uint64_t barometer_timestamp; 
 	uint8_t barometer_updated;
-	float barometer_pressure;
+	float barometer_alt;
 
 	uint8_t gps_updated;
 	uint64_t gps_timestamp;

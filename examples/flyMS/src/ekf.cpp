@@ -51,8 +51,10 @@
 #include <float.h>
 
 
+
 #include "../../../libraries/ecl/EKF/ekf.h"
 
+#define MIN_INTERVAL_MS 20
 
 extern "C"{
 #include "ekf.h"
@@ -67,6 +69,24 @@ void* run_ekf(void *ptr)
 
 	Vector3f _vel_body_wind;
 //	float _acc_hor_filt;
+
+
+	// Magnetometer Values
+	float prev_mag_data[3];	
+	uint64_t _timestamp_mag_us;
+	uint64_t _mag_time_sum_ms;
+	uint32_t _mag_sample_count;
+	float _mag_data_sum[3];
+
+
+//	Baro values
+	uint64_t _timestamp_balt_us;
+	uint64_t _balt_time_sum_ms;
+	uint64_t _balt_time_ms_last_used;
+	uint32_t _balt_sample_count;
+	float _balt_data_sum;
+
+
 	while (rc_get_state()!=EXITING) 
 	// while (1) 
 	{
@@ -89,6 +109,7 @@ void* run_ekf(void *ptr)
 						((uint64_t)(log_time.tv_nsec) / 1000) ;
 		
 
+		uint64_t timestamp ekf_filter->input.timestamp * 1E6;
 		// push imu data into estimator
 		float gyro_integral[3];
 		//float gyro_dt = DT;
@@ -103,30 +124,109 @@ void* run_ekf(void *ptr)
 		_ekf.setIMUData(now, 5000, 5000,
 				gyro_integral, accel_integral);
 
-	
+		
+		//Decide if the magnetometer data is new or not
+		int is_new_mag_data, i;
+		if (prev_mag_data[0] == ekf_filter.input.mag[0]
+			&& prev_mag_data[1] == ekf_filter.input.mag[1]
+			&& prev_mag_data[2] == ekf_filter.input.mag[2])
+		{
+			is_new_mag_data = 0;
+		}
+		else
+		{
+			is_new_mag_data = 1;
+		}
+		for (i = 0; i <3; i++)
+		{
+			prev_mag_data[i] = ekf_filter.input.mag[i];
+		}
 
-		float mag_data_avg_ga[3];
-		// TODO These arent really the inputs to the filter, fix later
-		mag_data_avg_ga[0] = ekf_filter->input.mag[0];
-		mag_data_avg_ga[1] = ekf_filter->input.mag[1];
-		mag_data_avg_ga[2] = ekf_filter->input.mag[2];
 
-		_ekf.setMagData((uint64_t)now, mag_data_avg_ga);
+		// read mag data
+		// Basically checking if this data is the same as was the last iteration
+		if ((is_new_mag_data) 
+		{
+			_timestamp_mag_us = timestamp;
+
+			// If the time last used by the EKF is less than specified, then accumulate the
+			// data and push the average when the specified interval is reached.
+			_mag_time_sum_ms += _timestamp/ 1000;
+			_mag_sample_count++;
+			_mag_data_sum[0] += ekf_filter->input.mag[0];
+			_mag_data_sum[1] += ekf_filter->input.mag[1];
+			_mag_data_sum[2] += ekf_filter->input.mag[2];;
+			uint32_t mag_time_ms = _mag_time_sum_ms / _mag_sample_count;
+
+			// if (mag_time_ms - _mag_time_ms_last_used > _params->sensor_interval_min_ms) {
+			if (mag_time_ms - _mag_time_ms_last_used > MIN_INTERVAL_MS) {
+				float mag_sample_count_inv = 1.0f / (float)_mag_sample_count;
+				// calculate mean of measurements and correct for learned bias offsets
+				float mag_data_avg_ga[3] = {_mag_data_sum[0] *mag_sample_count_inv,
+							    _mag_data_sum[1] *mag_sample_count_inv,
+							    _mag_data_sum[2] *mag_sample_count_inv
+							   };
+				_ekf.setMagData(1000 * (uint64_t)mag_time_ms, mag_data_avg_ga);
+				_mag_time_ms_last_used = mag_time_ms;
+				_mag_time_sum_ms = 0;
+				_mag_sample_count = 0;
+				_mag_data_sum[0] = 0.0f;
+				_mag_data_sum[1] = 0.0f;
+				_mag_data_sum[2] = 0.0f;
+			}
+		}
+		
+
+
+		// float mag_data_avg_ga[3];
+		// // TODO These arent really the inputs to the filter, fix later
+		// mag_data_avg_ga[0] = ekf_filter->input.mag[0];
+		// mag_data_avg_ga[1] = ekf_filter->input.mag[1];
+		// mag_data_avg_ga[2] = ekf_filter->input.mag[2];
+
+		// _ekf.setMagData((uint64_t)now, mag_data_avg_ga);
 		
 
 
 			
+		// if (ekf_filter->input.barometer_updated) 
+		// {
+		// 	float balt_data_avg = ekf_filter->input.barometer_pressure;
+
+		// 	// push to estimator
+		// 	_ekf.set_air_density(0.001f);
+		// 	_ekf.setBaroData( (uint64_t)now, balt_data_avg);
+		// 	ekf_filter->input.barometer_updated = 0;
+		// }
+		// read baro data
+
+
+
+
+
 		if (ekf_filter->input.barometer_updated) 
 		{
-			float balt_data_avg = ekf_filter->input.barometer_pressure;
+			_timestamp_balt_us = timestamp;
 
-			// push to estimator
-			_ekf.set_air_density(0.001f);
-			_ekf.setBaroData( (uint64_t)now, balt_data_avg);
-			ekf_filter->input.barometer_updated = 0;
+			// If the time last used by the EKF is less than specified, then accumulate the
+			// data and push the average when the specified interval is reached.
+			_balt_time_sum_ms += _timestamp_balt_us / 1000;
+			_balt_sample_count++;
+			_balt_data_sum += ekf_filter->input.barometer_alt
+			uint32_t balt_time_ms = _balt_time_sum_ms / _balt_sample_count;
+
+			if (balt_time_ms - _balt_time_ms_last_used > (uint32_t)MIN_INTERVAL_MS) {
+				// take mean across sample period
+				float balt_data_avg = _balt_data_sum / (float)_balt_sample_count;
+
+				_ekf.setBaroData(1000 * (uint64_t)balt_time_ms, balt_data_avg);
+				_balt_time_ms_last_used = balt_time_ms;
+				_balt_time_sum_ms = 0;
+				_balt_sample_count = 0;
+				_balt_data_sum = 0.0f;
+
+			}
 		}
-
-
 
 		// read gps data if available
 		if (ekf_filter->input.gps_updated) 
@@ -138,18 +238,18 @@ void* run_ekf(void *ptr)
 			gps_msg.alt = (int32_t)(ekf_filter->input.gps_latlon[3]*1E3);
 			
 			gps_msg.fix_type = 3;
-			//gps_msg.fix_type = ekf_filter->input.gps_fix;
-			// gps_msg.eph = gps.eph;
-			// gps_msg.epv = gps.epv;
-			// gps_msg.sacc = gps.s_variance_m_s;
-			// gps_msg.vel_m_s = gps.vel_m_s;
+			// gps_msg.fix_type = ekf_filter->input.gps_fix;
+			gps_msg.eph = 1;
+			gps_msg.epv = 1;
+			gps_msg.sacc = 1;
+			gps_msg.vel_m_s = 0;
 			// gps_msg.vel_ned[0] = gps.vel_n_m_s;
 			// gps_msg.vel_ned[1] = gps.vel_e_m_s;
 			// gps_msg.vel_ned[2] = gps.vel_d_m_s;
 			gps_msg.vel_ned_valid = 0;
 			gps_msg.nsats = ekf_filter->input.nsats;
 			//TODO add gdop to gps topic
-			gps_msg.gdop = 0.0f;
+			gps_msg.gdop = 0.5f;
 			
 
 			_ekf.setGpsData(ekf_filter->input.gps_timestamp, &gps_msg);
