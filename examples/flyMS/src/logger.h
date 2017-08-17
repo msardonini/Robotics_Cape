@@ -66,7 +66,13 @@ either expressed or implied, of the FreeBSD Project.
     X(float,  "%f",	 accel_z		) \
     X(float,  "%f",	 baro_alt		) \
     X(float,  "%f",	 v_batt			) \
-    X(float,  "%f",	 compass_heading)
+    X(float,  "%f",  compass_heading) \
+    X(float,  "%f",  ned_pos_x) \
+    X(float,  "%f",  ned_pos_y) \
+    X(float,  "%f",  ned_pos_z) \
+    X(float,  "%f",  ned_vel_x) \
+    X(float,  "%f",  ned_vel_y) \
+    X(float,  "%f",	 ned_vel_z)
 	
 
 #define CORE_LOG_BUF_LEN 200 //once per second is reasonable

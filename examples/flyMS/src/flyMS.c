@@ -94,7 +94,7 @@ void * setpoint_manager(void* ptr)
 	control.time=(float)(function_control.log_time.tv_sec 
 			- function_control.start_time.tv_sec) 
 			+ ((float)(function_control.log_time.tv_nsec 
-				- function_control.start_time.tv_nsec) / 1E9f) ;
+				- function_control.start_time.tv_nsec))/ 1E9f ;
 
 
 		/**********************************************************
@@ -514,6 +514,12 @@ int flight_core(void * ptr){
 	logger.new_entry.accel_z		= accel_data.accel_z;
 	logger.new_entry.baro_alt		= control.baro_alt;
 	logger.new_entry.v_batt			= 0;
+	logger.new_entry.ned_pos_x		= ekf_filter.output.ned_pos[0];
+	logger.new_entry.ned_pos_y		= ekf_filter.output.ned_pos[1];
+	logger.new_entry.ned_pos_z		= ekf_filter.output.ned_pos[2];
+	logger.new_entry.ned_vel_x		= ekf_filter.output.ned_vel[0];
+	logger.new_entry.ned_vel_y		= ekf_filter.output.ned_vel[1];
+	logger.new_entry.ned_vel_z		= ekf_filter.output.ned_vel[2];
 	logger.new_entry.compass_heading= control.compass_heading;
 	//logger.new_entry.v_batt			= rc_dc_jack_voltage();
 	log_core_data(&logger.core_logger, &logger.new_entry);
