@@ -77,7 +77,7 @@ void* run_ekf(void *ptr)
 	uint64_t _mag_time_sum_ms;
 	uint32_t _mag_sample_count;
 	float _mag_data_sum[3];
-
+	uint64_t _mag_time_ms_last_used;
 
 //	Baro values
 	uint64_t _timestamp_balt_us;
@@ -105,11 +105,11 @@ void* run_ekf(void *ptr)
 
 		struct timespec log_time;
 		clock_gettime(CLOCK_MONOTONIC, &log_time);
-		uint64_t now =(uint64_t)(log_time.tv_sec) * 1E6 + 
+		uint64_t timestamp=(uint64_t)(log_time.tv_sec) * 1E6 + 
 						((uint64_t)(log_time.tv_nsec) / 1000) ;
 		
 
-		uint64_t timestamp ekf_filter->input.timestamp * 1E6;
+		//uint64_t timestamp = ekf_filter->input.IMU_timestamp * 1E6;
 		// push imu data into estimator
 		float gyro_integral[3];
 		//float gyro_dt = DT;
@@ -121,17 +121,17 @@ void* run_ekf(void *ptr)
 		accel_integral[0] = ekf_filter->input.accel[0] * DT;
 		accel_integral[1] = ekf_filter->input.accel[1] * DT;
 		accel_integral[2] = ekf_filter->input.accel[2] * DT;
-		_ekf.setIMUData(now, 5000, 5000,
+		_ekf.setIMUData(timestamp, 5000, 5000,
 				gyro_integral, accel_integral);
 
 		
 		//Decide if the magnetometer data is new or not
 		int is_new_mag_data, i;
-		if (prev_mag_data[0] == ekf_filter.input.mag[0]
-			&& prev_mag_data[1] == ekf_filter.input.mag[1]
-			&& prev_mag_data[2] == ekf_filter.input.mag[2])
+		if (prev_mag_data[0] == ekf_filter->input.mag[0]
+			&& prev_mag_data[1] == ekf_filter->input.mag[1]
+			&& prev_mag_data[2] == ekf_filter->input.mag[2])
 		{
-			is_new_mag_data = 0;
+			is_new_mag_data = 1;
 		}
 		else
 		{
@@ -139,24 +139,28 @@ void* run_ekf(void *ptr)
 		}
 		for (i = 0; i <3; i++)
 		{
-			prev_mag_data[i] = ekf_filter.input.mag[i];
+			prev_mag_data[i] = ekf_filter->input.mag[i];
 		}
 
 
 		// read mag data
 		// Basically checking if this data is the same as was the last iteration
-		if ((is_new_mag_data) 
+		if (is_new_mag_data) 
 		{
 			_timestamp_mag_us = timestamp;
 
 			// If the time last used by the EKF is less than specified, then accumulate the
 			// data and push the average when the specified interval is reached.
-			_mag_time_sum_ms += _timestamp/ 1000;
+			_mag_time_sum_ms += _timestamp_mag_us/ 1000;
 			_mag_sample_count++;
 			_mag_data_sum[0] += ekf_filter->input.mag[0];
 			_mag_data_sum[1] += ekf_filter->input.mag[1];
 			_mag_data_sum[2] += ekf_filter->input.mag[2];;
 			uint32_t mag_time_ms = _mag_time_sum_ms / _mag_sample_count;
+
+
+
+				printf("Calc diff %d actual diff %d \n",(int)(timestamp - _mag_time_ms_last_used),MIN_INTERVAL_MS);
 
 			// if (mag_time_ms - _mag_time_ms_last_used > _params->sensor_interval_min_ms) {
 			if (mag_time_ms - _mag_time_ms_last_used > MIN_INTERVAL_MS) {
@@ -212,7 +216,7 @@ void* run_ekf(void *ptr)
 			// data and push the average when the specified interval is reached.
 			_balt_time_sum_ms += _timestamp_balt_us / 1000;
 			_balt_sample_count++;
-			_balt_data_sum += ekf_filter->input.barometer_alt
+			_balt_data_sum += ekf_filter->input.barometer_alt;
 			uint32_t balt_time_ms = _balt_time_sum_ms / _balt_sample_count;
 
 			if (balt_time_ms - _balt_time_ms_last_used > (uint32_t)MIN_INTERVAL_MS) {

@@ -304,7 +304,7 @@ int flight_core(void * ptr){
 	for (i = 0; i < 3; i++)
 	{
 		ekf_filter.input.accel[i] = transform.accel_drone.d[i];
-		ekf_filter.input.accel[i] = imu_data.mag[i] * MICROTESLA_TO_GAUSS;
+		ekf_filter.input.mag[i] = imu_data.mag[i] * MICROTESLA_TO_GAUSS;
 	}
 	//ekf_filter.input.accel[0] = accel_data.accel_x;
 	//ekf_filter.input.accel[1] = accel_data.accel_y;
