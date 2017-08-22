@@ -52,3 +52,6 @@ target_link_libraries(flyMS rt)
 target_link_libraries(flyMS pthread)
 target_link_libraries(flyMS ecl)
 target_link_libraries(flyMS ${ROBOTICSCAPE_LIB})
+
+
+install(TARGETS flyMS DESTINATION "/usr/bin")

@@ -22,7 +22,7 @@ done
 i="0"
 while [ $i -lt $j ]
 do
-	flyMS > /dev/null
+	nohup 	flyMS
 	((i++))
 	sleep 1
 done

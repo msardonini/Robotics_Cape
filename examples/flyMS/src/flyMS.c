@@ -520,6 +520,9 @@ int flight_core(void * ptr){
 	logger.new_entry.ned_vel_x		= ekf_filter.output.ned_vel[0];
 	logger.new_entry.ned_vel_y		= ekf_filter.output.ned_vel[1];
 	logger.new_entry.ned_vel_z		= ekf_filter.output.ned_vel[2];
+	logger.new_entry.mag_x			= imu_data.mag[0];
+	logger.new_entry.mag_y			= imu_data.mag[1];
+	logger.new_entry.mag_z			= imu_data.mag[2];
 	logger.new_entry.compass_heading= control.compass_heading;
 	//logger.new_entry.v_batt			= rc_dc_jack_voltage();
 	log_core_data(&logger.core_logger, &logger.new_entry);
@@ -529,7 +532,7 @@ int flight_core(void * ptr){
 	if(flight_config.enable_debug_mode)
 	{	
 		printf("\r ");
-		printf("time %3.3f ", control.time);
+	//	printf("time %3.3f ", control.time);
 	//	printf("Alt %2.2f ",lidar_data.altitude[0]);
 	//	printf("vel %2.2f ",lidar_data.d_altitude[0]);		
 	//	printf("H_d %3.3f ", control.height_damping);
@@ -548,9 +551,12 @@ int flight_core(void * ptr){
 		// printf(" Pitch %1.2f ", control.pitch);
 		// printf(" Roll %1.2f ", control.roll);
 		// printf(" Yaw %2.3f ", control.yaw[0]); 
-		printf(" Gyro N %2.3f ", ekf_filter.output.ned_pos[0]); 
-		printf(" Gyro E %2.3f ", ekf_filter.output.ned_pos[1]); 
-		printf(" Gyro D %2.3f ", ekf_filter.output.ned_pos[2]); 
+		printf(" Mag X %4.2f",imu_data.mag[0]);
+		printf(" Mag Y %4.2f",imu_data.mag[1]);
+		printf(" Mag Z %4.2f",imu_data.mag[2]);
+	//	printf(" Pos N %2.3f ", ekf_filter.output.ned_pos[0]); 
+	//	printf(" Pos E %2.3f ", ekf_filter.output.ned_pos[1]); 
+	//	printf(" Pos D %2.3f ", ekf_filter.output.ned_pos[2]); 
 	//	printf(" DPitch %1.2f ", control.d_pitch_f); 
 	//	printf(" DRoll %1.2f ", control.d_roll_f);
 	//	printf(" DYaw %2.3f ", control.d_yaw); 	

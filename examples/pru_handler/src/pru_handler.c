@@ -211,7 +211,7 @@ int main(int argc, char *argv[])
 		FD_SET(listenfd, &set); /* add our file descriptor to the set */
 
 		timeout.tv_sec = 0;
-		timeout.tv_usec = 200000;
+		timeout.tv_usec = 20000;
 		
 		rv = select(listenfd + 1, &set, NULL, NULL, &timeout);
 		if (rv == 0)
@@ -231,7 +231,7 @@ int main(int argc, char *argv[])
 				break;
 			}	
 		}
-	//	rc_send_esc_pulse_normalized_all(0);
+		rc_send_esc_pulse_normalized_all(0);
 	}
 
 	tv.tv_sec = 0;  /* 30 Secs Timeout */

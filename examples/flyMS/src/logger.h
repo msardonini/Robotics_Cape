@@ -72,7 +72,11 @@ either expressed or implied, of the FreeBSD Project.
     X(float,  "%f",  ned_pos_z) \
     X(float,  "%f",  ned_vel_x) \
     X(float,  "%f",  ned_vel_y) \
-    X(float,  "%f",	 ned_vel_z)
+    X(float,  "%f",	 ned_vel_z) \
+    X(float,  "%f",	 mag_x) \
+    X(float,  "%f",	 mag_y) \
+    X(float,  "%f",	 mag_z)
+	
 	
 
 #define CORE_LOG_BUF_LEN 200 //once per second is reasonable

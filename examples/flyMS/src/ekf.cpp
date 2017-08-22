@@ -160,7 +160,7 @@ void* run_ekf(void *ptr)
 
 
 
-				printf("Calc diff %d actual diff %d \n",(int)(timestamp - _mag_time_ms_last_used),MIN_INTERVAL_MS);
+		//		printf("Calc diff %d actual diff %d \n",(int)(timestamp - _mag_time_ms_last_used),MIN_INTERVAL_MS);
 
 			// if (mag_time_ms - _mag_time_ms_last_used > _params->sensor_interval_min_ms) {
 			if (mag_time_ms - _mag_time_ms_last_used > MIN_INTERVAL_MS) {
