@@ -11,23 +11,29 @@ add_compile_options(
 	-Wno-unused-local-typedefs
 	-Wno-unused-parameter
 	)
+	
+#Build the PX4 estimation control library
+include(libraries/ecl/CMakeLists.txt)
 
-include(libraries/ecl/EKF/CMakeLists.txt)
+#Build the robotics cape library
 include(libraries/CMakeLists.txt)
+
+#Get the flyMS sources
 include(examples/flyMS/CMakeLists.txt)
 
+#Build flyMS
+add_executable(flyMS ${SRCS_FLYMS})
 
+#Link Needed Libraries
 find_library(ECL_LIB ecl)
 find_library(ROBOTICSCAPE_LIB roboticscape)
-
-
-add_executable(flyMS ${SRCS_FLYMS})
 target_link_libraries(flyMS m)
 target_link_libraries(flyMS rt)
 target_link_libraries(flyMS pthread)
 target_link_libraries(flyMS ecl)
 target_link_libraries(flyMS roboticscape)
-#target_link_libraries(flyMS ${ROBOTICSCAPE_LIB})
 
-
-install(TARGETS flyMS DESTINATION "/usr/bin/")
+#Define install directory
+install(TARGETS flyMS DESTINATION /usr/bin/)
+install(TARGETS roboticscape DESTINATION /usr/lib/)
+install(TARGETS ecl DESTINATION /usr/lib/)

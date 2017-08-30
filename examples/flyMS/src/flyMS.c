@@ -112,13 +112,15 @@ void * setpoint_manager(void* ptr)
 			//Set the pitch reference value
 			setpoint.pitch_ref= -rc_get_dsm_ch_normalized(3)*MAX_PITCH_RANGE;
 			
-			//Convert from Drone Coordinate System to User Coordinate System
-			/*
-			float P_R_MAG=pow(pow(setpoint.roll_ref,2)+pow(setpoint.pitch_ref,2),0.5);
-			float Theta_Ref=atan2f(setpoint.pitch_ref,setpoint.roll_ref);
-			setpoint.roll_ref =P_R_MAG*cos(Theta_Ref+control.yaw[0]-control.yaw_ref_offset);
-			setpoint.pitch_ref=P_R_MAG*sin(Theta_Ref+control.yaw[0]-control.yaw_ref_offset);
-			*/
+			
+			//If Specified by the config file, convert from Drone Coordinate System to User Coordinate System
+			if (flight_config.static_PR_ref)
+			{				
+				float P_R_MAG=pow(pow(setpoint.roll_ref,2)+pow(setpoint.pitch_ref,2),0.5);
+				float Theta_Ref=atan2f(setpoint.pitch_ref,setpoint.roll_ref);
+				setpoint.roll_ref =P_R_MAG*cos(Theta_Ref+control.yaw[0]-control.yaw_ref_offset);
+				setpoint.pitch_ref=P_R_MAG*sin(Theta_Ref+control.yaw[0]-control.yaw_ref_offset);
+			}
 						
 			//Set Yaw, RC Controller acts on Yaw velocity, save a history for integration
 			//Apply the integration outside of current if statement, needs to run at 200Hz

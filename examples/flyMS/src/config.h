@@ -47,6 +47,7 @@ either expressed or implied, of the FreeBSD Project.
 	X(int,  "%d", enable_debug_mode,	0		)\
 	X(int,  "%d", enable_autonomy,		0		)\
 	X(int,  "%d", imu_orientation,		1		)\
+	X(int,  "%d", static_PR_ref,		0		)\
 												\
 	X(float,  "%f", pitch_offset_deg,	0.0f	)\
 	X(float,  "%f", roll_offset_deg,	0.0f	)\
