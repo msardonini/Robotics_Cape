@@ -1,4 +1,7 @@
-# Robotics Cape for Beaglebone QuadCopter
+# Beaglebone QuadCopter with Robotics Cape API
+	Quadcopter flight program for Beaglebone Blue or Beaglebone Black with Robotics Cape. 
+	Built with StrawsonDesign's Robotics Cape Library http://strawsondesign.com/#!manual-install.
+	
 
 ## Prereq's
 
@@ -7,14 +10,18 @@
 
 ## Install
 
-1. Log in as root
-  * cd /root/ 
-  * git clone --recursive git@github.com:msardonini/Robotics_Cape.git
-  * cd Robotics_Cape/
-  * mkdir build
-  * cmake ..
-  * make
-  * sudo make install
+1. Log in as root (needs to be enabled, https://linuxconfig.org/enable-ssh-root-login-on-debian-linux-server)
+  ```
+$  cd /root/ 
+$  git clone --recursive git@github.com:msardonini/Robotics_Cape.git
+$  cd Robotics_Cape/
+$  mkdir build
+$  cmake ..
+$  make install
+$  cd ..
+$  bash install.sh
+```
+2. Reboot Beaglebone
 
 ## Run Program
 	1. SSH into beaglebone
@@ -31,13 +38,13 @@
 	3. Digital Filter improved, minimum memory dynamically allocated and shifting of timestamps is done in place
 	4. The estimation and control library (from PX4) has been stripped down and put into this build for GPS/INS fused navigation
 
+### Motor Spin Directions & ESC connections  
 
-### Original Repo 
-For BeagleBone Black and BeagleBone Blue running Debian Jessie.
-
-Installation instructions and user manual can be found here:
-http://strawsondesign.com/#!manual-install
-
+  CCW 1	&nbsp;  2 CW			<br />
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; \ &nbsp; /	<br />
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; / &nbsp; \  	<br />
+ CW 3 &nbsp; &nbsp;	   4 CCW		<br />
+	
 
 
 
