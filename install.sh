@@ -67,6 +67,7 @@ fi
 
 # make sure the user really wants to install
 echo "This script will install all Robotics Cape supporting software"
+echo "	Some components of this install require an internet connection"
 read -r -p "Continue? [y/n] " response
 case $response in
 	[yY]) echo " " ;;
@@ -75,6 +76,23 @@ esac
 echo " "
 
 
+################################################################################
+# Install cmake and Eigen, requires internet connection!
+# 
+################################################################################
+
+apt-get update
+apt-get install cmake
+
+cd start_scripts/
+tar xvf eigen-eigen-5a0156e40feb.tar.bz2
+cd eigen-eigen-5a0156e40feb/
+mkdir build
+cd build
+cmake ..
+make install
+cd ../../../
+rm -rf start_scripts/eigen-eigen-5a0156e40feb/
 
 ################################################################################
 # Compile and install library, examples, and services
@@ -82,8 +100,11 @@ echo " "
 ################################################################################
 find . -exec touch {} \;
 bash debian/preinst
-make clean
+mkdir build
+cd build
+cmake ..
 make install
+cd ..
 ldconfig
 
 ###############################################################################
@@ -103,6 +124,13 @@ if [ ! "$MODEL" == "TI AM335x BeagleBone Green Wireless" ]; then
 	echo "Starting rc_battery_monitor Service"
 	systemctl start rc_battery_monitor
 fi
+
+
+#Enable the pru_handler to run on boot
+cp start_scripts/start_pru_handler /etc/init.d/
+sudo update-rc.d /etc/init.d/start_pru_handler defaults
+
+
 
 echo "Configuring Device Tree"
 bash /usr/bin/configure_robotics_dt.sh
