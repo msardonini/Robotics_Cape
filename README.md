@@ -8,20 +8,24 @@
 	1. cmake
 	2. Eigen
 
-## Install
+## First Install
 
 1. Log in as root (needs to be enabled, https://linuxconfig.org/enable-ssh-root-login-on-debian-linux-server)
   ```
 $  cd /root/ 
 $  git clone --recursive git@github.com:msardonini/Robotics_Cape.git
 $  cd Robotics_Cape/
-$  mkdir build
-$  cmake ..
-$  make install
-$  cd ..
 $  bash install.sh
 ```
 2. Reboot Beaglebone
+
+### Subsequent Builds (Updates to source, etc)
+```
+$	cd /root/Robotics_Cape/build/
+$	cmake ..
+$	make install
+
+```
 
 ## Run Program
 	1. SSH into beaglebone
