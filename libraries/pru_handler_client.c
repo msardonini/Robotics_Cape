@@ -105,8 +105,8 @@ void* pru_sender(void* ptr){
 				if (client_data->u[i] == 0.0f) tmp16 = 0;
 				else tmp16 = (uint16_t)(client_data->u[i]*65536.0f)-1;
 				
-				sendBuff[2*i+2] = tmp16 & 0xFF;
 				sendBuff[2*i+2] = tmp16 >> 8;
+				sendBuff[2*i+3] = tmp16 & 0xFF;
 			}			
 			write(sockfd, sendBuff, sizeof(sendBuff)-1);
 			client_data->send_flag = 0;

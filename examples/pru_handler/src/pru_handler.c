@@ -275,11 +275,11 @@ int main(int argc, char *argv[])
 				else
 				{
 				//printf("Sending Values: ");
-					for (i = 0; i < 8; i++)
+					for (i = 0; i < 4; i++)
 					{ 
 						val[i] = ((float)((rcvBuff[2*i+2] << 8) + rcvBuff[2*i+3]))/65536.0f;
 						rc_send_esc_pulse_normalized(i+1,val[i]);
-						//printf(" %f, ", val[i]);
+					//	printf(" %f, ", val[i]);
 					}
 				//printf("\n");
 				}

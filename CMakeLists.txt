@@ -21,6 +21,14 @@ include(libraries/CMakeLists.txt)
 #Get the flyMS sources
 include(examples/flyMS/CMakeLists.txt)
 
+set(PRU_HANDLER_SRS
+	examples/pru_handler/src/pru_handler.c)
+
+add_executable(pru_handler ${PRU_HANDLER_SRS})	
+target_link_libraries(pru_handler roboticscape)
+target_link_libraries(pru_handler m)
+target_link_libraries(pru_handler pthread)
+
 #Build flyMS
 add_executable(flyMS ${SRCS_FLYMS})
 
@@ -35,5 +43,6 @@ target_link_libraries(flyMS roboticscape)
 
 #Define install directory
 install(TARGETS flyMS DESTINATION /usr/bin/)
+install(TARGETS pru_handler DESTINATION /usr/bin/)
 install(TARGETS roboticscape DESTINATION /usr/lib/)
 install(TARGETS ecl DESTINATION /usr/lib/)

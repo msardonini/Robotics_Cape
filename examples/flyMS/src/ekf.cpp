@@ -86,6 +86,7 @@ void* run_ekf(void *ptr)
 	uint32_t _balt_sample_count;
 	float _balt_data_sum;
 
+	float accel_bias[3] = {0,0,0};
 
 	while (rc_get_state()!=EXITING) 
 	// while (1) 
@@ -108,6 +109,7 @@ void* run_ekf(void *ptr)
 		uint64_t timestamp=(uint64_t)(log_time.tv_sec) * 1E6 + 
 						((uint64_t)(log_time.tv_nsec) / 1000) ;
 		
+		//printf("input timestamp imu %lld\n", timestamp);
 
 		//uint64_t timestamp = ekf_filter->input.IMU_timestamp * 1E6;
 		// push imu data into estimator
@@ -118,9 +120,9 @@ void* run_ekf(void *ptr)
 		gyro_integral[2] = ekf_filter->input.gyro[2] * DT;
 		float accel_integral[3];
 		//float accel_dt =  DT;
-		accel_integral[0] = ekf_filter->input.accel[0] * DT;
-		accel_integral[1] = ekf_filter->input.accel[1] * DT;
-		accel_integral[2] = ekf_filter->input.accel[2] * DT;
+		accel_integral[0] = (ekf_filter->input.accel[0] - accel_bias[0]) * DT;
+		accel_integral[1] = (ekf_filter->input.accel[1] - accel_bias[1]) * DT;
+		accel_integral[2] = (ekf_filter->input.accel[2] - accel_bias[2]) * DT;
 		_ekf.setIMUData(timestamp, 5000, 5000,
 				gyro_integral, accel_integral);
 
@@ -256,7 +258,8 @@ void* run_ekf(void *ptr)
 			gps_msg.gdop = 0.5f;
 			
 
-			_ekf.setGpsData(ekf_filter->input.gps_timestamp, &gps_msg);
+			//_ekf.setGpsData(ekf_filter->input.gps_timestamp, &gps_msg);
+			_ekf.setGpsData(timestamp, &gps_msg);
 			ekf_filter->input.gps_updated = 0;
 		}
 
@@ -368,14 +371,10 @@ void* run_ekf(void *ptr)
 			ekf_filter->output.vertical_time_deriv = pos_d_deriv; // vertical position time derivative (m/s)
 
 			// Acceleration data
-			
-			// matrix::Vector<float, 3> acceleration(sensors.accelerometer_m_s2);
-
-			// float accel_bias[3];
-			// _ekf.get_accel_bias(accel_bias);
-			// ekf_filter->output.ned_acc[0] = acceleration(0) - accel_bias[0];
-			// ekf_filter->output.ned_acc[1] = acceleration(1) - accel_bias[1];
-			// ekf_filter->output.ned_acc[2] = acceleration(2) - accel_bias[2];
+			 _ekf.get_accel_bias(accel_bias);
+			 ekf_filter->output.ned_acc[0] = ekf_filter->input.accel[0] - accel_bias[0];
+			 ekf_filter->output.ned_acc[1] = ekf_filter->input.accel[1] - accel_bias[1];
+			 ekf_filter->output.ned_acc[2] = ekf_filter->input.accel[2] - accel_bias[2];
 
 			// // compute lowpass filtered horizontal acceleration
 			// acceleration = R_to_body.transpose() * acceleration;

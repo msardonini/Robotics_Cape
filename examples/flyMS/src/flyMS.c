@@ -315,7 +315,7 @@ int flight_core(void * ptr){
 	ekf_filter.input.gyro[1] = control.d_roll;
 	ekf_filter.input.gyro[2] = control.d_yaw;
 	ekf_filter.input.IMU_timestamp = control.time;
-;
+
 
 
 	/************************************************************************
@@ -553,12 +553,12 @@ int flight_core(void * ptr){
 		// printf(" Pitch %1.2f ", control.pitch);
 		// printf(" Roll %1.2f ", control.roll);
 		// printf(" Yaw %2.3f ", control.yaw[0]); 
-		printf(" Mag X %4.2f",imu_data.mag[0]);
-		printf(" Mag Y %4.2f",imu_data.mag[1]);
-		printf(" Mag Z %4.2f",imu_data.mag[2]);
-	//	printf(" Pos N %2.3f ", ekf_filter.output.ned_pos[0]); 
-	//	printf(" Pos E %2.3f ", ekf_filter.output.ned_pos[1]); 
-	//	printf(" Pos D %2.3f ", ekf_filter.output.ned_pos[2]); 
+	//	printf(" Mag X %4.2f",imu_data.mag[0]);
+	//	printf(" Mag Y %4.2f",imu_data.mag[1]);
+	//	printf(" Mag Z %4.2f",imu_data.mag[2]);
+		printf(" Pos N %2.3f ", ekf_filter.output.ned_pos[0]); 
+		printf(" Pos E %2.3f ", ekf_filter.output.ned_pos[1]); 
+		printf(" Pos D %2.3f ", ekf_filter.output.ned_pos[2]); 
 	//	printf(" DPitch %1.2f ", control.d_pitch_f); 
 	//	printf(" DRoll %1.2f ", control.d_roll_f);
 	//	printf(" DYaw %2.3f ", control.d_yaw); 	
