@@ -4,6 +4,7 @@
 	
 
 ## Prereq's
+** Note that these prereq's are installed automatically with the install.sh script
 
 	1. cmake
 	2. Eigen
