@@ -2,6 +2,8 @@
 
 
 bash debian/prerm
-make uninstall
+cd build/
+make clean
+rm -rf build/
 bash debian/postrm
 ldconfig

@@ -13,10 +13,10 @@ add_compile_options(
 	)
 	
 #Build the PX4 estimation control library
-include(libraries/ecl/CMakeLists.txt)
+include(lib/ecl/CMakeLists.txt)
 
 #Build the robotics cape library
-include(libraries/CMakeLists.txt)
+include(lib/robotics_cape/CMakeLists.txt)
 
 #Get the flyMS sources
 include(examples/flyMS/CMakeLists.txt)

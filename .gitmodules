@@ -1,3 +1,3 @@
 [submodule "libraries/ecl"]
-	path = libraries/ecl
+	path = lib/ecl
 	url = git@github.com:msardonini/ecl.git
