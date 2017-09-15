@@ -1,0 +1,194 @@
+PRU Assembler Unix v2.1.4 Wed Sep 13 13:53:39 2017
+
+Tools Copyright (c) 2012-2015 Texas Instruments Incorporated
+pru1-servo.asm                                                       PAGE    1
+
+       1;*
+       2;* Copyright (C) 2016 Zubeen Tolani <ZeekHuge - zeekhuge@gmail.com>
+       3;*
+       4;* This file is as an example to show how to develope
+       5;* and compile inline assembly code for PRUs
+       6;*
+       7;* This program is free software; you can redistribute it and/or modify
+       8;* it under the terms of the GNU General Public License version 2 as
+       9;* published by the Free Software Foundation.
+      10
+      11
+      12        .cdecls "main_pru1.c"
+      13
+      14DELAY   .macro time, reg
+      15        LDI32   reg, time
+      16        QBEQ    $E?, reg, 0
+      17$M?:    SUB     reg, reg, 1
+      18        QBNE    $M?, reg, 0
+      19$E?:    
+      20        .endm
+      21        
+      22
+      23        .clink
+      24        .global start
+      25 00000000                 start:
+      26 00000000 00000024FFFFFE          LDI     R30, 0xFFFF
+      27 00000004                         DELAY   10000000, r11
+1        00000004 96808B240098CB          LDI32   r11, 10000000
+1        0000000c 0000005100EB03          QBEQ    $E?, r11, 0
+1        00000010 0000000501EBEB  $M?:    SUB     r11, r11, 1
+1        00000014 0000006F00EBFF          QBNE    $M?, r11, 0
+1       $E?:    
+      28 00000018 000000240000FE          LDI             R30, 0x0000
+      29 0000001c                         DELAY   10000000, r11
+1        0000001c 96808B240098CB          LDI32   r11, 10000000
+1        00000024 0000005100EB03          QBEQ    $E?, r11, 0
+1        00000028 0000000501EBEB  $M?:    SUB     r11, r11, 1
+1        0000002c 0000006F00EBFF          QBNE    $M?, r11, 0
+1       $E?:    
+      30;       JMP     start   
+      31
+      32;       HALT
+      33
+      34
+      35; these pin definitions are specific to SD-101C Robotics Cape
+      36    .asg    r30.t8,     CH1BIT  ; P8_27
+      37        .asg    r30.t10,    CH2BIT      ; P8_28
+      38        .asg    r30.t9,     CH3BIT      ; P8_29
+      39        .asg    r30.t11,        CH4BIT  ; P8_30
+      40        .asg    r30.t6,         CH5BIT  ; P8_39
+      41        .asg    r30.t7,         CH6BIT  ; P8_40
+      42        .asg    r30.t4,         CH7BIT  ; P8_41
+      43        .asg    r30.t5,         CH8BIT  ; P8_42
+      44
+      45        .asg    C4,     CONST_SYSCFG         
+PRU Assembler Unix v2.1.4 Wed Sep 13 13:53:39 2017
+
+Tools Copyright (c) 2012-2015 Texas Instruments Incorporated
+pru1-servo.asm                                                       PAGE    2
+
+      46        .asg    C28,    CONST_PRUSHAREDRAM   
+      47 
+      48        .asg    0x22000,        PRU0_CTRL
+      49        .asg    0x24000,    PRU1_CTRL       ; page 19
+      50        .asg    0x28,       CTPPR0          ; page 75
+      51 
+      52        .asg    0x000,  OWN_RAM
+      53        .asg    0x020,  OTHER_RAM
+      54        .asg    0x100,  SHARED_RAM       ; This is so prudebug can find it.
+      55
+      56 00000030 00000091042480          LBCO    &r0, CONST_SYSCFG, 4, 4         ; Enable OCP master port
+      57 00000034 0000001D04E0E0          CLR     r0, r0, 4                                       ; Clear SYSCFG[STANDBY_INIT] to enable
+      58 00000038 00000081042480          SBCO    &r0, CONST_SYSCFG, 4, 4
+      59        
+      60; Configure the programmable pointer register for PRU0 by setting c28_pointer[15:0]
+      61 0000003c 000000240100E0          LDI     r0, SHARED_RAM              ; Set C28 to point to shared RAM
+      62 00000040 402881240002C1          LDI32   r1, PRU1_CTRL + CTPPR0          ; Note we use beginning of shared ram unlike example w
+      63 00000048 000000E1002180          SBBO    &r0, r1, 0, 4                           ;  page 25
+      64        
+      65 0000004c 000000240000E9          LDI             r9, 0x0                         ; erase r9 to use to use later
+      66        
+      67 00000050 000000240000E0          LDI     r0, 0x0                         ; clear internal counters
+      68 00000054 000000240000E1          LDI     r1, 0x0 
+      69 00000058 000000240000E2          LDI     r2, 0x0
+      70 0000005c 000000240000E3          LDI     r3, 0x0
+      71 00000060 000000240000E4          LDI     r4, 0x0
+      72 00000064 000000240000E5          LDI     r5, 0x0
+      73 00000068 000000240000E6          LDI     r6, 0x0
+      74 0000006c 000087240000C7          LDI32   r7, 0x0
+      75 00000074 000000240000FE          LDI     r30, 0x0                                ; turn off GPIO outputs
+      76        
+      77
+      78; Beginning of loop, should always take 48 instructions to complete
+      79 00000078                 CH1:                    
+      80 00000078 0000005100E028          QBEQ    CLR1, r0, 0                                             ; If timer is 0, jump to clear
+      81 0000007c 0000001F08FEFE          SET             r30, CH1BIT                                             ; If non-zero turn on 
+      82 00000080 0000000501E0E0          SUB             r0, r0, 1                                               ; Subtract one from ti
+      83 00000084 0000001D01E9E9          CLR             r9, r9.t1                                               ; waste a cycle for ti
+      84 00000088 00000081003C89          SBCO    &r9, CONST_PRUSHAREDRAM, 0, 4   ; write 0 to shared memory
+      85 0000008c                 CH2:                    
+      86 0000008c 0000005100E126          QBEQ    CLR2, r1, 0
+      87 00000090 0000001F0AFEFE          SET             r30, CH2BIT
+      88 00000094 0000000501E1E1          SUB             r1, r1, 1
+      89 00000098 0000001D01E9E9          CLR             r9, r9.t1
+      90 0000009c 00000081043C89          SBCO    &r9, CONST_PRUSHAREDRAM, 4, 4
+      91 000000a0                 CH3:                    
+      92 000000a0 0000005100E224          QBEQ    CLR3, r2, 0
+      93 000000a4 0000001F09FEFE          SET             r30, CH3BIT
+      94 000000a8 0000000501E2E2          SUB             r2, r2, 1
+      95 000000ac 0000001D01E9E9          CLR             r9, r9.t1
+      96 000000b0 00000081083C89          SBCO    &r9, CONST_PRUSHAREDRAM, 8, 4
+      97 000000b4                 CH4:                    
+      98 000000b4 0000005100E322          QBEQ    CLR4, r3, 0
+      99 000000b8 0000001F0BFEFE          SET             r30, CH4BIT
+     100 000000bc 0000000501E3E3          SUB             r3, r3, 1
+PRU Assembler Unix v2.1.4 Wed Sep 13 13:53:39 2017
+
+Tools Copyright (c) 2012-2015 Texas Instruments Incorporated
+pru1-servo.asm                                                       PAGE    3
+
+     101 000000c0 0000001D01E9E9          CLR             r9, r9.t1
+     102 000000c4 000000810C3C89          SBCO    &r9, CONST_PRUSHAREDRAM, 12, 4
+     103 000000c8                 CH5:                    
+     104 000000c8 0000005100E420          QBEQ    CLR5, r4, 0
+     105 000000cc 0000001F06FEFE          SET             r30, CH5BIT
+     106 000000d0 0000000501E4E4          SUB             r4, r4, 1
+     107 000000d4 0000001D01E9E9          CLR             r9, r9.t1
+     108 000000d8 00000081103C89          SBCO    &r9, CONST_PRUSHAREDRAM, 16, 4
+     109 000000dc                 CH6:                    
+     110 000000dc 0000005100E51E          QBEQ    CLR6, r5, 0
+     111 000000e0 0000001F07FEFE          SET             r30, CH6BIT
+     112 000000e4 0000000501E5E5          SUB             r5, r5, 1
+     113 000000e8 0000001D01E9E9          CLR             r9, r9.t1
+     114 000000ec 00000081143C89          SBCO    &r9, CONST_PRUSHAREDRAM, 20, 4
+     115 000000f0                 CH7:                    
+     116 000000f0 0000005100E61C          QBEQ    CLR7, r6, 0
+     117 000000f4 0000001F04FEFE          SET             r30, CH7BIT
+     118 000000f8 0000000501E6E6          SUB             r6, r6, 1
+     119 000000fc 0000001D01E9E9          CLR             r9, r9.t1
+     120 00000100 00000081183C89          SBCO    &r9, CONST_PRUSHAREDRAM, 24, 4
+     121 00000104                 CH8:                    
+     122 00000104 0000005100E71A          QBEQ    CLR8, r7, 0
+     123 00000108 0000001F05FEFE          SET             r30, CH8BIT
+     124 0000010c 0000000501E7E7          SUB             r7, r7, 1
+     125 00000110 000000811C3C89          SBCO    &r9, CONST_PRUSHAREDRAM, 28, 4
+     126
+     127 00000114 0000007F0000D9          QBA             CH1                                                             ; return to be
+     128        ; no need to waste a cycle for timing here because of the QBA above
+     129        
+     130                
+     131 00000118                 CLR1:
+     132 00000118 0000001D08FEFE          CLR             r30, CH1BIT                                             ; turn off the corresp
+     133 0000011c 00000091003C80          LBCO    &r0, CONST_PRUSHAREDRAM, 0, 4   ; Load new timer register
+     134 00000120 0000007F0000DB          QBA             CH2
+     135 00000124                 CLR2:
+     136 00000124 0000001D0AFEFE          CLR             r30, CH2BIT
+     137 00000128 00000091043C81          LBCO    &r1, CONST_PRUSHAREDRAM, 4, 4
+     138 0000012c 0000007F0000DD          QBA             CH3
+     139 00000130                 CLR3:
+     140 00000130 0000001D09FEFE          CLR             r30, CH3BIT
+     141 00000134 00000091083C82          LBCO    &r2, CONST_PRUSHAREDRAM, 8, 4
+     142 00000138 0000007F0000DF          QBA             CH4
+     143 0000013c                 CLR4:
+     144 0000013c 0000001D0BFEFE          CLR             r30, CH4BIT
+     145 00000140 000000910C3C83          LBCO    &r3, CONST_PRUSHAREDRAM, 12, 4
+     146 00000144 0000007F0000E1          QBA             CH5
+     147 00000148                 CLR5:
+     148 00000148 0000001D06FEFE          CLR             r30, CH5BIT
+     149 0000014c 00000091103C84          LBCO    &r4, CONST_PRUSHAREDRAM, 16, 4
+     150 00000150 0000007F0000E3          QBA             CH6
+     151 00000154                 CLR6:
+     152 00000154 0000001D07FEFE          CLR             r30, CH6BIT
+     153 00000158 00000091143C85          LBCO    &r5, CONST_PRUSHAREDRAM, 20, 4
+     154 0000015c 0000007F0000E5          QBA             CH7
+     155 00000160                 CLR7:
+PRU Assembler Unix v2.1.4 Wed Sep 13 13:53:39 2017
+
+Tools Copyright (c) 2012-2015 Texas Instruments Incorporated
+pru1-servo.asm                                                       PAGE    4
+
+     156 00000160 0000001D04FEFE          CLR             r30, CH7BIT
+     157 00000164 00000091183C86          LBCO    &r6, CONST_PRUSHAREDRAM, 24, 4
+     158 00000168 0000007F0000E7          QBA             CH8
+     159 0000016c                 CLR8:
+     160 0000016c 0000001D05FEFE          CLR             r30, CH8BIT
+     161 00000170 000000911C3C87          LBCO    &r7, CONST_PRUSHAREDRAM, 28, 4
+     162 00000174 0000007F0000C1          QBA             CH1                                                             ; return to be
+
+No Assembly Errors, No Assembly Warnings

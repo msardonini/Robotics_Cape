@@ -84,15 +84,15 @@ echo " "
 apt-get update
 apt-get install cmake
 
-cd start_scripts/
+cd install/start_scripts/
 tar xvf eigen-eigen-5a0156e40feb.tar.bz2
 cd eigen-eigen-5a0156e40feb/
 mkdir build
 cd build
 cmake ..
 make install
-cd ../../../
-rm -rf start_scripts/eigen-eigen-5a0156e40feb/
+cd ../../../../
+rm -rf install/start_scripts/eigen-eigen-5a0156e40feb/
 
 ################################################################################
 # Compile and install library, examples, and services
@@ -127,8 +127,8 @@ fi
 
 
 #Enable the pru_handler to run on boot
-cp start_scripts/start_pru_handler /etc/init.d/
-sudo update-rc.d /etc/init.d/start_pru_handler defaults
+cp install/start_scripts/start_pru_handler /etc/init.d/
+sudo update-rc.d start_pru_handler defaults
 
 
 
