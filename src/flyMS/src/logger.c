@@ -44,7 +44,7 @@ extern "C"
 #include <sys/stat.h>
 #include <unistd.h>
 #include <fcntl.h>
-#include "../../../libraries/roboticscape.h"
+#include "roboticscape.h"
 #include "logger.h"
 
 

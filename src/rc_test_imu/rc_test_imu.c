@@ -5,8 +5,8 @@
 * sensor registers. To use the DMP or interrupt-driven timing see test_dmp.c
 *******************************************************************************/
 
-#include "../../libraries/rc_usefulincludes.h"
-#include "../../libraries/roboticscape.h"
+#include "rc_usefulincludes.h"
+#include "roboticscape.h"
 
 // possible modes, user selected with command line arguments
 typedef enum m_mode_t{

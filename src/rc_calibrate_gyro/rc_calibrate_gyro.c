@@ -7,8 +7,8 @@
 * offsets.
 *******************************************************************************/
 
-#include "../../libraries/rc_usefulincludes.h"
-#include "../../libraries/roboticscape.h"
+#include "rc_usefulincludes.h"
+#include "roboticscape.h"
 
 int main(){
 	// initialize hardware first

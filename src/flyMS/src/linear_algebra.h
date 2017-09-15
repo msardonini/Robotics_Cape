@@ -39,7 +39,7 @@ either expressed or implied, of the FreeBSD Project.
 #include <stdlib.h>
 #include <string.h> // for memset
 #include <unistd.h>
-#include "../../../libraries/roboticscape.h"
+#include "roboticscape.h"
 	
 #ifndef LINEAR_ALGEBGRAMS_H
 #define LINEAR_ALGEBGRAMS_H

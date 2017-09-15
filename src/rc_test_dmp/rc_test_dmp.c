@@ -6,8 +6,8 @@
 * Instructions are printed to the screen when called.
 *******************************************************************************/
 
-#include "../../libraries/rc_usefulincludes.h"
-#include "../../libraries/roboticscape.h"
+#include "rc_usefulincludes.h"
+#include "roboticscape.h"
 
 // Global Variables
 int show_accel = 0;

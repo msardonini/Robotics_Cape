@@ -16,9 +16,9 @@
 * you execute the program.
 *******************************************************************************/
 
-#include "../../libraries/rc_usefulincludes.h"
-#include "../../libraries/roboticscape.h"
-#include "../../libraries/pru_handler_client.h"
+#include "rc_usefulincludes.h"
+#include "roboticscape.h"
+#include "pru_handler_client.h"
 
 float width; // global variable for normalized pulse width to send
 pru_client_data_t pru_client_data;

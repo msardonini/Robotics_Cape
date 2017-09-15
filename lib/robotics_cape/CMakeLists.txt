@@ -6,7 +6,8 @@ project(ROBOTICSCAPE)
 set(ROBOTICSCAPE_DIR lib/robotics_cape/)
 
 include_directories(
-	${ROBOTICSCAPE_DIR}
+	${ROBOTICSCAPE_DIR}	
+	${ROBOTICSCAPE_DIR}/other/
 )
 
 set(SRCS

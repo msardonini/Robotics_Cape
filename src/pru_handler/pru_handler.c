@@ -10,8 +10,8 @@
 #include <string.h>
 #include <sys/types.h>
 #include <time.h> 
-#include "../../../libraries/roboticscape.h"
-#include "../../../libraries/other/rc_pru.h"
+#include "roboticscape.h"
+#include "rc_pru.h"
 #define PID_FILE_PRU "/var/run/pru_handler.pid"
 
 typedef enum pru_state_t {

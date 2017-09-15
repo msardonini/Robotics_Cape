@@ -4,8 +4,8 @@
 * This serves as an example of how to read the barometer.
 *******************************************************************************/
 
-#include "../../libraries/rc_usefulincludes.h"
-#include "../../libraries/roboticscape.h"
+#include "rc_usefulincludes.h"
+#include "roboticscape.h"
 
 // choice of 1,2,4,8,16 oversampling. Here we use 16 and sample at 25hz which
 // is close to the update rate specified in robotics_cape.h for that oversample.
