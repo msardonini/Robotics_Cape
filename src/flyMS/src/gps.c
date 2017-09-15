@@ -40,7 +40,7 @@ either expressed or implied, of the FreeBSD Project.
 #include <math.h>
 #include <unistd.h>
 #include <fcntl.h>
-#include "../../../libraries/roboticscape.h"
+#include "roboticscape.h"
 #include "gps.h"
 #include "kalman.h"
 #include "flyMS.h"

@@ -44,9 +44,9 @@ extern "C" {
 #include "logger.h"
 #include <pthread.h>
 #include "gps.h"
-#include "ekf.h"
+#include "ekf2.h"
 #include <inttypes.h>
-#include "../../../libraries/pru_handler_client.h"
+#include "pru_handler_client.h"
 //Coordinate system transformations matrices
 
 

@@ -5,6 +5,10 @@ project(ROBOTICSCAPE)
 
 set(ROBOTICSCAPE_DIR lib/robotics_cape/)
 
+include_directories(
+	${ROBOTICSCAPE_DIR}
+)
+
 set(SRCS
 	${ROBOTICSCAPE_DIR}pru_handler_client.c
 	${ROBOTICSCAPE_DIR}roboticscape.c

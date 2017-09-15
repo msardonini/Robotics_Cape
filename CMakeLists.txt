@@ -19,15 +19,34 @@ include(lib/ecl/CMakeLists.txt)
 include(lib/robotics_cape/CMakeLists.txt)
 
 #Get the flyMS sources
-include(examples/flyMS/CMakeLists.txt)
+include(src/flyMS/CMakeLists.txt)
 
-set(PRU_HANDLER_SRS
-	examples/pru_handler/src/pru_handler.c)
+#Build the pru_handler
+include(src/pru_handler/CMakeLists.txt)
 
-add_executable(pru_handler ${PRU_HANDLER_SRS})	
-target_link_libraries(pru_handler roboticscape)
-target_link_libraries(pru_handler m)
-target_link_libraries(pru_handler pthread)
+#Build rc_test_imu
+include(src/rc_test_imu/CMakeLists.txt)
+
+#Build rc_test_barometer
+include(src/rc_test_barometer/CMakeLists.txt)
+
+#Build rc_test_dsm
+include(src/rc_test_dsm/CMakeLists.txt)
+
+#Build rc_test_dmp
+include(src/rc_test_dmp/CMakeLists.txt)
+
+#Build rc_calibrate_gyro
+include(src/rc_calibrate_gyro/CMakeLists.txt)
+
+#Build rc_calibrate_escs
+include(src/rc_calibrate_escs/CMakeLists.txt)
+
+#Build rc_calibrate_mag
+include(src/rc_calibrate_mag/CMakeLists.txt)
+
+#Build rc_calibrate_dsm
+include(src/rc_calibrate_dsm/CMakeLists.txt)
 
 #Build flyMS
 add_executable(flyMS ${SRCS_FLYMS})
@@ -46,3 +65,13 @@ install(TARGETS flyMS DESTINATION /usr/bin/)
 install(TARGETS pru_handler DESTINATION /usr/bin/)
 install(TARGETS roboticscape DESTINATION /usr/lib/)
 install(TARGETS ecl DESTINATION /usr/lib/)
+
+install(TARGETS rc_calibrate_dsm DESTINATION /usr/bin/)
+install(TARGETS rc_calibrate_gyro DESTINATION /usr/bin/)
+install(TARGETS rc_calibrate_escs DESTINATION /usr/bin/)
+install(TARGETS rc_calibrate_mag DESTINATION /usr/bin/)
+
+install(TARGETS rc_test_imu DESTINATION /usr/bin/)
+install(TARGETS rc_test_barometer DESTINATION /usr/bin/)
+install(TARGETS rc_test_dsm DESTINATION /usr/bin/)
+install(TARGETS rc_test_dmp DESTINATION /usr/bin/)

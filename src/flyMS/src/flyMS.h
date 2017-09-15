@@ -29,8 +29,8 @@ either expressed or implied, of the FreeBSD Project.
 
 #pragma once
 #include "linear_algebra.h"
-#include "../../../libraries/roboticscape.h"
-#include "../../../libraries/pru_handler_client.h"
+#include "roboticscape.h"
+#include "pru_handler_client.h"
 #include "filter.h"
 #include "config.h"
 #include "logger.h"

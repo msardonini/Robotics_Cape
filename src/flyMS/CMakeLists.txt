@@ -3,7 +3,7 @@ cmake_minimum_required(VERSION 2.8)
 
 #project(flyMS)
 
-set(FLYMS_DIR examples/flyMS/)
+set(FLYMS_DIR src/flyMS/)
 
 
 set(SRCS_FLYMS

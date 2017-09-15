@@ -52,12 +52,12 @@
 
 
 
-#include "../../../libraries/ecl/EKF/ekf.h"
+#include "ekf.h"
 
 #define MIN_INTERVAL_MS 20
 
 extern "C"{
-#include "ekf.h"
+#include "ekf2.h"
 #include "flyMS.h"
 }
 

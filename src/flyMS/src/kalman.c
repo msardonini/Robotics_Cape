@@ -36,7 +36,7 @@ extern "C" {
 
 #include "flyMS.h"
 #include "linear_algebra.h"
-#include "../../../libraries/roboticscape.h"
+#include "roboticscape.h"
 #include "flyMS.h"
 
 #include "gps.h"

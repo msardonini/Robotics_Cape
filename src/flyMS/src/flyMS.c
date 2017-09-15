@@ -54,8 +54,8 @@ extern "C" {
 #include "logger.h"
 #include "config.h"
 #include "flyMS.h"
-#include "ekf.h"
-#include "../../../libraries/pru_handler_client.h"
+#include "ekf2.h"
+#include "pru_handler_client.h"
 
 
 int flight_core(void * ptr);
