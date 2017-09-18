@@ -1,7 +1,6 @@
  close all; clear all; clc;
  
- filename = uigetdir;
-
+filename = uigetdir('../../../flight_logs/','pick a run for plotting');
 
 nohup=dlmread([filename '/logger.csv'],',',1,0);
 
