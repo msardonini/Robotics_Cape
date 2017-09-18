@@ -2,6 +2,8 @@ config_files/*
 test_result/*
 pru_firmware/bin/
 
+
+*.csv
 *.asm
 *.pydevproject
 .project

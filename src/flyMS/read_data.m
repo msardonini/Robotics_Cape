@@ -1,61 +1,88 @@
  close all; clear all; clc;
  
  filename = uigetdir;
- cd(filename)
-% load('flight_with_teather');e 
-nohup=dlmread('logger.csv',',',1,0);
+
+
+nohup=dlmread([filename '/logger.csv'],',',1,0);
+
+nohup(1,:) = []; % discard first log
 
 time=nohup(:,1);
+
 roll=nohup(:,2);
 pitch=nohup(:,3);
 yaw=nohup(:,4);
+
 d_roll=nohup(:,5); 
 d_pitch=nohup(:,6);
 d_yaw=nohup(:,7);
+
 wing1=nohup(:,8);
 wing2=nohup(:,9);
 wing3=nohup(:,10);
 wing4=nohup(:,11);
+
 throttle=nohup(:,12);
 upitch=nohup(:,13);
 uroll=nohup(:,14);
 uyaw=nohup(:,15);
+
 pitch_ref=nohup(:,16);
 roll_ref=nohup(:,17);
 yaw_ref=nohup(:,18);
 yaw_rate_ref=nohup(:,19);
+
 Aux=nohup(:,20);
 lat_err=nohup(:,21);
 lon_err=nohup(:,22);
 kalman_lat = nohup(:,23);
 kalman_lon = -nohup(:,24);
-accel_lat=nohup(:,25);
-accel_lon=nohup(:,26);
-baro_alt =nohup(:,27);
-v_batt =nohup(:,28);
-compass_heading=nohup(:,28);
+
+accel(:,1)=nohup(:,25);
+accel(:,2)=nohup(:,26);
+accel(:,3)=nohup(:,27);
+
+v_batt=nohup(:,28);
+baro_alt = nohup(:,29);
+compass_heading=nohup(:,30);
+
+ned_pos(:,1) = nohup(:,31);
+ned_pos(:,2) = nohup(:,32);
+ned_pos(:,3) = nohup(:,33);
+
+ned_vel(:,1) = nohup(:,34);
+ned_vel(:,2) = nohup(:,35);
+ned_vel(:,3) = nohup(:,36);
+
+mag(:,1) = nohup(:,37);
+mag(:,2) = nohup(:,38);
+mag(:,3) = nohup(:,39);
+
 
 try
-    nohup2=dlmread('GPS_logger.csv',',',1,0);
-deg_lon = nohup2(2:end,1);
-min_lon = nohup2(2:end,2);
-deg_lat = nohup2(2:end,3);
-min_lat = nohup2(2:end,4);
-speed = nohup2(2:end,5);
-direction = nohup2(2:end,6);
-gps_alt = nohup2(2:end,7);
-hdop = nohup2(2:end,8);
-fix = nohup2(2:end,9);
+    nohup2=dlmread([filename '/GPS_logger.csv'],',',1,0);
 
-gps_lat = deg_lat + min_lat/60;
-gps_lon = -deg_lon - min_lon/60;
+    nohup2(1,:) = [];
+    GPS_time = nohup2(:,1);
+    deg_lon = nohup2(:,2);
+    min_lon = nohup2(:,3);
+    deg_lat = nohup2(:,4);
+    min_lat = nohup2(:,5);
+    speed = nohup2(2:end,6);
+    direction = nohup2(:,7);
+    gps_alt = nohup2(:,8);
+    hdop = nohup2(:,9);
+    fix = nohup2(:,10);
 
-gps_meters_lat = (gps_lat)*111000;
-gps_meters_lon = (gps_lon)*111000 .* cosd(gps_lat);
+    gps_lat = deg_lat + min_lat/60;
+    gps_lon = -deg_lon - min_lon/60;
 
-gps_meters_lat = gps_meters_lat - gps_meters_lat(1);
-gps_meters_lon = gps_meters_lon - gps_meters_lon(1);
- plot_gps=1;
+    gps_meters_lat = (gps_lat)*111000;
+    gps_meters_lon = (gps_lon)*111000 .* cosd(gps_lat);
+
+    gps_meters_lat = gps_meters_lat - gps_meters_lat(1);
+    gps_meters_lon = gps_meters_lon - gps_meters_lon(1);
+    plot_gps=1;
 catch
     plot_gps=0;
 end
@@ -136,33 +163,18 @@ title('Barometer Altitude')
 
 figure
 hold on
-plot(time,accel_lat)
-plot(time,accel_lon)
+plot(time,accel(:,1))
+plot(time,accel(:,2))
 title('Acceleration')
 legend('x','y')
 
 
 if plot_gps
-    figure
-    hold on
-    plot(kalman_lon,kalman_lat)
-    scatter(gps_meters_lon,gps_meters_lat)
-    legend('Kalman Navigation')
-    % 
-    initial_lon = 0;
-    initial_lat = 0;
-    % 
-    kalman_deg_lon = initial_lon + kalman_lon/(111000*cosd(initial_lat));
-    kalman_deg_lat = initial_lat + kalman_lat/111000;
 
 
     figure
-    hold on
-    plot(kalman_deg_lon,kalman_deg_lat)
-    legend('Kalman Navigation')
-
-
-    cd ..
+    plot(ned_pos(:,2),ned_pos(:,1))
+    title('NED Position North East')
 
 
     dlmwrite('gps_plot_data.csv',[gps_lat, gps_lon],'precision',14)
