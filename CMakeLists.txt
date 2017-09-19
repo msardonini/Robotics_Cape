@@ -18,6 +18,9 @@ include(lib/ecl/CMakeLists.txt)
 #Build the robotics cape library
 include(lib/robotics_cape/CMakeLists.txt)
 
+#Build the Accel/Gyro Fusion library
+include(lib/Fusion/CMakeLists.txt)
+
 #Get the flyMS sources
 include(src/flyMS/CMakeLists.txt)
 
@@ -26,6 +29,9 @@ include(src/pru_handler/CMakeLists.txt)
 
 #Build rc_test_imu
 include(src/rc_test_imu/CMakeLists.txt)
+
+#Build rc_test_fusion
+include(src/rc_test_fusion/CMakeLists.txt)
 
 #Build rc_test_barometer
 include(src/rc_test_barometer/CMakeLists.txt)
@@ -65,12 +71,14 @@ install(TARGETS flyMS DESTINATION /usr/bin/)
 install(TARGETS pru_handler DESTINATION /usr/bin/)
 install(TARGETS roboticscape DESTINATION /usr/lib/)
 install(TARGETS ecl DESTINATION /usr/lib/)
+install(TARGETS Fusion DESTINATION /usr/lib)
 
 install(TARGETS rc_calibrate_dsm DESTINATION /usr/bin/)
 install(TARGETS rc_calibrate_gyro DESTINATION /usr/bin/)
 install(TARGETS rc_calibrate_escs DESTINATION /usr/bin/)
 install(TARGETS rc_calibrate_mag DESTINATION /usr/bin/)
 
+install(TARGETS rc_test_fusion DESTINATION /usr/bin/)
 install(TARGETS rc_test_imu DESTINATION /usr/bin/)
 install(TARGETS rc_test_barometer DESTINATION /usr/bin/)
 install(TARGETS rc_test_dsm DESTINATION /usr/bin/)

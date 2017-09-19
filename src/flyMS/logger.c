@@ -131,24 +131,29 @@ int start_core_log(logger_t *logger){
 		
 	char *filepath, *logger_filepath, *GPS_filepath, *Error_filepath;
 	
-	logger_filepath = (char *)malloc(55);
+	logger_filepath = (char *)malloc(strlen(FLYMS_ROOT_DIR) + 25);
+	filepath = (char *)malloc(strlen(FLYMS_ROOT_DIR) + 25);
 	char n[6];
 	int m=1;
 	struct stat st = {0};
 	
 	sprintf(n,"%03d",m);
-	strcpy(logger_filepath,"/root/Robotics_Cape/flight_logs/run");
+	strcpy(logger_filepath,FLYMS_ROOT_DIR);
+	strcpy(logger_filepath,"/flight_logs/run");
 	strcat(logger_filepath,n);
 	
 	
 	while(!stat(logger_filepath, &st)){
 		m++;
 		sprintf(n,"%03d",m);
-		strcpy(logger_filepath,"/root/Robotics_Cape/flight_logs/run");
+		
+		strcpy(logger_filepath,FLYMS_ROOT_DIR);
+		strcpy(logger_filepath,"/flight_logs/run");
 		strcat(logger_filepath,n);
 		}
 	
-	filepath=concat("/root/Robotics_Cape/flight_logs/run", n);
+	strcpy(filepath,FLYMS_ROOT_DIR);
+	strcpy(filepath,"/flight_logs/run");
 	mkdir(filepath,0700);
 	printf("Saving log files in: %s\n",logger_filepath);
 	

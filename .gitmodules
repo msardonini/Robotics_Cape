@@ -1,3 +1,6 @@
 [submodule "libraries/ecl"]
 	path = lib/ecl
 	url = git@github.com:msardonini/ecl.git
+[submodule "lib/Fusion"]
+	path = lib/Fusion
+	url = git@github.com:xioTechnologies/Fusion.git
