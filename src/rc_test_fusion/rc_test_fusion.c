@@ -93,15 +93,18 @@ int main(int argc, char *argv[]){
 	printf("  Mag Field XYZ(uT)  |");
 	printf(" Temp (C)");
 	printf("\n");
-
+	
+	FusionAhrs  fusionAhrs;
+	FusionAhrsInitialise(&fusionAhrs, 10.0f, -70.0f, 70.0f); // valid magnetic field defined as 20 uT to 70 uT
+	
 	//now just wait, print_data will run
 	while (rc_get_state() != EXITING) {
 
-const FusionVector3 gyroscope = {
-     .axis.x = data.gyro[0],
-     .axis.y = data.gyro[1],
-     .axis.z = data.gyro[2],
-  }; // literal values should be replaced with sensor measurements
+	const FusionVector3 gyroscope = {
+     		.axis.x = data.gyro[0],
+     		.axis.y = data.gyro[1],
+     		.axis.z = data.gyro[2],
+  	}; // literal values should be replaced with sensor measurements
  
   const FusionVector3 accelerometer = {
      .axis.x = data.raw_accel[0]/9.81f,
@@ -115,7 +118,6 @@ const FusionVector3 gyroscope = {
      .axis.z = data.mag[2],
   }; // literal values should be replaced with sensor measurements
  
-	FusionAhrs  fusionAhrs;
   	FusionAhrsUpdate(&fusionAhrs, gyroscope, accelerometer, magnetometer, 0.01f); // assumes 100 Hz sample rate
 
 
@@ -175,11 +177,12 @@ const FusionVector3 gyroscope = {
 		else printf(" %4.1f ", data.temp);
 														
 		float tmp[3];
+		FusionEulerAngles eulerAngles = FusionQuaternionToEulerAngles(fusionAhrs.quaternion);
 		rc_quaternion_to_tb_array(fusionAhrs.quaternion.array, tmp);
 
-		printf("%f, %f, %f", tmp[0],tmp[1],tmp[2]);
+		printf("%f, %f, %f", eulerAngles.angle.pitch,eulerAngles.angle.roll,eulerAngles.angle.yaw);
 		fflush(stdout);
-		rc_usleep(100000);
+		rc_usleep(10000);
 	}
 
 	rc_power_off_imu();
