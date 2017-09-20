@@ -21,6 +21,9 @@ include(lib/robotics_cape/CMakeLists.txt)
 #Build the Accel/Gyro Fusion library
 include(lib/Fusion/CMakeLists.txt)
 
+#Build the Accel/Gyro Fusion library
+include(lib/filter/CMakeLists.txt)
+
 #Get the flyMS sources
 include(src/flyMS/CMakeLists.txt)
 
@@ -65,6 +68,7 @@ target_link_libraries(flyMS rt)
 target_link_libraries(flyMS pthread)
 target_link_libraries(flyMS ecl)
 target_link_libraries(flyMS roboticscape)
+target_link_libraries(flyMS filter)
 
 #Define install directory
 install(TARGETS flyMS DESTINATION /usr/bin/)

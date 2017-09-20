@@ -92,7 +92,7 @@ int prefill_filter(digital_filter_t *filter, float value);
 
 
 /*
---- Generate Filter ---
+--- Initialize Filter ---
 Dynamically allocate memory for a filter of specified order
 and set transfer function constants.
 

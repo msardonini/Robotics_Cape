@@ -8,8 +8,9 @@
 #include "rc_usefulincludes.h"
 #include "roboticscape.h"
 #include "Fusion.h"
-
-
+#include "filter.h"
+#include <inttypes.h>
+int init_fusion(FusionBias *fusionBias);
 
 // possible modes, user selected with command line arguments
 typedef enum m_mode_t{
@@ -97,46 +98,35 @@ int main(int argc, char *argv[]){
 
 	FILE *fd;
 	fd = fopen("logger.csv","w+");
-	fprintf(fd,"time,roll,pitch,yaw");
+	fprintf(fd,"time,roll,pitch,yaw\n");
 
 	FusionAhrs  fusionAhrs;
-	FusionAhrsInitialise(&fusionAhrs, 10.0f, -70.0f, 70.0f); // valid magnetic field defined as 20 uT to 70 uT
+	FusionAhrsInitialise(&fusionAhrs, 8.0f, 0.0f, 70.0f); // valid magnetic field defined as 20 uT to 70 uT
+	
+	FusionBias fusionBias;
+	init_fusion(&fusionBias);
+
+	digital_filter_t *accel_lpf[3];
+
+	int i = 0;
+	for (i = 0; i < 3; i++)
+		accel_lpf[i] = initialize_filter(4, (float[5]){0.0940f, 0.3759f, 0.5639f, 0.3759f, 0.0940f},(float[5]){1.0000f, 0.0000f, 0.4860f, 0.0000f, 0.0177f});
+
+
 	struct timeval start_time, start_loop, end_loop;
 	uint64_t start_time_usec, start_loop_usec, end_loop_usec;
 	uint64_t sleep_time;
 	
 	//Set the start time of the program
 	gettimeofday(&start_time,NULL);
-	start_time_usec = start_time.tv_sec*1E6f + start_time.tv_usec;
+	start_time_usec = start_time.tv_sec*(uint64_t)1E6 + start_time.tv_usec;
 
 	//now just wait, print_data will run
 	while (rc_get_state() != EXITING) 
 	{
 		//Set start time of the loop
 		gettimeofday(&start_loop,NULL);
-		start_loop_usec = start_loop.tv_sec*1E6f + start_loop.tv_usec;
-
-		const FusionVector3 gyroscope = 
-		{
-			.axis.x = data.gyro[0],
-			.axis.y = data.gyro[1],
-			.axis.z = data.gyro[2],
-		}; // literal values should be replaced with sensor measurements
-
-		const FusionVector3 accelerometer = 
-		{
-			.axis.x = data.raw_accel[0]/9.81f,
-			.axis.y = data.raw_accel[1]/9.81f,
-			.axis.z = data.raw_accel[2]/9.81f,
-		}; // literal values should be replaced with sensor measurements
-
-		const FusionVector3 magnetometer = 
-		{
-			.axis.x = data.mag[0],
-			.axis.y = data.mag[1],
-			.axis.z = data.mag[2],
-		}; // literal values should be replaced with sensor measurements
- 		FusionAhrsUpdate(&fusionAhrs, gyroscope, accelerometer, magnetometer, 0.01f); // assumes 100 Hz sample rate
+		start_loop_usec = start_loop.tv_sec*(uint64_t)1E6 + start_loop.tv_usec;
 
 		printf("\r");		
 		// print accel
@@ -149,9 +139,9 @@ int main(int argc, char *argv[]){
 											data.raw_accel[2]);
 		}
 		else{
-			printf("%6.2f %6.2f %6.2f |",	data.accel[0],\
-											data.accel[1],\
-											data.accel[2]);
+			printf("%6.2f %6.2f %6.2f |",	update_filter(accel_lpf[0],data.accel[0]),\
+											update_filter(accel_lpf[1],data.accel[1]),\
+											update_filter(accel_lpf[2],data.accel[2]));
 		}
 		
 		// print gyro data
@@ -182,7 +172,7 @@ int main(int argc, char *argv[]){
 		// read magnetometer
 		if(rc_read_mag_data(&data)<0){
 			printf("read mag data failed\n");
-		}
+		}	
 		else printf("%6.1f %6.1f %6.1f |",	data.mag[0],\
 											data.mag[1],\
 											data.mag[2]);
@@ -192,25 +182,59 @@ int main(int argc, char *argv[]){
 			printf("read temp data failed\n");
 		}
 		else printf(" %4.1f ", data.temp);
-														
+
+
+
+		const FusionVector3 gyroscope = 
+		{
+			.axis.x = data.gyro[0],
+			.axis.y = data.gyro[1],
+			.axis.z = data.gyro[2],
+		}; // literal values should be replaced with sensor measurements
+
+		const FusionVector3 accelerometer = 
+		{
+			.axis.x = data.raw_accel[0]/9.81f,
+			.axis.y = data.raw_accel[1]/9.81f,
+			.axis.z = data.raw_accel[2]/9.81f,
+		}; // literal values should be replaced with sensor measurements
+
+		const FusionVector3 magnetometer = 
+		{
+			.axis.x = data.mag[0],
+			.axis.y = data.mag[1],
+			.axis.z = data.mag[2],
+		}; // literal values should be replaced with sensor measurements
+ 		FusionAhrsUpdate(&fusionAhrs, gyroscope, accelerometer, magnetometer, 0.01f); // assumes 100 Hz sample rate												
 		FusionEulerAngles eulerAngles = FusionQuaternionToEulerAngles(fusionAhrs.quaternion);
 
-		printf("%f, %f, %f", eulerAngles.angle.pitch,eulerAngles.angle.roll,eulerAngles.angle.yaw);
+		printf("%f, %f, %f,%llu", eulerAngles.angle.pitch,eulerAngles.angle.roll,eulerAngles.angle.yaw, start_loop_usec-start_time_usec);
+		//sleep for the elapsed time
+		// printf("%llu",sleep_time);
 		fflush(stdout);
-
 		//Set time at the end of loop
 		gettimeofday(&end_loop,NULL);
-		end_loop_usec = end_loop.tv_sec*1E6f + end_loop.tv_usec;
-
-		fprintf(fd, "%lu,%f,%f,%f\n", end_loop_usec-start_time_usec,  eulerAngles.angle.roll,eulerAngles.angle.pitch,eulerAngles.angle.yaw);
-
-		//sleep for the elapsed time
-		sleep_time = 10000 - (end_loop_usec - start_loop_usec);
+		end_loop_usec = end_loop.tv_sec*(uint64_t)1E6 + end_loop.tv_usec;
+		fprintf(fd, "%llu,%f,%f,%f\n", start_loop_usec-start_time_usec,  eulerAngles.angle.roll,eulerAngles.angle.pitch,eulerAngles.angle.yaw);
+		sleep_time = (uint64_t)10000 - (end_loop_usec - start_loop_usec);
 		rc_usleep(sleep_time);
 	}
-
+	fflush(stdout);
 	rc_power_off_imu();
 	rc_cleanup();
 	return 0;
 }
 
+
+
+int init_fusion(FusionBias *fusionBias)
+{
+	rc_imu_data_t data; //struct to hold new data
+	// print gyro data
+	if(rc_read_gyro_data(&data)<0){
+		printf("read gyro data failed\n");
+	}
+    FusionBiasInitialise(fusionBias, 50, 0.01f); // assumes 100 Hz sample rate
+    FusionBiasUpdate(fusionBias, data.gyro[0], data.gyro[1], data.gyro[2]); // literal values should be replaced with sensor measurements
+    return 0;
+}
