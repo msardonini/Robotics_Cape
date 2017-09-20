@@ -94,32 +94,49 @@ int main(int argc, char *argv[]){
 	printf(" Temp (C)");
 	printf("\n");
 	
+
+	FILE *fd;
+	fd = fopen("logger.csv","w+");
+	fprintf(fd,"time,roll,pitch,yaw");
+
 	FusionAhrs  fusionAhrs;
 	FusionAhrsInitialise(&fusionAhrs, 10.0f, -70.0f, 70.0f); // valid magnetic field defined as 20 uT to 70 uT
+	struct timeval start_time, start_loop, end_loop;
+	uint64_t start_time_usec, start_loop_usec, end_loop_usec;
+	uint64_t sleep_time;
 	
+	//Set the start time of the program
+	gettimeofday(&start_time,NULL);
+	start_time_usec = start_time.tv_sec*1E6f + start_time.tv_usec;
+
 	//now just wait, print_data will run
-	while (rc_get_state() != EXITING) {
+	while (rc_get_state() != EXITING) 
+	{
+		//Set start time of the loop
+		gettimeofday(&start_loop,NULL);
+		start_loop_usec = start_loop.tv_sec*1E6f + start_loop.tv_usec;
 
-	const FusionVector3 gyroscope = {
-     		.axis.x = data.gyro[0],
-     		.axis.y = data.gyro[1],
-     		.axis.z = data.gyro[2],
-  	}; // literal values should be replaced with sensor measurements
- 
-  const FusionVector3 accelerometer = {
-     .axis.x = data.raw_accel[0]/9.81f,
-     .axis.y = data.raw_accel[1]/9.81f,
-     .axis.z = data.raw_accel[2]/9.81f,
-  }; // literal values should be replaced with sensor measurements
- 
-  const FusionVector3 magnetometer = {
-     .axis.x = data.mag[0],
-     .axis.y = data.mag[1],
-     .axis.z = data.mag[2],
-  }; // literal values should be replaced with sensor measurements
- 
-  	FusionAhrsUpdate(&fusionAhrs, gyroscope, accelerometer, magnetometer, 0.01f); // assumes 100 Hz sample rate
+		const FusionVector3 gyroscope = 
+		{
+			.axis.x = data.gyro[0],
+			.axis.y = data.gyro[1],
+			.axis.z = data.gyro[2],
+		}; // literal values should be replaced with sensor measurements
 
+		const FusionVector3 accelerometer = 
+		{
+			.axis.x = data.raw_accel[0]/9.81f,
+			.axis.y = data.raw_accel[1]/9.81f,
+			.axis.z = data.raw_accel[2]/9.81f,
+		}; // literal values should be replaced with sensor measurements
+
+		const FusionVector3 magnetometer = 
+		{
+			.axis.x = data.mag[0],
+			.axis.y = data.mag[1],
+			.axis.z = data.mag[2],
+		}; // literal values should be replaced with sensor measurements
+ 		FusionAhrsUpdate(&fusionAhrs, gyroscope, accelerometer, magnetometer, 0.01f); // assumes 100 Hz sample rate
 
 		printf("\r");		
 		// print accel
@@ -176,13 +193,20 @@ int main(int argc, char *argv[]){
 		}
 		else printf(" %4.1f ", data.temp);
 														
-		float tmp[3];
 		FusionEulerAngles eulerAngles = FusionQuaternionToEulerAngles(fusionAhrs.quaternion);
-		rc_quaternion_to_tb_array(fusionAhrs.quaternion.array, tmp);
 
 		printf("%f, %f, %f", eulerAngles.angle.pitch,eulerAngles.angle.roll,eulerAngles.angle.yaw);
 		fflush(stdout);
-		rc_usleep(10000);
+
+		//Set time at the end of loop
+		gettimeofday(&end_loop,NULL);
+		end_loop_usec = end_loop.tv_sec*1E6f + end_loop.tv_usec;
+
+		fprintf(fd, "%lu,%f,%f,%f\n", end_loop_usec-start_time_usec,  eulerAngles.angle.roll,eulerAngles.angle.pitch,eulerAngles.angle.yaw);
+
+		//sleep for the elapsed time
+		sleep_time = 10000 - (end_loop_usec - start_loop_usec);
+		rc_usleep(sleep_time);
 	}
 
 	rc_power_off_imu();
