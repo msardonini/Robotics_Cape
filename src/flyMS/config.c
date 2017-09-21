@@ -105,11 +105,14 @@ int save_core_config(FILE* f, core_config_t* config){
 ************************************************************************/
 int load_core_config(core_config_t* config){
 
-	char core_config_path[100];
+	char core_config_path[strlen(FLYMS_ROOT_DIR) + 40];
 	FILE* f;
 	
 	// construct a new file path string
-	strcpy (core_config_path, CONFIG_DIRECTORY);
+		// construct a new file path string
+	strcpy (core_config_path, FLYMS_ROOT_DIR);
+	strcat (core_config_path, "/");
+	strcat (core_config_path, CONFIG_DIRECTORY);
 	strcat (core_config_path, CORE_CONFIG_FILE);
 	
 	// open
@@ -143,7 +146,8 @@ int load_core_config(core_config_t* config){
 * 	create_default_core_config_file()
 *	creates a new file and returns a struct containing the default values
 ************************************************************************/
-int create_default_core_config_file(core_config_t* config){
+int create_default_core_config_file(core_config_t* config)
+{
 	FILE* f;
 	// construct new struct from defaults
 	#define X(type, fmt, name, default) default ,

@@ -57,6 +57,9 @@ include(src/rc_calibrate_mag/CMakeLists.txt)
 #Build rc_calibrate_dsm
 include(src/rc_calibrate_dsm/CMakeLists.txt)
 
+
+add_definitions(-DFLYMS_ROOT_DIR=\"${CMAKE_CURRENT_SOURCE_DIR}\")
+
 #Build flyMS
 add_executable(flyMS ${SRCS_FLYMS})
 

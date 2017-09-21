@@ -5,8 +5,6 @@ cmake_minimum_required(VERSION 2.8)
 
 set(FLYMS_DIR src/flyMS/)
 
-add_definitions(-DFLYMS_ROOT_DIR=\"${CMAKE_CURRENT_SOURCE_DIR}\")
-
 set(SRCS_FLYMS
 	${FLYMS_DIR}config.c
 	${FLYMS_DIR}flyMS.c
