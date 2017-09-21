@@ -220,6 +220,7 @@ typedef struct flyMS_threads_t{
 	pthread_t core_logging_thread;
 	pthread_t setpoint_manager_thread;
 	pthread_t ekf_thread;
+	pthread_t flight_core;
 }flyMS_threads_t;
 
 typedef struct led_thread_t{
@@ -244,7 +245,8 @@ int initialize_flight_program(flyMS_threads_t *flyMS_threads,
                                 rc_imu_data_t *imu_data,
                                 transform_matrix_t *transform,
                                 GPS_data_t *GPS_data,
-                                ekf_filter_t *ekf_filter);
+                                ekf_filter_t *ekf_filter,
+                                fusion_data_t *fusion);
 
 
 int flyMS_shutdown(			logger_t *logger, 

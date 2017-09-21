@@ -50,6 +50,9 @@ extern "C" {
 //Coordinate system transformations matrices
 
 
+
+//Local Variables and Functions
+void init_fusion(fusion_data_t *fusion);
 uint8_t logger_running = 0;
 
 int initialize_flight_program(flyMS_threads_t *flyMS_threads,
@@ -60,7 +63,8 @@ int initialize_flight_program(flyMS_threads_t *flyMS_threads,
 				rc_imu_data_t *imu_data,
 				transform_matrix_t *transform,
 				GPS_data_t *GPS_data,
-				ekf_filter_t *ekf_filter)
+				ekf_filter_t *ekf_filter,
+				fusion_data_t *fusion)
 {
 	//Starts the pru_client which will send commands to ESCs
 	start_pru_client(pru_client_data);
@@ -130,6 +134,8 @@ int initialize_flight_program(flyMS_threads_t *flyMS_threads,
 	init_rotation_matrix(transform, flight_config); //Initialize the rotation matrix from IMU to drone
 	initialize_filters(filters, flight_config);
 
+	init_fusion(fusion);
+
 	//Start the GPS thread, flash the LED's if GPS has a fix
 	if(flight_config->enable_gps)
 	{
@@ -146,6 +152,29 @@ int initialize_flight_program(flyMS_threads_t *flyMS_threads,
 	rc_disable_servo_power_rail();
 	sleep(2); //wait for the IMU to level off
 	return 0;
+}
+
+void init_fusion(fusion_data_t* fusion)
+{
+	FusionAhrsInitialise(&fusion->fusionAhrs, 8.0f, 0.0f, 70.0f); // valid magnetic field defined as 20 uT to 70 uT
+	int i;
+	rc_imu_data_t imu_data;
+
+	//Give Imu data to the fusion alg for initialization purposes
+	for (i = 0; i < (int)3.0*SAMPLE_RATE; i++)
+	{
+		if(rc_read_accel_data(&imu_data)<0){
+			printf("read accel data failed\n");
+		}
+		if(rc_read_gyro_data(&imu_data)<0){
+			printf("read gyro data failed\n");
+		}
+		if(rc_read_mag_data(&imu_data)<0){
+			printf("read mag data failed\n");
+		}
+		updateFusion(&imu_data, fusion);
+	}
+
 }
 
 void updateFusion(rc_imu_data_t *imu_data, fusion_data_t *fusion)

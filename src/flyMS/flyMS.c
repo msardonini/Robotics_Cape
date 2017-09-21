@@ -635,7 +635,8 @@ int main(int argc, char *argv[]){
                                &imu_data,
                                &transform,
                                &GPS_data,
-                               &ekf_filter))
+                               &ekf_filter,
+                               &fusion))
 	{
 		flyMS_shutdown( &logger, 
 						&GPS_data, 
@@ -645,8 +646,8 @@ int main(int argc, char *argv[]){
 	}
 	
 	//Start the control program
-	rc_set_imu_interrupt_func(&flight_core);
-	
+	pthread_create(&flyMS_threads.flight_core, NULL, flight_core, (void*)NULL);
+
 	printf("Starting \n");
 	rc_set_state(RUNNING);
 	while (rc_get_state() != EXITING) {
