@@ -10,6 +10,7 @@
 #include "Fusion.h"
 #include "filter.h"
 #include <inttypes.h>
+#include <stdbool.h>
 int init_fusion(FusionBias *fusionBias);
 
 // possible modes, user selected with command line arguments
@@ -32,10 +33,10 @@ int main(int argc, char *argv[]){
 	rc_imu_data_t data; //struct to hold new data
 	int c;
 	m_mode_t mode = RAD; // default to radian mode.
-
+	bool console_output = true;
 	// parse arguments
 	opterr = 0;
-	while ((c = getopt(argc, argv, "rdh")) != -1){
+	while ((c = getopt(argc, argv, "rdhi")) != -1){
 		switch (c){
 		case 'r':
 			if(mode!=RAD) print_usage();
@@ -49,6 +50,9 @@ int main(int argc, char *argv[]){
 		case 'h':
 			print_usage();
 			return 0;
+			break;
+		case 'i':
+			console_output = false;
 			break;
 		default:
 			print_usage();
@@ -73,27 +77,30 @@ int main(int argc, char *argv[]){
 	}
 
 	// print a header
-	printf("\ntry 'test_imu -h' to see other options\n\n");
-	switch(mode){
-	case RAD:
-		printf("   Accel XYZ(m/s^2)  |");
-		printf("   Gyro XYZ (rad/s)  |");
-		break;
-	case DEG:
-		printf("   Accel XYZ(m/s^2)  |");
-		printf("   Gyro XYZ (deg/s)  |");
-		break;
-	case RAW:
-		printf("  Accel XYZ(raw adc) |");
-		printf("  Gyro XYZ (raw adc) |");
-		break;
-	default:
-		printf("ERROR: invalid mode\n");
-		return -1;
+	if (console_output)
+	{
+		printf("\ntry 'test_imu -h' to see other options\n\n");
+		switch(mode){
+		case RAD:
+			printf("   Accel XYZ(m/s^2)  |");
+			printf("   Gyro XYZ (rad/s)  |");
+			break;
+		case DEG:
+			printf("   Accel XYZ(m/s^2)  |");
+			printf("   Gyro XYZ (deg/s)  |");
+			break;
+		case RAW:
+			printf("  Accel XYZ(raw adc) |");
+			printf("  Gyro XYZ (raw adc) |");
+			break;
+		default:
+			printf("ERROR: invalid mode\n");
+			return -1;
+		}
+		printf("  Mag Field XYZ(uT)  |");
+		printf(" Temp (C)");
+		printf("\n");
 	}
-	printf("  Mag Field XYZ(uT)  |");
-	printf(" Temp (C)");
-	printf("\n");
 	
 
 	FILE *fd;
@@ -108,9 +115,9 @@ int main(int argc, char *argv[]){
 
 	digital_filter_t *accel_lpf[3];
 
-	int i = 0;
-	for (i = 0; i < 3; i++)
-		accel_lpf[i] = initialize_filter(4, (float[5]){0.0940f, 0.3759f, 0.5639f, 0.3759f, 0.0940f},(float[5]){1.0000f, 0.0000f, 0.4860f, 0.0000f, 0.0177f});
+	// int i = 0;
+	// for (i = 0; i < 3; i++)
+	// 	accel_lpf[i] = initialize_filter(4, (float[5]){0.0940f, 0.3759f, 0.5639f, 0.3759f, 0.0940f},(float[5]){1.0000f, 0.0000f, 0.4860f, 0.0000f, 0.0177f});
 
 
 	struct timeval start_time, start_loop, end_loop;
@@ -127,53 +134,60 @@ int main(int argc, char *argv[]){
 		//Set start time of the loop
 		gettimeofday(&start_loop,NULL);
 		start_loop_usec = start_loop.tv_sec*(uint64_t)1E6 + start_loop.tv_usec;
-
-		printf("\r");		
+		if(console_output)
+			printf("\r");		
 		// print accel
 		if(rc_read_accel_data(&data)<0){
 			printf("read accel data failed\n");
 		}
-		if(mode==RAW){
-			printf("%6d %6d %6d |",			data.raw_accel[0],\
-											data.raw_accel[1],\
-											data.raw_accel[2]);
-		}
-		else{
-			printf("%6.2f %6.2f %6.2f |",	update_filter(accel_lpf[0],data.accel[0]),\
-											update_filter(accel_lpf[1],data.accel[1]),\
-											update_filter(accel_lpf[2],data.accel[2]));
+		if (console_output)
+		{		
+			if(mode==RAW){
+				printf("%6d %6d %6d |",			data.raw_accel[0],\
+												data.raw_accel[1],\
+												data.raw_accel[2]);
+			}
+			else{
+				printf("%6.2f %6.2f %6.2f |",	data.accel[0],\
+												data.accel[1],\
+												data.accel[2]);
+			}
 		}
 		
 		// print gyro data
 		if(rc_read_gyro_data(&data)<0){
 			printf("read gyro data failed\n");
 		}
-		switch(mode){
-		case RAD:
-			printf("%6.1f %6.1f %6.1f |",	data.gyro[0]*DEG_TO_RAD,\
-											data.gyro[1]*DEG_TO_RAD,\
-											data.gyro[2]*DEG_TO_RAD);
-			break;
-		case DEG:
-			printf("%6.1f %6.1f %6.1f |",	data.gyro[0],\
-											data.gyro[1],\
-											data.gyro[2]);
-			break;
-		case RAW:
-			printf("%6d %6d %6d |",			data.raw_gyro[0],\
-											data.raw_gyro[1],\
-											data.raw_gyro[2]);
-			break;
-		default:
-			printf("ERROR: invalid mode\n");
-			return -1;
+		if (console_output)
+		{
+			switch(mode){
+			case RAD:
+				printf("%6.1f %6.1f %6.1f |",	data.gyro[0]*DEG_TO_RAD,\
+												data.gyro[1]*DEG_TO_RAD,\
+												data.gyro[2]*DEG_TO_RAD);
+				break;
+			case DEG:
+				printf("%6.1f %6.1f %6.1f |",	data.gyro[0],\
+												data.gyro[1],\
+												data.gyro[2]);
+				break;
+			case RAW:
+				printf("%6d %6d %6d |",			data.raw_gyro[0],\
+												data.raw_gyro[1],\
+												data.raw_gyro[2]);
+				break;
+			default:
+				printf("ERROR: invalid mode\n");
+				return -1;
+			}
 		}
 
 		// read magnetometer
 		if(rc_read_mag_data(&data)<0){
 			printf("read mag data failed\n");
 		}	
-		else printf("%6.1f %6.1f %6.1f |",	data.mag[0],\
+		else if (console_output) 
+			printf("%6.1f %6.1f %6.1f |",	data.mag[0],\
 											data.mag[1],\
 											data.mag[2]);
 
@@ -181,7 +195,8 @@ int main(int argc, char *argv[]){
 		if(rc_read_imu_temp(&data)<0){
 			printf("read temp data failed\n");
 		}
-		else printf(" %4.1f ", data.temp);
+		else if (console_output)
+			printf(" %4.1f ", data.temp);
 
 
 
@@ -194,6 +209,9 @@ int main(int argc, char *argv[]){
 
 		const FusionVector3 accelerometer = 
 		{
+			// .axis.x = update_filter(accel_lpf[0],data.raw_accel[0]/9.81f),
+			// .axis.y = update_filter(accel_lpf[1],data.raw_accel[1]/9.81f),
+			// .axis.z = update_filter(accel_lpf[2],data.raw_accel[2]/9.81f),
 			.axis.x = data.raw_accel[0]/9.81f,
 			.axis.y = data.raw_accel[1]/9.81f,
 			.axis.z = data.raw_accel[2]/9.81f,
@@ -207,16 +225,18 @@ int main(int argc, char *argv[]){
 		}; // literal values should be replaced with sensor measurements
  		FusionAhrsUpdate(&fusionAhrs, gyroscope, accelerometer, magnetometer, 0.01f); // assumes 100 Hz sample rate												
 		FusionEulerAngles eulerAngles = FusionQuaternionToEulerAngles(fusionAhrs.quaternion);
-
-		printf("%f, %f, %f,%llu", eulerAngles.angle.pitch,eulerAngles.angle.roll,eulerAngles.angle.yaw, start_loop_usec-start_time_usec);
-		//sleep for the elapsed time
-		// printf("%llu",sleep_time);
+		if (console_output)
+		{	
+			printf("%f, %f, %f,%llu", eulerAngles.angle.pitch,eulerAngles.angle.roll,eulerAngles.angle.yaw, start_loop_usec-start_time_usec);
+		}
 		fflush(stdout);
+		fprintf(fd, "%llu,%f,%f,%f\n", start_loop_usec-start_time_usec,  eulerAngles.angle.roll,eulerAngles.angle.pitch,eulerAngles.angle.yaw);
+		
 		//Set time at the end of loop
 		gettimeofday(&end_loop,NULL);
 		end_loop_usec = end_loop.tv_sec*(uint64_t)1E6 + end_loop.tv_usec;
-		fprintf(fd, "%llu,%f,%f,%f\n", start_loop_usec-start_time_usec,  eulerAngles.angle.roll,eulerAngles.angle.pitch,eulerAngles.angle.yaw);
-		sleep_time = (uint64_t)10000 - (end_loop_usec - start_loop_usec);
+		sleep_time = (uint64_t)20000 - (end_loop_usec - start_loop_usec);
+		//sleep for the elapsed time
 		rc_usleep(sleep_time);
 	}
 	fflush(stdout);
