@@ -42,7 +42,6 @@ either expressed or implied, of the FreeBSD Project.
 #include <fcntl.h>
 #include "roboticscape.h"
 #include "gps.h"
-#include "kalman.h"
 #include "flyMS.h"
 
 
@@ -53,12 +52,9 @@ uint8_t GPS_data_flag;
 
 
 int GPS_init(GPS_data_t * GPS_data){
-
-	
-
-   int res;
-    struct termios newtio;
-    char buf[255];
+	int res;
+	struct termios newtio;
+	char buf[255];
     // Load the pin configuration
     //int ret = system("echo uart2 > /sys/devices/bone_capemgr.9/slots");
     /* Open modem device for reading and writing and not as controlling tty
@@ -66,7 +62,6 @@ int GPS_init(GPS_data_t * GPS_data){
     GPS_data->GPS_file = open(MODEMDEVICE, O_RDWR | O_NOCTTY );
     if (GPS_data->GPS_file < 0) { perror(MODEMDEVICE); exit(-1); }
 
-	
 	chbaud:
     bzero(&newtio, sizeof(newtio)); /* clear struct for new port settings */
 

@@ -47,29 +47,28 @@ extern "C" {
 #include <pthread.h>
 #include <math.h>
 #include <time.h>
-#include "linear_algebra.h"
 #include "filter.h"
-#include "kalman.h"
 #include "gps.h"
 #include "logger.h"
 #include "config.h"
+#include "Fusion.h"
 #include "flyMS.h"
 #include "ekf2.h"
 #include "pru_handler_client.h"
 
 
-int flight_core(void * ptr);
+void* flight_core(void * ptr);
 
 
 /************************************************************************
 * 	Global Variables				
 ************************************************************************/
 control_variables_t		control;			//Structure to contain all system states
+fusion_data_t			fusion;				//Structure to hold the data for IMU fusion (raw imu --> Euler angles)
 setpoint_t 				setpoint; 			//Structure to store all Setpoints
 GPS_data_t				GPS_data;			//Structure to store data from GPS
 function_control_t 		function_control;	//Structure to store variables which control functions
 filters_t				filters;			//Struct to contain all the filters
-accel_data_t 			accel_data;			//A struct which is given to kalman.c
 logger_t				logger;
 transform_matrix_t		transform;
 core_config_t 			flight_config;
@@ -78,25 +77,11 @@ flyMS_threads_t			flyMS_threads;
 uint16_t 				imu_err_count;
 rc_imu_data_t			imu_data;			//Struct to relay all IMU info from driver to here
 ekf_filter_t		 	ekf_filter;
-float 					accel_bias[3] = {LAT_ACCEL_BIAS, LON_ACCEL_BIAS, ALT_ACCEL_BIAS};
 
 void * setpoint_manager(void* ptr)
 {
 	while(rc_get_state()!=EXITING)
 	{
-
-
-	/******************************************************************
-				Grab the time for Periphal Apps and Logs 			  *
-	******************************************************************/
-
-	clock_gettime(CLOCK_MONOTONIC, &function_control.log_time);
-	control.time=(float)(function_control.log_time.tv_sec 
-			- function_control.start_time.tv_sec) 
-			+ ((float)(function_control.log_time.tv_nsec 
-				- function_control.start_time.tv_nsec))/ 1E9f ;
-
-
 		/**********************************************************
 		*           Read the RC Controller for Commands           *
 		**********************************************************/
@@ -188,13 +173,11 @@ void * setpoint_manager(void* ptr)
 }
 
 
- 
-int flight_core(void * ptr){
+
+void* flight_core(void* ptr){
 	imu_err_count = 0;
 	//control_variables_t *STATE = (control_variables_t*)ptr;
 	//printf("pointer value %f\n", STATE->pitch);
-	
-	static rc_vector_t *X_state_Lat1, *X_state_Lon1;
 	//Keep an i for loops
 	static uint8_t i=0, i1=0;
 	
@@ -204,11 +187,12 @@ int flight_core(void * ptr){
 	static float initial_alt = 0;
 	//Initialize some variables if it is the first iteration
 	if(First_Iteration){
-		clock_gettime(CLOCK_MONOTONIC, &function_control.start_time); //Set the reference time to the first iteration
+		
+		//Set the reference time to the first iteration
+		function_control.start_time_usec = get_usec_timespec(&function_control.start_time);
+
 		setpoint.Aux[0] = 1; control.kill_switch[0]=1;
 		function_control.dsm2_timeout=0;
-		X_state_Lat1 = get_lat_state();
-		X_state_Lon1 = get_lon_state();	
 		rc_read_barometer();
 		initial_alt = rc_bmp_get_altitude_m();
 		rc_set_state(RUNNING);
@@ -218,409 +202,394 @@ int flight_core(void * ptr){
 		printf("First Iteration ");
 		}
 
-	/**********************************************************
-	*    Read the IMU for Rotational Position and Velocity    *
-	**********************************************************/
-	//Bring 3 axes of accel, gyro and angle data in to this program
-	for (i=0;i<3;i++) 
-	{	
-		transform.dmp_imu.d[i] = imu_data.fused_TaitBryan[i];
-		transform.gyro_imu.d[i] = imu_data.gyro[i] * DEG_TO_RAD;
-		transform.accel_imu.d[i] = imu_data.accel[i];
-	}
-	//Convert from IMU coordinate system to drones
-	rc_matrix_times_col_vec(transform.IMU_to_drone_dmp, transform.dmp_imu, &transform.dmp_drone);
-	rc_matrix_times_col_vec(transform.IMU_to_drone_gyro, transform.gyro_imu, &transform.gyro_drone);
-	rc_matrix_times_col_vec(transform.IMU_to_drone_accel, transform.accel_imu, &transform.accel_drone);
-
-	control.pitch 			= update_filter(filters.LPF_pitch,transform.dmp_drone.d[0]);
-	//control.pitch 			= dmp_drone.d[0];
-	control.roll 			= update_filter(filters.LPF_roll,transform.dmp_drone.d[1]);
-	control.compass_heading = imu_data.compass_heading_raw;	
-	control.yaw[1] 			= control.yaw[0];	
-	control.yaw[0] 			= transform.dmp_drone.d[2] + control.num_wraps*2*M_PI;
-
-
-	//Subtract the gravity vector component from lat/lon accel
-	//transform.accel_drone.d[0]-= 9.8 * sin(control.roll);
-	//transform.accel_drone.d[1]+= 9.8 * sin(control.pitch);
-
-	//lowpass the accel data and subtract the biases
-	accel_data.accel_x	= update_filter(filters.LPF_Accel_Lat,transform.accel_drone.d[0]-accel_bias[0]);
-	accel_data.accel_y	= update_filter(filters.LPF_Accel_Lon,transform.accel_drone.d[1]-accel_bias[1]);
-	accel_data.accel_z	= transform.accel_drone.d[2]-accel_bias[2];
-
-	accel_data.accel_x += 9.8f * sin(control.roll);
-	accel_data.accel_y -= 9.8f * sin(control.pitch);
-
-	if(fabs(control.yaw[0] - control.yaw[1])  > 5)
+	while(rc_get_state()!=EXITING)
 	{
-		if(control.yaw[0] > control.yaw[1]) control.num_wraps--;
-		if(control.yaw[0] < control.yaw[1]) control.num_wraps++;
-	}
-	control.yaw[0]= transform.dmp_drone.d[2] + control.num_wraps*2*M_PI;	
-	
-	control.d_pitch			= transform.gyro_drone.d[0];
-	control.d_roll			= transform.gyro_drone.d[1];
-	control.d_yaw			= transform.gyro_drone.d[2];
 
-		
-	//Store some info in the accel_data struct to send to kalman filer
-	accel_data.pitch=control.pitch;
-	accel_data.roll=control.roll;
-	accel_data.yaw[0]=control.yaw[0];
-	
-	if(First_Iteration){
-		setpoint.yaw_ref[0]=control.yaw[0];
-		First_Iteration=0;
-		control.yaw_ref_offset = control.yaw[0];
-		printf("Started \n");
-	}
-	/**********************************************************
-	*           Read the Barometer for Altitude				  *
-	**********************************************************/	
-	if (flight_config.enable_barometer)
-	{		
-		i1++;
-		if (i1 == 5) // Only read the barometer at 25Hz
+		/******************************************************************
+					Grab the time for Periphal Apps and Logs 			  *
+		******************************************************************/
+		function_control.start_loop_usec = get_usec_timespec(&function_control.start_loop);
+
+
+
+		/**********************************************************
+		*    				Read the Raw IMU Data     			  *
+		**********************************************************/
+		if(rc_read_accel_data(&imu_data)<0){
+			printf("read accel data failed\n");
+		}
+		if(rc_read_gyro_data(&imu_data)<0){
+			printf("read gyro data failed\n");
+		}
+		if(rc_read_mag_data(&imu_data)<0){
+			printf("read mag data failed\n");
+		}
+
+		updateFusion(&imu_data, &fusion);
+
+		//Bring 3 axes of accel, gyro and angle data in to this program
+		for (i=0;i<3;i++) 
+		{	
+			transform.dmp_imu.d[i] = fusion.eulerAngles.array[i];
+			transform.gyro_imu.d[i] = imu_data.gyro[i] * DEG_TO_RAD;
+			transform.accel_imu.d[i] = imu_data.accel[i];
+		}
+		//Convert from IMU coordinate system to drone's
+		rc_matrix_times_col_vec(transform.IMU_to_drone_dmp, transform.dmp_imu, &transform.dmp_drone);
+		rc_matrix_times_col_vec(transform.IMU_to_drone_gyro, transform.gyro_imu, &transform.gyro_drone);
+		rc_matrix_times_col_vec(transform.IMU_to_drone_accel, transform.accel_imu, &transform.accel_drone);
+
+		control.pitch 			= update_filter(filters.LPF_pitch,transform.dmp_drone.d[0]);
+		//control.pitch 			= dmp_drone.d[0];
+		control.roll 			= update_filter(filters.LPF_roll,transform.dmp_drone.d[1]);
+		control.compass_heading = imu_data.compass_heading_raw;	
+		control.yaw[1] 			= control.yaw[0];	
+		control.yaw[0] 			= transform.dmp_drone.d[2] + control.num_wraps*2*M_PI;
+
+		if(fabs(control.yaw[0] - control.yaw[1])  > 5)
 		{
-			// perform the i2c reads to the sensor, this takes a bit of time
-			if(rc_read_barometer()<0){
-				printf("\rERROR: Can't read Barometer");
-				fflush(stdout);
+			if(control.yaw[0] > control.yaw[1]) control.num_wraps--;
+			if(control.yaw[0] < control.yaw[1]) control.num_wraps++;
+		}
+		control.yaw[0]= transform.dmp_drone.d[2] + control.num_wraps*2*M_PI;	
+		control.d_pitch			= transform.gyro_drone.d[0];
+		control.d_roll			= transform.gyro_drone.d[1];
+		control.d_yaw			= transform.gyro_drone.d[2];
+		
+		if(First_Iteration){
+			setpoint.yaw_ref[0]=control.yaw[0];
+			First_Iteration=0;
+			control.yaw_ref_offset = control.yaw[0];
+			printf("Started \n");
+		}
+		/**********************************************************
+		*           Read the Barometer for Altitude				  *
+		**********************************************************/	
+		if (flight_config.enable_barometer)
+		{		
+			i1++;
+			if (i1 == 5) // Only read the barometer at 25Hz
+			{
+				// perform the i2c reads to the sensor, this takes a bit of time
+				if(rc_read_barometer()<0){
+					printf("\rERROR: Can't read Barometer");
+					fflush(stdout);
+				}
+				i1=0;
 			}
-			i1=0;
+			control.baro_alt = update_filter(filters.LPF_baro_alt,rc_bmp_get_altitude_m() - initial_alt);
+			ekf_filter.input.barometer_updated = 1;
+			ekf_filter.input.barometer_alt = control.baro_alt;
 		}
-		control.baro_alt = update_filter(filters.LPF_baro_alt,rc_bmp_get_altitude_m() - initial_alt);
 
-		ekf_filter.input.barometer_updated = 1;
-		ekf_filter.input.barometer_alt = control.baro_alt;
-
-	}
-
-
-
-	/************************************************************************
-	*                   	Send data to the EKF                            *
-	************************************************************************/
-	for (i = 0; i < 3; i++)
-	{
-		ekf_filter.input.accel[i] = transform.accel_drone.d[i];
-		ekf_filter.input.mag[i] = imu_data.mag[i] * MICROTESLA_TO_GAUSS;
-	}
-	//ekf_filter.input.accel[0] = accel_data.accel_x;
-	//ekf_filter.input.accel[1] = accel_data.accel_y;
-	//ekf_filter.input.accel[2] = accel_data.accel_z;
-	ekf_filter.input.gyro[0] = control.d_pitch;
-	ekf_filter.input.gyro[1] = control.d_roll;
-	ekf_filter.input.gyro[2] = control.d_yaw;
-	ekf_filter.input.IMU_timestamp = control.time;
-
-
-
-	/************************************************************************
-	*                   	Throttle Controller                             *
-	************************************************************************/
-
-//	float throttle_compensation = 1 / cos(control.roll);
-//	throttle_compensation *= 1 / cos(control.pitch);		
-
-	if(function_control.altitudeHold)
-	{
-		if(function_control.altitudeHoldFirstIteration)
+		/************************************************************************
+		*                   	Send data to the EKF                            *
+		************************************************************************/
+		for (i = 0; i < 3; i++)
 		{
-			control.standing_throttle = control.throttle;
-			setpoint.altitudeSetpoint = control.baro_alt;
-			function_control.altitudeHoldFirstIteration = 0;
+			ekf_filter.input.accel[i] = transform.accel_drone.d[i];
+			ekf_filter.input.mag[i] = imu_data.mag[i] * MICROTESLA_TO_GAUSS;
 		}
-        setpoint.altitudeSetpoint=setpoint.altitudeSetpoint+(setpoint.altitudeSetpointRate)*DT;
+		ekf_filter.input.gyro[0] = control.d_pitch;
+		ekf_filter.input.gyro[1] = control.d_roll;
+		ekf_filter.input.gyro[2] = control.d_yaw;
+		ekf_filter.input.IMU_timestamp = control.time;
 
-		control.uthrottle = update_filter(filters.altitudeHoldPID, setpoint.altitudeSetpoint - control.baro_alt);
-		control.throttle = control.uthrottle + control.standing_throttle;
-		
-	}
-	/************************************************************************
-	* 	                  Pitch and Roll Controllers                        *
-	************************************************************************/
-	if(setpoint.Aux>=0 || 1){
-		//Using Remote Control
-		function_control.gps_pos_mode=0;
-	}
-	else{
-		//Using GPS Control
-		if(function_control.gps_pos_mode==0){
-			printf("gps position mode\n");
-			setpoint.lat_setpoint=GPS_data.pos_lat;
-			setpoint.lon_setpoint=GPS_data.pos_lon;
-			function_control.gps_pos_mode=1;
-			control.standing_throttle=control.throttle;
-			control.alt_ref=GPS_data.gps_altitude+1;
-		}
-		control.lat_error=setpoint.lat_setpoint-GPS_data.pos_lat;
-		control.lon_error=setpoint.lon_setpoint-GPS_data.pos_lon;
-		
-		setpoint.pitch_ref=0.14*update_filter(filters.Outer_Loop_TF_pitch,control.lat_error);
-		setpoint.roll_ref=-0.14*update_filter(filters.Outer_Loop_TF_roll,control.lon_error);
-		
-		setpoint.pitch_ref=saturateFilter(setpoint.pitch_ref,-0.2,0.2);
-		setpoint.roll_ref=saturateFilter(setpoint.roll_ref,-0.2,0.2);
-		
-		//Convert to Drone Coordinate System from User Coordinate System
-		float P_R_MAG=pow(pow(setpoint.roll_ref,2)+pow(setpoint.pitch_ref,2),0.5);
-		float Theta_Ref=atan2f(setpoint.pitch_ref,setpoint.roll_ref);
-		setpoint.roll_ref=P_R_MAG*cos(Theta_Ref-control.yaw[0]);
-		setpoint.pitch_ref=P_R_MAG*sin(Theta_Ref-control.yaw[0]);
-		
-		control.alt_error=control.alt_ref-GPS_data.gps_altitude;
-		//control.throttle=0.12*update_filter(&filters.Throttle_controller,control.alt_error);
-		
-		//control.throttle=saturateFilter(control.throttle,-0.15,0.15)+control.standing_throttle;
-	}
-	//Filter out any high freq noise coming from yaw in the CS translation
-	setpoint.filt_pitch_ref = update_filter(filters.LPF_Yaw_Ref_P,setpoint.pitch_ref);
-	setpoint.filt_roll_ref = update_filter(filters.LPF_Yaw_Ref_R,setpoint.roll_ref);
-	
-	//Filter out high frequency noise in Raw Gyro data
-	control.d_pitch_f = update_filter(filters.LPF_d_pitch,control.d_pitch);			
-	control.d_roll_f = update_filter(filters.LPF_d_roll,control.d_roll);
-	
-	control.dpitch_setpoint = update_filter(filters.pitch_PD, setpoint.filt_pitch_ref - control.pitch);
-	
-	control.droll_setpoint = update_filter(filters.roll_PD, setpoint.filt_roll_ref - control.roll);
-	
-	//Apply the PD Controllers 
-	control.upitch = update_filter(filters.pitch_rate_PD,control.dpitch_setpoint - control.d_pitch_f);
-	control.uroll = update_filter(filters.roll_rate_PD,control.droll_setpoint - control.d_roll_f);				
-	
-	
-	/************************************************************************
-	*                        	Yaw Controller                              *
-	************************************************************************/	
-	control.d_yaw_f = update_filter(filters.LPF_d_yaw,control.d_yaw);
-	
-	setpoint.yaw_ref[1]=setpoint.yaw_ref[0];
-	setpoint.yaw_ref[0]=setpoint.yaw_ref[1]+(setpoint.yaw_rate_ref[0]+setpoint.yaw_rate_ref[1])*DT/2;
+		/************************************************************************
+		*                   	Throttle Controller                             *
+		************************************************************************/
 
-	control.uyaw = update_filter(filters.yaw_rate_PD,setpoint.yaw_ref[0]-control.yaw[0]);
-	
-	/************************************************************************
-	*                   	Apply the Integrators                           *
-	************************************************************************/	
-		
-	if(control.throttle<MIN_THROTTLE+.01){	
-		function_control.integrator_reset++;
-		function_control.integrator_start=0;
-	}else{
-		function_control.integrator_reset=0;
-		function_control.integrator_start++;
-	}
-	
-	if(function_control.integrator_reset==300){// if landed, reset integrators and Yaw error
-		setpoint.yaw_ref[0]=control.yaw[0];
-		control.droll_err_integrator=0; 
-		control.dpitch_err_integrator=0;
-		control.dyaw_err_integrator=0;
-	}
-		
-	//only use integrators if airborne (above minimum throttle for > 1.5 seconds)
-	if(function_control.integrator_start >  400){
-		control.droll_err_integrator  += control.uroll  * DT;
-		control.dpitch_err_integrator += control.upitch * DT;
-		control.dyaw_err_integrator += control.uyaw * DT;		
-		
-		control.upitch+=flight_config.Dpitch_KI * control.dpitch_err_integrator;
-		control.uroll +=  flight_config.Droll_KI * control.droll_err_integrator;
-		control.uyaw+=flight_config.yaw_KI * control.dyaw_err_integrator;
-	}
-	
-	//Apply a saturation filter
-	control.upitch = saturateFilter(control.upitch,-MAX_PITCH_COMPONENT,MAX_PITCH_COMPONENT);
-	control.uroll = saturateFilter(control.uroll,-MAX_ROLL_COMPONENT,MAX_ROLL_COMPONENT);
-	control.uyaw = saturateFilter(control.uyaw,-MAX_YAW_COMPONENT,MAX_YAW_COMPONENT);
-	
-	/************************************************************************
-	*  Mixing
-	*           	      black				yellow
-	*                          CCW 1	  2 CW			
-	*                          	   \ /				Y
-	*	                           / \            	|_ X
-	*                         CW 3	  4 CCW
-	*                 	  yellow       	    black
-	************************************************************************/
-	
-	control.u[0]=control.throttle+control.uroll+control.upitch-control.uyaw;
-	control.u[1]=control.throttle-control.uroll+control.upitch+control.uyaw;
-	control.u[2]=control.throttle+control.uroll-control.upitch+control.uyaw;
-	control.u[3]=control.throttle-control.uroll-control.upitch-control.uyaw;		
+	//	float throttle_compensation = 1 / cos(control.roll);
+	//	throttle_compensation *= 1 / cos(control.pitch);		
 
-	float largest_value = 1;
-	float smallest_value = 0;
+		if(function_control.altitudeHold)
+		{
+			if(function_control.altitudeHoldFirstIteration)
+			{
+				control.standing_throttle = control.throttle;
+				setpoint.altitudeSetpoint = control.baro_alt;
+				function_control.altitudeHoldFirstIteration = 0;
+			}
+	        setpoint.altitudeSetpoint=setpoint.altitudeSetpoint+(setpoint.altitudeSetpointRate)*DT;
 
-	for(i=0;i<4;i++){ 
-		if(control.u[i]>largest_value)largest_value=control.u[i];
-		
-		if(control.u[i]<smallest_value)control.u[i]=0;
-	}
+			control.uthrottle = update_filter(filters.altitudeHoldPID, setpoint.altitudeSetpoint - control.baro_alt);
+			control.throttle = control.uthrottle + control.standing_throttle;
 			
-	// if upper saturation would have occurred, reduce all outputs evenly
-	if(largest_value>1){
-		float offset = largest_value - 1;
-		for(i=0;i<4;i++) control.u[i]-=offset;
-	}
-
-	if(!flight_config.enable_debug_mode)
-	{
-		//Send Commands to Motors
-
-		for(i=0;i<4;i++){
-			pru_client_data.u[i] = control.u[i];
-			pru_client_data.send_flag = 1;
 		}
-
-		if(control.kill_switch[0] < .5) {
-			printf("\nKill Switch Hit! Shutting Down\n");
-			fprintf(logger.Error_logger,"\nKill Switch Hit! Shutting Down\n");	
-			rc_set_state(EXITING);
+		/************************************************************************
+		* 	                  Pitch and Roll Controllers                        *
+		************************************************************************/
+		if(setpoint.Aux>=0 || 1){
+			//Using Remote Control
+			function_control.gps_pos_mode=0;
 		}
-	}
-
-	logger.new_entry.time			= control.time;	
-	logger.new_entry.pitch			= control.pitch;	
-	logger.new_entry.roll			= control.roll;
-	logger.new_entry.yaw			= control.yaw[0];
-	logger.new_entry.d_pitch		= control.d_pitch_f;	
-	logger.new_entry.d_roll			= control.d_roll_f;
-	logger.new_entry.d_yaw			= control.d_yaw;
-	logger.new_entry.u_1			= control.u[0];
-	logger.new_entry.u_2			= control.u[1];
-	logger.new_entry.u_3			= control.u[2];
-	logger.new_entry.u_4			= control.u[3];
-	logger.new_entry.throttle		= control.throttle;
-	logger.new_entry.upitch			= control.upitch;	
-	logger.new_entry.uroll			= control.uroll;
-	logger.new_entry.uyaw			= control.uyaw;
-	logger.new_entry.pitch_ref		= setpoint.pitch_ref;
-	logger.new_entry.roll_ref		= setpoint.roll_ref;
-	logger.new_entry.yaw_ref		= setpoint.yaw_ref[0];
-	logger.new_entry.yaw_rate_ref	= setpoint.yaw_rate_ref[0];
-	logger.new_entry.Aux			= setpoint.Aux[0];
-	logger.new_entry.lat_error		= control.lat_error;
-	logger.new_entry.lon_error		= control.lon_error;
-	if (X_state_Lat1->initialized)
-	{
-		logger.new_entry.kalman_lat		= X_state_Lat1->d[0];
-		logger.new_entry.kalman_lon		= X_state_Lon1->d[0];
-	}
-	logger.new_entry.accel_x		= accel_data.accel_x;
-	logger.new_entry.accel_y		= accel_data.accel_y;
-	logger.new_entry.accel_z		= accel_data.accel_z;
-	logger.new_entry.baro_alt		= control.baro_alt;
-	logger.new_entry.v_batt			= 0;
-	logger.new_entry.ned_pos_x		= ekf_filter.output.ned_pos[0];
-	logger.new_entry.ned_pos_y		= ekf_filter.output.ned_pos[1];
-	logger.new_entry.ned_pos_z		= ekf_filter.output.ned_pos[2];
-	logger.new_entry.ned_vel_x		= ekf_filter.output.ned_vel[0];
-	logger.new_entry.ned_vel_y		= ekf_filter.output.ned_vel[1];
-	logger.new_entry.ned_vel_z		= ekf_filter.output.ned_vel[2];
-	logger.new_entry.mag_x			= imu_data.mag[0];
-	logger.new_entry.mag_y			= imu_data.mag[1];
-	logger.new_entry.mag_z			= imu_data.mag[2];
-	logger.new_entry.compass_heading= control.compass_heading;
-	//logger.new_entry.v_batt			= rc_dc_jack_voltage();
-	log_core_data(&logger.core_logger, &logger.new_entry);
-
-	
-	//Print some stuff if in debug mode
-	if(flight_config.enable_debug_mode)
-	{	
-		printf("\r ");
-	//	printf("time %3.3f ", control.time);
-	//	printf("Alt %2.2f ",lidar_data.altitude[0]);
-	//	printf("vel %2.2f ",lidar_data.d_altitude[0]);		
-	//	printf("H_d %3.3f ", control.height_damping);
-	//	printf("Alt_ref %3.1f ",control.alt_ref);
-	//	printf(" U1:  %2.2f ",control.u[0]);
-	//	printf(" U2: %2.2f ",control.u[1]);
-	//	printf(" U3:  %2.2f ",control.u[2]);
-	//	printf(" U4: %2.2f ",control.u[3]);	
-	//	printf(" Throt %2.2f ", control.throttle);
-	//	printf("Aux %2.1f ", setpoint.Aux[0]);
-	//	printf("function: %f",rc_get_dsm_ch_normalized(6));
-	//	printf("num wraps %d ",control.num_wraps);
-	//	printf(" Pitch_ref %2.2f ", setpoint.filt_pitch_ref);
-	//	printf(" Roll_ref %2.2f ", setpoint.filt_roll_ref);
-	//	printf(" Yaw_ref %2.2f ", setpoint.yaw_ref[0]);
-		// printf(" Pitch %1.2f ", control.pitch);
-		// printf(" Roll %1.2f ", control.roll);
-		// printf(" Yaw %2.3f ", control.yaw[0]); 
-	//	printf(" Mag X %4.2f",imu_data.mag[0]);
-	//	printf(" Mag Y %4.2f",imu_data.mag[1]);
-	//	printf(" Mag Z %4.2f",imu_data.mag[2]);
-		printf(" Pos N %2.3f ", ekf_filter.output.ned_pos[0]); 
-		printf(" Pos E %2.3f ", ekf_filter.output.ned_pos[1]); 
-		printf(" Pos D %2.3f ", ekf_filter.output.ned_pos[2]); 
-	//	printf(" DPitch %1.2f ", control.d_pitch_f); 
-	//	printf(" DRoll %1.2f ", control.d_roll_f);
-	//	printf(" DYaw %2.3f ", control.d_yaw); 	
-	//	printf(" uyaw %2.3f ", control.upitch); 		
-	//	printf(" uyaw %2.3f ", control.uroll); 		
-	//	printf(" uyaw %2.3f ", control.uyaw);
-	//	printf(" GPS pos lat: %2.2f", GPS_data.pos_lat);
-	//	printf(" GPS pos lon: %2.2f", GPS_data.pos_lon);
-	//	printf(" HDOP: %f", GPS_data.HDOP);
-	//	printf(" Acc_Lat %2.3f ", accel_data.accel_Lat);
-	//	printf(" Acc_Lon %2.3f ", accel_data.accel_Lon);
-	//	printf(" Acc_z %2.3f", accel_data.accelz);
-	//	printf(" Pos_Lat %2.3f ", X_state_Lat1->data[0]);	
-	//	printf(" Pos_Lon %2.3f ", X_state_Lon1->data[0]);
-	//	printf("control: %d",rc_get_state());
-	//	printf("Baro Alt: %f ",baro_alt);
-		fflush(stdout);
-	}
-
-		/***************** Get GPS Data if available *******************/
-	if(is_new_GPS_data()){
+		else{
+			//Using GPS Control
+			if(function_control.gps_pos_mode==0){
+				printf("gps position mode\n");
+				setpoint.lat_setpoint=GPS_data.pos_lat;
+				setpoint.lon_setpoint=GPS_data.pos_lon;
+				function_control.gps_pos_mode=1;
+				control.standing_throttle=control.throttle;
+				control.alt_ref=GPS_data.gps_altitude+1;
+			}
+			control.lat_error=setpoint.lat_setpoint-GPS_data.pos_lat;
+			control.lon_error=setpoint.lon_setpoint-GPS_data.pos_lon;
+			
+			setpoint.pitch_ref=0.14*update_filter(filters.Outer_Loop_TF_pitch,control.lat_error);
+			setpoint.roll_ref=-0.14*update_filter(filters.Outer_Loop_TF_roll,control.lon_error);
+			
+			setpoint.pitch_ref=saturateFilter(setpoint.pitch_ref,-0.2,0.2);
+			setpoint.roll_ref=saturateFilter(setpoint.roll_ref,-0.2,0.2);
+			
+			//Convert to Drone Coordinate System from User Coordinate System
+			float P_R_MAG=pow(pow(setpoint.roll_ref,2)+pow(setpoint.pitch_ref,2),0.5);
+			float Theta_Ref=atan2f(setpoint.pitch_ref,setpoint.roll_ref);
+			setpoint.roll_ref=P_R_MAG*cos(Theta_Ref-control.yaw[0]);
+			setpoint.pitch_ref=P_R_MAG*sin(Theta_Ref-control.yaw[0]);
+			
+			control.alt_error=control.alt_ref-GPS_data.gps_altitude;
+			//control.throttle=0.12*update_filter(&filters.Throttle_controller,control.alt_error);
+			
+			//control.throttle=saturateFilter(control.throttle,-0.15,0.15)+control.standing_throttle;
+		}
+		//Filter out any high freq noise coming from yaw in the CS translation
+		setpoint.filt_pitch_ref = update_filter(filters.LPF_Yaw_Ref_P,setpoint.pitch_ref);
+		setpoint.filt_roll_ref = update_filter(filters.LPF_Yaw_Ref_R,setpoint.roll_ref);
 		
-		accel_data.GPS_kal_flag = 1;
-		 //printf("\n new GPS data in \n");
-		fprintf(logger.GPS_logger,"%4.5f,",control.time);
-		fprintf(logger.GPS_logger,"%3.0f,%f,",GPS_data.deg_longitude,GPS_data.min_longitude);
-		fprintf(logger.GPS_logger,"%3.0f,%f,",GPS_data.deg_latitude,GPS_data.min_latitude);
-		fprintf(logger.GPS_logger,"%f,%f,",GPS_data.speed,GPS_data.direction);
-		fprintf(logger.GPS_logger,"%f,",GPS_data.gps_altitude);
-		fprintf(logger.GPS_logger,"%2.2f,%d",GPS_data.HDOP,GPS_data.GPS_fix);
-		fprintf(logger.GPS_logger,"\n");
-		fflush(logger.GPS_logger);
-		//	printf("%s",GPS_data.GGAbuf);
-		//	printf("%s",GPS_data.VTGbuf);
+		//Filter out high frequency noise in Raw Gyro data
+		control.d_pitch_f = update_filter(filters.LPF_d_pitch,control.d_pitch);			
+		control.d_roll_f = update_filter(filters.LPF_d_roll,control.d_roll);
+		
+		control.dpitch_setpoint = update_filter(filters.pitch_PD, setpoint.filt_pitch_ref - control.pitch);
+		
+		control.droll_setpoint = update_filter(filters.roll_PD, setpoint.filt_roll_ref - control.roll);
+		
+		//Apply the PD Controllers 
+		control.upitch = update_filter(filters.pitch_rate_PD,control.dpitch_setpoint - control.d_pitch_f);
+		control.uroll = update_filter(filters.roll_rate_PD,control.droll_setpoint - control.d_roll_f);				
+		
+		
+		/************************************************************************
+		*                        	Yaw Controller                              *
+		************************************************************************/	
+		control.d_yaw_f = update_filter(filters.LPF_d_yaw,control.d_yaw);
+		
+		setpoint.yaw_ref[1]=setpoint.yaw_ref[0];
+		setpoint.yaw_ref[0]=setpoint.yaw_ref[1]+(setpoint.yaw_rate_ref[0]+setpoint.yaw_rate_ref[1])*DT/2;
 
-		if (First_Iteration_GPS==1  && GPS_data.GPS_fix==1){
-			control.initial_pos_lat=GPS_data.meters_lat;
-			control.initial_pos_lon=GPS_data.meters_lon;
-			First_Iteration_GPS=0;
-			GPS_data.GPS_fix_check=1;
-			printf("First Iteration GPS\n");
+		control.uyaw = update_filter(filters.yaw_rate_PD,setpoint.yaw_ref[0]-control.yaw[0]);
+		
+		/************************************************************************
+		*                   	Apply the Integrators                           *
+		************************************************************************/	
+			
+		if(control.throttle<MIN_THROTTLE+.01){	
+			function_control.integrator_reset++;
+			function_control.integrator_start=0;
+		}else{
+			function_control.integrator_reset=0;
+			function_control.integrator_start++;
 		}
-		if(GPS_data.HDOP<4 && GPS_data.GPS_fix==1){
-			GPS_data.pos_lat=GPS_data.meters_lat-control.initial_pos_lat;
-			GPS_data.pos_lon=GPS_data.meters_lon-control.initial_pos_lon;
+		
+		if(function_control.integrator_reset==300){// if landed, reset integrators and Yaw error
+			setpoint.yaw_ref[0]=control.yaw[0];
+			control.droll_err_integrator=0; 
+			control.dpitch_err_integrator=0;
+			control.dyaw_err_integrator=0;
+		}
+			
+		//only use integrators if airborne (above minimum throttle for > 1.5 seconds)
+		if(function_control.integrator_start >  400){
+			control.droll_err_integrator  += control.uroll  * DT;
+			control.dpitch_err_integrator += control.upitch * DT;
+			control.dyaw_err_integrator += control.uyaw * DT;		
+			
+			control.upitch+=flight_config.Dpitch_KI * control.dpitch_err_integrator;
+			control.uroll +=  flight_config.Droll_KI * control.droll_err_integrator;
+			control.uyaw+=flight_config.yaw_KI * control.dyaw_err_integrator;
+		}
+		
+		//Apply a saturation filter
+		control.upitch = saturateFilter(control.upitch,-MAX_PITCH_COMPONENT,MAX_PITCH_COMPONENT);
+		control.uroll = saturateFilter(control.uroll,-MAX_ROLL_COMPONENT,MAX_ROLL_COMPONENT);
+		control.uyaw = saturateFilter(control.uyaw,-MAX_YAW_COMPONENT,MAX_YAW_COMPONENT);
+		
+		/************************************************************************
+		*  Mixing
+		*           	      black				yellow
+		*                          CCW 1	  2 CW			
+		*                          	   \ /				Y
+		*	                           / \            	|_ X
+		*                         CW 3	  4 CCW
+		*                 	  yellow       	    black
+		************************************************************************/
+		
+		control.u[0]=control.throttle+control.uroll+control.upitch-control.uyaw;
+		control.u[1]=control.throttle-control.uroll+control.upitch+control.uyaw;
+		control.u[2]=control.throttle+control.uroll-control.upitch+control.uyaw;
+		control.u[3]=control.throttle-control.uroll-control.upitch-control.uyaw;		
+
+		float largest_value = 1;
+		float smallest_value = 0;
+
+		for(i=0;i<4;i++){ 
+			if(control.u[i]>largest_value)largest_value=control.u[i];
+			
+			if(control.u[i]<smallest_value)control.u[i]=0;
+		}
+				
+		// if upper saturation would have occurred, reduce all outputs evenly
+		if(largest_value>1){
+			float offset = largest_value - 1;
+			for(i=0;i<4;i++) control.u[i]-=offset;
 		}
 
+		if(!flight_config.enable_debug_mode)
+		{
+			//Send Commands to Motors
+			for(i=0;i<4;i++){
+				pru_client_data.u[i] = control.u[i];
+				pru_client_data.send_flag = 1;
+			}
 
+			if(control.kill_switch[0] < .5) {
+				printf("\nKill Switch Hit! Shutting Down\n");
+				fprintf(logger.Error_logger,"\nKill Switch Hit! Shutting Down\n");	
+				rc_set_state(EXITING);
+			}
+		}
 
-		ekf_filter.input.gps_updated = 1;
-		ekf_filter.input.gps_timestamp = control.time*1E6;
-		ekf_filter.input.gps_latlon[0] = (double)GPS_data.deg_latitude + (double)GPS_data.min_latitude / 60.0;// + control.time*1E7/20000;
-		ekf_filter.input.gps_latlon[1] = (double)GPS_data.deg_longitude + (double)GPS_data.min_longitude / 60.0;
-		ekf_filter.input.gps_latlon[2] = (double)GPS_data.gps_altitude;
-		ekf_filter.input.gps_fix = GPS_data.GPS_fix;
-		ekf_filter.input.nsats = 10; // Really need to fix this
+		logger.new_entry.time			= control.time;	
+		logger.new_entry.pitch			= control.pitch;	
+		logger.new_entry.roll			= control.roll;
+		logger.new_entry.yaw			= control.yaw[0];
+		logger.new_entry.d_pitch		= control.d_pitch_f;	
+		logger.new_entry.d_roll			= control.d_roll_f;
+		logger.new_entry.d_yaw			= control.d_yaw;
+		logger.new_entry.u_1			= control.u[0];
+		logger.new_entry.u_2			= control.u[1];
+		logger.new_entry.u_3			= control.u[2];
+		logger.new_entry.u_4			= control.u[3];
+		logger.new_entry.throttle		= control.throttle;
+		logger.new_entry.upitch			= control.upitch;	
+		logger.new_entry.uroll			= control.uroll;
+		logger.new_entry.uyaw			= control.uyaw;
+		logger.new_entry.pitch_ref		= setpoint.pitch_ref;
+		logger.new_entry.roll_ref		= setpoint.roll_ref;
+		logger.new_entry.yaw_ref		= setpoint.yaw_ref[0];
+		logger.new_entry.yaw_rate_ref	= setpoint.yaw_rate_ref[0];
+		logger.new_entry.Aux			= setpoint.Aux[0];
+		logger.new_entry.lat_error		= control.lat_error;
+		logger.new_entry.lon_error		= control.lon_error;
+		logger.new_entry.accel_x		= 0.0f;
+		logger.new_entry.accel_y		= 0.0f;
+		logger.new_entry.accel_z		= 0.0f;
+		logger.new_entry.baro_alt		= control.baro_alt;
+		logger.new_entry.v_batt			= 0;
+		logger.new_entry.ned_pos_x		= ekf_filter.output.ned_pos[0];
+		logger.new_entry.ned_pos_y		= ekf_filter.output.ned_pos[1];
+		logger.new_entry.ned_pos_z		= ekf_filter.output.ned_pos[2];
+		logger.new_entry.ned_vel_x		= ekf_filter.output.ned_vel[0];
+		logger.new_entry.ned_vel_y		= ekf_filter.output.ned_vel[1];
+		logger.new_entry.ned_vel_z		= ekf_filter.output.ned_vel[2];
+		logger.new_entry.mag_x			= imu_data.mag[0];
+		logger.new_entry.mag_y			= imu_data.mag[1];
+		logger.new_entry.mag_z			= imu_data.mag[2];
+		logger.new_entry.compass_heading= control.compass_heading;
+		//logger.new_entry.v_batt			= rc_dc_jack_voltage();
+		log_core_data(&logger.core_logger, &logger.new_entry);
 
+		
+		//Print some stuff if in debug mode
+		if(flight_config.enable_debug_mode)
+		{	
+			printf("\r ");
+		//	printf("time %3.3f ", control.time);
+		//	printf("Alt %2.2f ",lidar_data.altitude[0]);
+		//	printf("vel %2.2f ",lidar_data.d_altitude[0]);		
+		//	printf("H_d %3.3f ", control.height_damping);
+		//	printf("Alt_ref %3.1f ",control.alt_ref);
+		//	printf(" U1:  %2.2f ",control.u[0]);
+		//	printf(" U2: %2.2f ",control.u[1]);
+		//	printf(" U3:  %2.2f ",control.u[2]);
+		//	printf(" U4: %2.2f ",control.u[3]);	
+		//	printf(" Throt %2.2f ", control.throttle);
+		//	printf("Aux %2.1f ", setpoint.Aux[0]);
+		//	printf("function: %f",rc_get_dsm_ch_normalized(6));
+		//	printf("num wraps %d ",control.num_wraps);
+		//	printf(" Pitch_ref %2.2f ", setpoint.filt_pitch_ref);
+		//	printf(" Roll_ref %2.2f ", setpoint.filt_roll_ref);
+		//	printf(" Yaw_ref %2.2f ", setpoint.yaw_ref[0]);
+			printf(" Pitch %1.2f ", control.pitch);
+			printf(" Roll %1.2f ", control.roll);
+			printf(" Yaw %2.3f ", control.yaw[0]); 
+		//	printf(" Mag X %4.2f",imu_data.mag[0]);
+		//	printf(" Mag Y %4.2f",imu_data.mag[1]);
+		//	printf(" Mag Z %4.2f",imu_data.mag[2]);
+			// printf(" Pos N %2.3f ", ekf_filter.output.ned_pos[0]); 
+			// printf(" Pos E %2.3f ", ekf_filter.output.ned_pos[1]); 
+			// printf(" Pos D %2.3f ", ekf_filter.output.ned_pos[2]); 
+		//	printf(" DPitch %1.2f ", control.d_pitch_f); 
+		//	printf(" DRoll %1.2f ", control.d_roll_f);
+		//	printf(" DYaw %2.3f ", control.d_yaw); 	
+		//	printf(" uyaw %2.3f ", control.upitch); 		
+		//	printf(" uyaw %2.3f ", control.uroll); 		
+		//	printf(" uyaw %2.3f ", control.uyaw);
+		//	printf(" GPS pos lat: %2.2f", GPS_data.pos_lat);
+		//	printf(" GPS pos lon: %2.2f", GPS_data.pos_lon);
+		//	printf(" HDOP: %f", GPS_data.HDOP);
+		//	printf(" Pos_Lat %2.3f ", X_state_Lat1->data[0]);	
+		//	printf(" Pos_Lon %2.3f ", X_state_Lon1->data[0]);
+		//	printf("control: %d",rc_get_state());
+		//	printf("Baro Alt: %f ",baro_alt);
+			fflush(stdout);
+		}
 
+			/***************** Get GPS Data if available *******************/
+		if(is_new_GPS_data())
+		{
+
+			 //printf("\n new GPS data in \n");
+			fprintf(logger.GPS_logger,"%4.5f,",control.time);
+			fprintf(logger.GPS_logger,"%3.0f,%f,",GPS_data.deg_longitude,GPS_data.min_longitude);
+			fprintf(logger.GPS_logger,"%3.0f,%f,",GPS_data.deg_latitude,GPS_data.min_latitude);
+			fprintf(logger.GPS_logger,"%f,%f,",GPS_data.speed,GPS_data.direction);
+			fprintf(logger.GPS_logger,"%f,",GPS_data.gps_altitude);
+			fprintf(logger.GPS_logger,"%2.2f,%d",GPS_data.HDOP,GPS_data.GPS_fix);
+			fprintf(logger.GPS_logger,"\n");
+			fflush(logger.GPS_logger);
+			//	printf("%s",GPS_data.GGAbuf);
+			//	printf("%s",GPS_data.VTGbuf);
+
+			if (First_Iteration_GPS==1  && GPS_data.GPS_fix==1){
+				control.initial_pos_lat=GPS_data.meters_lat;
+				control.initial_pos_lon=GPS_data.meters_lon;
+				First_Iteration_GPS=0;
+				GPS_data.GPS_fix_check=1;
+				printf("First Iteration GPS\n");
+			}
+			if(GPS_data.HDOP<4 && GPS_data.GPS_fix==1){
+				GPS_data.pos_lat=GPS_data.meters_lat-control.initial_pos_lat;
+				GPS_data.pos_lon=GPS_data.meters_lon-control.initial_pos_lon;
+			}
+
+			ekf_filter.input.gps_updated = 1;
+			ekf_filter.input.gps_timestamp = control.time*1E6;
+			ekf_filter.input.gps_latlon[0] = (double)GPS_data.deg_latitude + (double)GPS_data.min_latitude / 60.0;// + control.time*1E7/20000;
+			ekf_filter.input.gps_latlon[1] = (double)GPS_data.deg_longitude + (double)GPS_data.min_longitude / 60.0;
+			ekf_filter.input.gps_latlon[2] = (double)GPS_data.gps_altitude;
+			ekf_filter.input.gps_fix = GPS_data.GPS_fix;
+			ekf_filter.input.nsats = 10; // Really need to fix this
+		}
+
+	function_control.end_loop_usec = get_usec_timespec(&function_control.end_loop);
+	uint64_t sleep_time = DT_US - (function_control.end_loop_usec -
+									function_control.start_loop_usec);
+	rc_usleep(sleep_time);
 	}
-	return 0;
+	return NULL;
 }
-	
 	
 int main(int argc, char *argv[]){
 
@@ -628,8 +597,7 @@ int main(int argc, char *argv[]){
 	if(rc_initialize()){
 		printf("ERROR: failed to initialize_cape\n");
 		return -1;
-	}	
-	
+	}
 
 	// load flight_core settings
 	if(load_core_config(&flight_config)){
@@ -643,19 +611,23 @@ int main(int argc, char *argv[]){
 	int in;
 	while ((in = getopt(argc, argv, "d")) != -1)
 	{
-		switch (in){
+		switch (in)
+		{
 			case 'd': 
 				flight_config.enable_debug_mode = 1;
-				printf("Running in Debug mode, assumes no battery plugged in \n");
+				printf("Running in Debug mode \n");
 				break;	
 			default:
 				printf("Invalid Argument \n");
 				return -1;
 				break;
-			}
+		}
 	}
- 
-	if(initialize_flight_program( &flyMS_threads,
+
+ 	/************************************************************************
+	*                    Initialize the Flight Program                      *
+	************************************************************************/	
+	if(initialize_flight_program(&flyMS_threads,
                                &flight_config,
                                &logger,
                                &filters,
@@ -682,26 +654,23 @@ int main(int argc, char *argv[]){
 		imu_err_count++;
 		if (imu_err_count == 5 || imu_err_count % 50 == 0)
 		{
-			fprintf(logger.Error_logger,"Error! IMU read failed for more than 5 consecutive timesteps. time: = %f number of missed reads: %u \n",control.time,imu_err_count);
+			fprintf(logger.Error_logger,"Error! IMU read failed for more than\
+											5 consecutive timesteps. time: = %f\
+											number of missed reads: %u \n",
+											control.time,imu_err_count);
 		}
 	}
 
-	flyMS_shutdown( 		&logger, 
+	flyMS_shutdown( &logger, 
 					&GPS_data, 
 					&flyMS_threads); 
 	rc_cleanup();
 	return 0;
 	}
-	
-	
-accel_data_t* get_accel_pointer(){
-	return &accel_data;
-}
-	
+
 GPS_data_t* get_GPS_pointer(){
 	return &GPS_data;
 }
-
 
 #ifdef __cplusplus
 }

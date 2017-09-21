@@ -28,18 +28,16 @@ either expressed or implied, of the FreeBSD Project.
 */
 
 #pragma once
-#include "linear_algebra.h"
 #include "roboticscape.h"
 #include "pru_handler_client.h"
+#include "Fusion.h"
 #include "filter.h"
 #include "config.h"
 #include "logger.h"
 #include "gps.h"
-#include "kalman.h"
 
-#ifndef FLIGHT_DEFS_H
-#define FLIGHT_DEFS_H
-
+#ifndef FLYMS_H
+#define FLYMS_H
 
 // choice of 1,2,4,8,16 oversampling. Here we use 16 and sample at 25hz which
 // is close to the update rate specified in robotics_cape.h for that oversample.
@@ -49,11 +47,10 @@ either expressed or implied, of the FreeBSD Project.
 #define INTERNAL_FILTER	BMP_FILTER_8
 #define BMP_CHECK_HZ	1
 
-
-
-#define SAMPLE_RATE	200
+#define SAMPLE_RATE	50
+#define DT 0.02
+#define DT_US 20000
 #define MICROTESLA_TO_GAUSS 0.01
-#define DT 0.005
 #define Integrator_TH 0.55
 #define MAX_PITCH_RANGE 0.666 // in radians
 #define MAX_ROLL_RANGE 0.666 // in radians
@@ -84,50 +81,10 @@ either expressed or implied, of the FreeBSD Project.
 							 {cR1*sY1,  cP1*cY1+sP1*sR1*sY1, -sP1*cY1+cP1*sR1*sY1}, \
 							 {-sR1  ,  sP1*cR1,		   cP1*cR1		 }}
 
-/******************************* Kalman Filter Constants *****************************/							 
-#define PI 3.14
-#define SIGMA_A .1
-#define SIGMA_P 1
-
-#define cR cos(accel_data_kal->roll)
-#define sR sin(accel_data_kal->roll)
-#define cP cos(accel_data_kal->pitch)
-#define sP sin(accel_data_kal->pitch) 
-#define cY cos(accel_data_kal->yaw[0])
-#define sY sin(accel_data_kal->yaw[0])
-
-#define ROTATION_MATRIX		{{cP*cY, -cR*sY+sR*sP*cY,  sR*sY+cR*sP*cY}, \
-							 {cP*sY,  cR*cY+sR*sP*sY, -sR*cY+cR*sP*sY}, \
-							 {-sP  ,  sR*cP,		   cR*cP		 }}
-
-
- #define Q_MATRIX			{{DT*DT*DT*DT/4*SIGMA_P*SIGMA_P, DT*DT*DT/2*SIGMA_P*SIGMA_P, 0}, \
-							 {DT*DT*DT/2*SIGMA_P*SIGMA_P, DT*DT*SIGMA_P*SIGMA_P,	  0}, \
-							 {0, 0, SIGMA_P}}
-							 
- #define R_MATRIX SIGMA_A
- 
- #define A_MATRIX 			{{1, DT, -DT*DT/2}, \
-							 {0, 1,  -DT}, \
-							 {0, 0,   1}};
-							 
- #define B_MATRIX			{{DT*DT/2}, \
-							 {DT}, \
-							 {0}}
-							 
- #define H_MATRIX			{{1}, \
-							 {0}, \
-							 {0}}
-				 
-  #define EYE 				{{1, 0, 0}, \
-							 {0, 1, 0}, \
-							 {0, 0, 1}};
-
 int initialize_dsm2MS();
 float get_dsm2_ch_normalizedMS(int channel);
 void* uart4_checkerMS(void *ptr); //background thread
 int is_new_dsm2_dataMS();
-
 
 typedef struct control_variables_t{
 	float	pitch, roll, yaw[2];		// Euler angles of aircraft
@@ -157,6 +114,16 @@ typedef struct control_variables_t{
 	float	standing_throttle, alt_error;
 }control_variables_t;
 
+typedef struct fusion_data_t
+{
+	FusionVector3 gyroscope;
+	FusionVector3 accelerometer;
+	FusionVector3 magnetometer;
+	FusionAhrs  fusionAhrs;
+	FusionEulerAngles eulerAngles;
+	FusionBias fusionBias;
+}fusion_data_t;
+
 typedef struct setpoint_t{
 	float	pitch_ref, roll_ref, yaw_ref[2];	// Reference (Desired) Position
 	float	filt_pitch_ref, filt_roll_ref;		// LPF of pitch and roll (because they are a func of yaw)
@@ -166,14 +133,6 @@ typedef struct setpoint_t{
 	float	altitudeSetpointRate;
 	float	altitudeSetpoint;
 }setpoint_t;
-
-
-typedef struct accel_data_t{
-	rc_vector_t  X_state_Lat, X_state_Lon;
-	float accel_x, accel_y, accel_z; // Accelerometer Values for Kalman use
-	float	pitch, roll, yaw[2];
-	uint8_t GPS_kal_flag;			//flag to signal that GPS data is ready 
-}accel_data_t;
  
 typedef struct function_control_t{
 	int 				Lidar_kill_counter;					//Kill the lidar thread if returns negative 20 times consecutively
@@ -186,7 +145,8 @@ typedef struct function_control_t{
 	uint8_t				altitudeHold;
 	uint8_t				altitudeHoldFirstIteration;
 	pthread_mutex_t 	lock;
-	timespec 			start_time, log_time; //Some Structures to use to keep track of time during flight
+	timespec 			start_time, start_loop, end_loop; //Some Structures to use to keep track of time during flight
+	uint64_t 			start_time_usec, start_loop_usec, end_loop_usec; 
 	}function_control_t;
 	
 typedef struct transform_matrix_t{
@@ -257,7 +217,6 @@ typedef struct filters_t{
 
 typedef struct flyMS_threads_t{
 	pthread_t led_thread;
-	pthread_t kalman_thread;
 	pthread_t core_logging_thread;
 	pthread_t setpoint_manager_thread;
 	pthread_t ekf_thread;
@@ -271,7 +230,6 @@ typedef struct led_thread_t{
 
 int ready_check();
 void zero_escs();
-accel_data_t* get_accel_pointer();
 void* barometer_monitor();
 int initialize_filters(filters_t *filters, core_config_t *flight_config);
 int init_rotation_matrix(transform_matrix_t *transform, core_config_t *flight_config);
@@ -294,6 +252,6 @@ int flyMS_shutdown(			logger_t *logger,
 					flyMS_threads_t *flyMS_threads);
 void* pru_sender(void* ptr);
 void* setpoint_manager(void* ptr);
-
-
+void updateFusion(rc_imu_data_t *imu_data, fusion_data_t *fusion);
+uint64_t get_usec_timespec(timespec *tv);
 #endif

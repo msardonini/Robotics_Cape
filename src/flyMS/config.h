@@ -32,8 +32,10 @@ either expressed or implied, of the FreeBSD Project.
 #include <stdlib.h>
 #include <stdio.h>
 #include <stdint.h>
+#include <roboticscape.h>
+
 #define CONFIG_FILE "flight_config.txt"
-#define CONFIG_DIRECTORY "/root/Robotics_Cape/config_files/"
+#define CONFIG_DIRECTORY "config_files/"
 
 #ifndef CONFIG_H
 #define CONFIG_H

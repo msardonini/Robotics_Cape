@@ -62,8 +62,7 @@ int initialize_flight_program(flyMS_threads_t *flyMS_threads,
 				GPS_data_t *GPS_data,
 				ekf_filter_t *ekf_filter)
 {
-
-	
+	//Starts the pru_client which will send commands to ESCs
 	start_pru_client(pru_client_data);
 
 	if(flight_config->enable_barometer)
@@ -77,13 +76,13 @@ int initialize_flight_program(flyMS_threads_t *flyMS_threads,
 	
 	// set up IMU configuration
 	rc_imu_config_t imu_config = rc_default_imu_config();
-	imu_config.dmp_sample_rate = SAMPLE_RATE;
 	imu_config.orientation = get_orientation_config(flight_config->imu_orientation);
+	imu_config.dmp_sample_rate = SAMPLE_RATE;
 	imu_config.accel_fsr = A_FSR_2G;
 	imu_config.enable_magnetometer=1;
 
 	// start imu
-	if(rc_initialize_imu_dmp(imu_data, imu_config, (void*)NULL)){
+	if(rc_initialize_imu(imu_data, imu_config)){
 		printf("ERROR: can't talk to IMU, all hope is lost\n");
 		rc_blink_led(RED, 5, 5);
 		return -1;
@@ -91,7 +90,6 @@ int initialize_flight_program(flyMS_threads_t *flyMS_threads,
 	
 	//Initialize the remote controller
 	rc_initialize_dsm();
-	
 	if(!flight_config->enable_debug_mode)
 	{	
 		if(ready_check()){
@@ -143,16 +141,47 @@ int initialize_flight_program(flyMS_threads_t *flyMS_threads,
 		GPS_ready.GPS_init_check = GPS_data->GPS_init_check;
 		//pthread_create(&flyMS_threads->led_thread, NULL, LED_thread, (void*) &GPS_ready);
 		
-		//Spawn the Kalman Filter Thread if GPS is running
-		if (GPS_data->GPS_init_check == 0)
-		{
-			// pthread_create(&flyMS_threads->kalman_thread, NULL , kalman_filter, (void*) NULL);
-		}
 	}
 	//Should be disabled by default but we don't want to be pumping 5V into our BEC ESC output
 	rc_disable_servo_power_rail();
 	sleep(2); //wait for the IMU to level off
 	return 0;
+}
+
+void updateFusion(rc_imu_data_t *imu_data, fusion_data_t *fusion)
+{
+	const FusionVector3 gyroscope = 
+	{
+		.axis.x = imu_data->gyro[0],
+		.axis.y = imu_data->gyro[1],
+		.axis.z = imu_data->gyro[2],
+	}; 
+
+	const FusionVector3 accelerometer = 
+	{
+		// .axis.x = update_filter(accel_lpf[0],imu_data->raw_accel[0]/9.81f),
+		// .axis.y = update_filter(accel_lpf[1],imu_data->raw_accel[1]/9.81f),
+		// .axis.z = update_filter(accel_lpf[2],imu_data->raw_accel[2]/9.81f),
+		.axis.x = imu_data->raw_accel[0]/9.81f,
+		.axis.y = imu_data->raw_accel[1]/9.81f,
+		.axis.z = imu_data->raw_accel[2]/9.81f,
+	}; 
+
+	const FusionVector3 magnetometer = 
+	{
+		.axis.x = imu_data->mag[0],
+		.axis.y = imu_data->mag[1],
+		.axis.z = imu_data->mag[2],
+	};
+	
+	FusionAhrsUpdate(&fusion->fusionAhrs, gyroscope, accelerometer, magnetometer, DT); // assumes 100 Hz sample rate												
+	fusion->eulerAngles = FusionQuaternionToEulerAngles(fusion->fusionAhrs.quaternion);
+}
+
+uint64_t get_usec_timespec(struct timespec *tv)
+{
+	clock_gettime(CLOCK_MONOTONIC, tv);
+	return tv->tv_sec*(uint64_t)1E9 + tv->tv_nsec;
 }
 
 int ready_check(){
@@ -425,8 +454,6 @@ int flyMS_shutdown(	logger_t *logger,
 	{
 		join_GPS_thread(GPS_data);
 		printf("GPS thread joined\n");
-		pthread_join(flyMS_threads->kalman_thread, NULL);
-		printf("Kalman thread joined\n");
 	}
 	if (logger_running)
 	{	

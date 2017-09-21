@@ -69,6 +69,7 @@ target_link_libraries(flyMS pthread)
 target_link_libraries(flyMS ecl)
 target_link_libraries(flyMS roboticscape)
 target_link_libraries(flyMS filter)
+target_link_libraries(flyMS Fusion)
 
 #Define install directory
 install(TARGETS flyMS DESTINATION /usr/bin/)

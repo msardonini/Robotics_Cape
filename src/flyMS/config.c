@@ -54,11 +54,13 @@ int print_core_config(core_config_t* config){
 *	config directory and this file's definition for config file name
 ************************************************************************/
 FILE* create_empty_core_config_file(char name[]){
-	char core_config_path[100];
+	char core_config_path[strlen(FLYMS_ROOT_DIR) + 40];
 	FILE* f;
 	
 	// construct a new file path string
-	strcpy (core_config_path, CONFIG_DIRECTORY);
+	strcpy (core_config_path, FLYMS_ROOT_DIR);
+	strcat (core_config_path, "/");
+	strcat (core_config_path, CONFIG_DIRECTORY);
 	strcat (core_config_path, CORE_CONFIG_FILE);
 	
 	// open
