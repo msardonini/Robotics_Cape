@@ -233,7 +233,7 @@ void* run_ekf(void *ptr)
 				_balt_data_sum = 0.0f;
 
 			}
-			ekf_filter->input.barometer_updated = 0
+			ekf_filter->input.barometer_updated = 0;
 		}
 
 		// read gps data if available

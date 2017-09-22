@@ -218,13 +218,16 @@ void* flight_core(void* ptr){
 		if(rc_read_accel_data(&imu_data)<0){
 			printf("read accel data failed\n");
 		}
-		if(rc_read_gyro_data(&imu_data)<0){
-			printf("read gyro data failed\n");
-		}
 		if(rc_read_mag_data(&imu_data)<0){
 			printf("read mag data failed\n");
 		}
 
+		for (i = 0; i < 3; i++)
+		{
+			imu_data.gyro[i] = update_filter(filters.gyro_lpf[i],imu_data.gyro[i]);
+			imu_data.accel[i] = update_filter(filters.accel_lpf[i],imu_data.accel[i]);
+
+		}
 		updateFusion(&imu_data, &fusion);
 
 		//Bring 3 axes of accel, gyro and angle data in to this program
@@ -239,9 +242,9 @@ void* flight_core(void* ptr){
 		rc_matrix_times_col_vec(transform.IMU_to_drone_gyro, transform.gyro_imu, &transform.gyro_drone);
 		rc_matrix_times_col_vec(transform.IMU_to_drone_accel, transform.accel_imu, &transform.accel_drone);
 
-		control.pitch 			= update_filter(filters.LPF_pitch,transform.dmp_drone.d[0]);
+		control.pitch 			= transform.dmp_drone.d[0];
 		//control.pitch 			= dmp_drone.d[0];
-		control.roll 			= update_filter(filters.LPF_roll,transform.dmp_drone.d[1]);
+		control.roll 			= transform.dmp_drone.d[1];
 		control.compass_heading = imu_data.compass_heading_raw;	
 		control.yaw[1] 			= control.yaw[0];	
 		control.yaw[0] 			= transform.dmp_drone.d[2] + control.num_wraps*2*M_PI;
@@ -255,7 +258,9 @@ void* flight_core(void* ptr){
 		control.d_pitch			= transform.gyro_drone.d[0];
 		control.d_roll			= transform.gyro_drone.d[1];
 		control.d_yaw			= transform.gyro_drone.d[2];
-		
+	
+		printf("d_pitch %f\n",control.d_pitch);
+	
 		if(First_Iteration){
 			setpoint.yaw_ref[0]=control.yaw[0];
 			First_Iteration=0;
@@ -310,10 +315,10 @@ void* flight_core(void* ptr){
 				setpoint.altitudeSetpoint = control.baro_alt;
 				function_control.altitudeHoldFirstIteration = 0;
 			}
-	        setpoint.altitudeSetpoint=setpoint.altitudeSetpoint+(setpoint.altitudeSetpointRate)*DT;
+	       // setpoint.altitudeSetpoint=setpoint.altitudeSetpoint+(setpoint.altitudeSetpointRate)*DT;
 
-			control.uthrottle = update_filter(filters.altitudeHoldPID, setpoint.altitudeSetpoint - control.baro_alt);
-			control.throttle = control.uthrottle + control.standing_throttle;
+			//control.uthrottle = update_filter(filters.altitudeHoldPID, setpoint.altitudeSetpoint - control.baro_alt);
+			//control.throttle = control.uthrottle + control.standing_throttle;
 			
 		}
 		/************************************************************************
@@ -354,26 +359,26 @@ void* flight_core(void* ptr){
 			//control.throttle=saturateFilter(control.throttle,-0.15,0.15)+control.standing_throttle;
 		}
 		//Filter out any high freq noise coming from yaw in the CS translation
-		setpoint.filt_pitch_ref = update_filter(filters.LPF_Yaw_Ref_P,setpoint.pitch_ref);
-		setpoint.filt_roll_ref = update_filter(filters.LPF_Yaw_Ref_R,setpoint.roll_ref);
+	//	setpoint.filt_pitch_ref = update_filter(filters.LPF_Yaw_Ref_P,setpoint.pitch_ref);
+	//	setpoint.filt_roll_ref = update_filter(filters.LPF_Yaw_Ref_R,setpoint.roll_ref);
 		
 		//Filter out high frequency noise in Raw Gyro data
-		control.d_pitch_f = update_filter(filters.LPF_d_pitch,control.d_pitch);			
-		control.d_roll_f = update_filter(filters.LPF_d_roll,control.d_roll);
+//		control.d_pitch_f = update_filter(filters.LPF_d_pitch,control.d_pitch);			
+//		control.d_roll_f = update_filter(filters.LPF_d_roll,control.d_roll);
 		
 		control.dpitch_setpoint = update_filter(filters.pitch_PD, setpoint.filt_pitch_ref - control.pitch);
 		
 		control.droll_setpoint = update_filter(filters.roll_PD, setpoint.filt_roll_ref - control.roll);
 		
 		//Apply the PD Controllers 
-		control.upitch = update_filter(filters.pitch_rate_PD,control.dpitch_setpoint - control.d_pitch_f);
-		control.uroll = update_filter(filters.roll_rate_PD,control.droll_setpoint - control.d_roll_f);				
+		control.upitch = update_filter(filters.pitch_rate_PD,control.dpitch_setpoint - control.d_pitch);
+		control.uroll = update_filter(filters.roll_rate_PD,control.droll_setpoint - control.d_roll);				
 		
 		
 		/************************************************************************
 		*                        	Yaw Controller                              *
 		************************************************************************/	
-		control.d_yaw_f = update_filter(filters.LPF_d_yaw,control.d_yaw);
+	//	control.d_yaw_f = update_filter(filters.LPF_d_yaw,control.d_yaw);
 		
 		setpoint.yaw_ref[1]=setpoint.yaw_ref[0];
 		setpoint.yaw_ref[0]=setpoint.yaw_ref[1]+(setpoint.yaw_rate_ref[0]+setpoint.yaw_rate_ref[1])*DT/2;
@@ -464,8 +469,8 @@ void* flight_core(void* ptr){
 		logger.new_entry.pitch			= control.pitch;	
 		logger.new_entry.roll			= control.roll;
 		logger.new_entry.yaw			= control.yaw[0];
-		logger.new_entry.d_pitch		= control.d_pitch_f;	
-		logger.new_entry.d_roll			= control.d_roll_f;
+		logger.new_entry.d_pitch		= control.d_pitch;	
+		logger.new_entry.d_roll			= control.d_roll;
 		logger.new_entry.d_yaw			= control.d_yaw;
 		logger.new_entry.u_1			= control.u[0];
 		logger.new_entry.u_2			= control.u[1];
@@ -482,9 +487,9 @@ void* flight_core(void* ptr){
 		logger.new_entry.Aux			= setpoint.Aux[0];
 		logger.new_entry.lat_error		= control.lat_error;
 		logger.new_entry.lon_error		= control.lon_error;
-		logger.new_entry.accel_x		= 0.0f;
-		logger.new_entry.accel_y		= 0.0f;
-		logger.new_entry.accel_z		= 0.0f;
+		logger.new_entry.accel_x		= transform.accel_drone.d[0];
+		logger.new_entry.accel_y		= transform.accel_drone.d[1];
+		logger.new_entry.accel_z		= transform.accel_drone.d[2];
 		logger.new_entry.baro_alt		= control.baro_alt;
 		logger.new_entry.v_batt			= 0;
 		logger.new_entry.ned_pos_x		= ekf_filter.output.ned_pos[0];
@@ -530,9 +535,9 @@ void* flight_core(void* ptr){
 			// printf(" Pos N %2.3f ", ekf_filter.output.ned_pos[0]); 
 			// printf(" Pos E %2.3f ", ekf_filter.output.ned_pos[1]); 
 			// printf(" Pos D %2.3f ", ekf_filter.output.ned_pos[2]); 
-		//	printf(" DPitch %1.2f ", control.d_pitch_f); 
-		//	printf(" DRoll %1.2f ", control.d_roll_f);
-		//	printf(" DYaw %2.3f ", control.d_yaw); 	
+			printf(" DPitch %1.2f ", control.d_pitch); 
+			printf(" DRoll %1.2f ", control.d_roll);
+			printf(" DYaw %2.3f ", control.d_yaw); 	
 		//	printf(" uyaw %2.3f ", control.upitch); 		
 		//	printf(" uyaw %2.3f ", control.uroll); 		
 		//	printf(" uyaw %2.3f ", control.uyaw);
@@ -542,7 +547,7 @@ void* flight_core(void* ptr){
 		//	printf(" Pos_Lat %2.3f ", X_state_Lat1->data[0]);	
 		//	printf(" Pos_Lon %2.3f ", X_state_Lon1->data[0]);
 		//	printf("control: %d",rc_get_state());
-		//	printf("Baro Alt: %f ",baro_alt);
+			printf("Baro Alt: %f ",control.baro_alt);
 			fflush(stdout);
 		}
 
@@ -584,9 +589,14 @@ void* flight_core(void* ptr){
 		}
 
 	function_control.end_loop_usec = get_usec_timespec(&function_control.end_loop);
+	
+	if (function_control.end_loop_usec - function_control.start_loop_usec > 1E6) printf("Error timeout detected!\n");
 	uint64_t sleep_time = DT_US - (function_control.end_loop_usec -
 									function_control.start_loop_usec);
-	rc_usleep(sleep_time);
+
+	//Check to make sure the elapsed time wasn't greater than time allowed. If so don't sleep at all
+	if (sleep_time < DT_US)	rc_usleep(sleep_time);
+
 	}
 	return NULL;
 }

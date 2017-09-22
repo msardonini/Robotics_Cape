@@ -47,9 +47,9 @@ either expressed or implied, of the FreeBSD Project.
 #define INTERNAL_FILTER	BMP_FILTER_8
 #define BMP_CHECK_HZ	1
 
-#define SAMPLE_RATE	50
-#define DT 0.02
-#define DT_US 20000
+#define SAMPLE_RATE	100
+#define DT 0.01
+#define DT_US 10000
 #define MICROTESLA_TO_GAUSS 0.01
 #define Integrator_TH 0.55
 #define MAX_PITCH_RANGE 0.666 // in radians
@@ -213,6 +213,10 @@ typedef struct filters_t{
 	digital_filter_t			*LPF_roll;	
 	digital_filter_t			*altitudeHoldPID;
 	digital_filter_t			*LPF_baro_alt;
+
+	digital_filter_t *gyro_lpf[3];
+	digital_filter_t *accel_lpf[3];
+
 }filters_t;
 
 typedef struct flyMS_threads_t{

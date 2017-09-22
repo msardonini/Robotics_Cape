@@ -129,9 +129,15 @@ void* core_log_writer(void* new_log){
 ************************************************************************/
 int start_core_log(logger_t *logger){
 		
-	char logger_filepath[strlen(FLYMS_ROOT_DIR) + 25];
-	char GPS_filepath[strlen(FLYMS_ROOT_DIR) + 25];
-	char Error_filepath[strlen(FLYMS_ROOT_DIR) + 25];	
+	char logger_filepath[strlen(FLYMS_ROOT_DIR) + 40];
+	char GPS_filepath[strlen(FLYMS_ROOT_DIR) + 40];
+	char Error_filepath[strlen(FLYMS_ROOT_DIR) + 40];	
+
+	memset(logger_filepath,0,strlen(logger_filepath));
+	memset(GPS_filepath,0,strlen(GPS_filepath));
+	memset(Error_filepath,0,strlen(Error_filepath));
+
+	printf("string length is %d", strlen(FLYMS_ROOT_DIR));
 
 	char n[6];
 	int m=1;
@@ -172,6 +178,7 @@ int start_core_log(logger_t *logger){
 	logger->core_logger.log_file = fopen(logger_filepath, "w");
 	if (logger->core_logger.log_file==NULL){
 		printf("could not open logging directory\n");
+		printf("Attempted File name %s\n", logger_filepath);
 		return -1;
 	}
 	

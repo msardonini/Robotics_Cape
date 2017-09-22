@@ -52,7 +52,7 @@ extern "C" {
 
 
 //Local Variables and Functions
-void init_fusion(fusion_data_t *fusion);
+void init_fusion(fusion_data_t *fusion, filters_t *filters);
 uint8_t logger_running = 0;
 
 int initialize_flight_program(flyMS_threads_t *flyMS_threads,
@@ -81,9 +81,11 @@ int initialize_flight_program(flyMS_threads_t *flyMS_threads,
 	// set up IMU configuration
 	rc_imu_config_t imu_config = rc_default_imu_config();
 	imu_config.orientation = get_orientation_config(flight_config->imu_orientation);
-	imu_config.dmp_sample_rate = SAMPLE_RATE;
+//	imu_config.dmp_sample_rate = SAMPLE_RATE;
 	imu_config.accel_fsr = A_FSR_2G;
 	imu_config.enable_magnetometer=1;
+//	imu_config.accel_dlpf = ACCEL_DLPF_5;
+//	imu_config.gyro_dlpf = GYRO_DLPF_5;
 
 	// start imu
 	if(rc_initialize_imu(imu_data, imu_config)){
@@ -129,12 +131,12 @@ int initialize_flight_program(flyMS_threads_t *flyMS_threads,
 	pthread_create(&flyMS_threads->setpoint_manager_thread, NULL, setpoint_manager, (void*)NULL );
 	
 	/* --------- Start the EKF for position estimates ----*/
-	pthread_create(&flyMS_threads->ekf_thread, NULL, run_ekf, ekf_filter );
+//	pthread_create(&flyMS_threads->ekf_thread, NULL, run_ekf, ekf_filter );
 
 	init_rotation_matrix(transform, flight_config); //Initialize the rotation matrix from IMU to drone
 	initialize_filters(filters, flight_config);
 
-	init_fusion(fusion);
+	init_fusion(fusion, filters);
 
 	//Start the GPS thread, flash the LED's if GPS has a fix
 	if(flight_config->enable_gps)
@@ -154,10 +156,10 @@ int initialize_flight_program(flyMS_threads_t *flyMS_threads,
 	return 0;
 }
 
-void init_fusion(fusion_data_t* fusion)
+void init_fusion(fusion_data_t* fusion, filters_t *filters)
 {
 	FusionAhrsInitialise(&fusion->fusionAhrs, 8.0f, 0.0f, 70.0f); // valid magnetic field defined as 20 uT to 70 uT
-	int i;
+	int i, j;
 	rc_imu_data_t imu_data;
 
 	//Give Imu data to the fusion alg for initialization purposes
@@ -166,13 +168,22 @@ void init_fusion(fusion_data_t* fusion)
 		if(rc_read_accel_data(&imu_data)<0){
 			printf("read accel data failed\n");
 		}
-		if(rc_read_gyro_data(&imu_data)<0){
-			printf("read gyro data failed\n");
-		}
+//		if(rc_read_gyro_data(&imu_data)<0){
+//			printf("read gyro data failed\n");
+//		}
 		if(rc_read_mag_data(&imu_data)<0){
 			printf("read mag data failed\n");
 		}
+
+                 for (j = 0; j < 3; j++)
+                 {
+                         imu_data.gyro[j] = update_filter(filters->gyro_lpf[j],imu_data.gyro[j]);
+                         imu_data.accel[j] = update_filter(filters->accel_lpf[j],imu_data.accel[j])    ;
+ 
+                 }
+
 		updateFusion(&imu_data, fusion);
+		rc_usleep(DT_US);
 	}
 
 }
@@ -374,24 +385,12 @@ int initialize_filters(filters_t *filters, core_config_t *flight_config){
 	float den[11] = {   1.000000000000000,  -4.302142513532524,  10.963685193359051, -18.990960386921738,  24.544342262847074,
 						-24.210021253402012,  18.411553079753368, -10.622846105856944,   4.472385466696109,  -1.251943621469692,
 						0.182152641224648};
-
-	filters->LPF_d_pitch = initialize_filter(10, num, den);		
-	filters->LPF_d_roll= initialize_filter(10, num, den);	
-	filters->LPF_d_yaw = initialize_filter(10, num, den);
-	
-	//ellip filter, 5th order .5 pass 70 stop .2 cutoff
-	float num3[6] = {0.002284248527015,   0.001560308456655,   0.003463457796419,   0.003463457796419,   0.001560308456655,   0.002284248527015};
-	float den3[6] =	{1.000000000000000,  -3.815166618410549,   6.254410671592536,  -5.434989467207256,   2.491599942967181,  -0.481238499381735};
-//	float num3[6] =	{0.0045,    0.0006,    0.0052,    0.0052,    0.0006,    0.0045};
-//	float den3[6] =	{1.0000,   -3.6733,    5.8400,   -4.9357,    2.2049,   -0.4153};
-
-	filters->LPF_Accel_Lat = initialize_filter(5, num3, den3);							
-	filters->LPF_Accel_Lon = initialize_filter(5, num3, den3);		
-
-	//ellip filter, 5th order .5 pass 70 stop .05 cutoff
-	float baro_num[6] = {0.000618553374672,  -0.001685890697737,   0.001077182625629,   0.001077182625629,  -0.001685890697737,   0.000618553374672};
-	float baro_den[6] =	{1.000000000000000,  -4.785739467762915,   9.195509273069447,  -8.866262182166356,   4.289470039368545,  -0.832957971903594};
-	filters->LPF_baro_alt = initialize_filter(5, baro_num, baro_den);	
+	int i;
+	for (i = 0; i < 3; i++)
+	{
+		filters->gyro_lpf[i] = initialize_filter(10, num, den);		
+		filters->accel_lpf[i] = initialize_filter(10, num, den);	
+	}
 	
 	//Gains on Low Pass Filter for Yaw Reference		
 	float num2[4] = {  0.0317,    0.0951,    0.0951,    0.0317};
@@ -416,15 +415,18 @@ int initialize_filters(filters_t *filters, core_config_t *flight_config){
 	float den5[5] = {1.0000,   -2.6537,    2.9740,   -1.5989,    0.3455};	
 	filters->LPF_pitch = initialize_filter(4, num5, den5);		
 	filters->LPF_roll = initialize_filter(4, num5, den5);	
-	
-	//zeroFilter(&core_state.yaw_ctrl);
-	zeroFilter(filters->LPF_d_pitch);
-	zeroFilter(filters->LPF_d_roll);
-	zeroFilter(filters->LPF_d_yaw);
-	zeroFilter(filters->LPF_Yaw_Ref_P);
-	zeroFilter(filters->LPF_Yaw_Ref_R);
-	//zeroFilter(filters->Outer_Loop_TF_pitch);
-	//zeroFilter(filters->Outer_Loop_TF_roll);
+
+
+	//ellip filter, 5th order .5 pass 70 stop .05 cutoff
+	float baro_num[6] = {0.000618553374672,  -0.001685890697737,   0.001077182625629,   0.001077182625629,  -0.001685890697737,   0.000618553374672};
+	float baro_den[6] =	{1.000000000000000,  -4.785739467762915,   9.195509273069447,  -8.866262182166356,   4.289470039368545,  -0.832957971903594};
+	filters->LPF_baro_alt = initialize_filter(5, baro_num, baro_den);
+	for (i = 0; i< 3; i++)
+	{
+		zeroFilter(filters->gyro_lpf[i]);
+		zeroFilter(filters->accel_lpf[i]);
+	}
+
 	return 0;
 }
 

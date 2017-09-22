@@ -244,11 +244,11 @@ int rc_initialize_imu(rc_imu_data_t *data, rc_imu_config_t conf){
 *******************************************************************************/
 int rc_read_accel_data(rc_imu_data_t *data){
 	// new register data stored here
-	uint8_t raw[6];  
+	uint8_t raw[16];  
 	// set the device address
 	rc_i2c_set_device_address(IMU_BUS, IMU_ADDR);
 	 // Read the six raw data registers into data array
-	if(rc_i2c_read_bytes(IMU_BUS, ACCEL_XOUT_H, 6, &raw[0])<0){
+	if(rc_i2c_read_bytes(IMU_BUS, ACCEL_XOUT_H, 14, &raw[0])<0){
 		return -1;
 	}
 	// Turn the MSB and LSB into a signed 16-bit value
@@ -259,6 +259,17 @@ int rc_read_accel_data(rc_imu_data_t *data){
 	data->accel[0] = data->raw_accel[0] * data->accel_to_ms2;
 	data->accel[1] = data->raw_accel[1] * data->accel_to_ms2;
 	data->accel[2] = data->raw_accel[2] * data->accel_to_ms2;
+
+
+	// Turn the MSB and LSB into a signed 16-bit value
+	data->raw_gyro[0] = (int16_t)(((int16_t)raw[8]<<8)|raw[9]);
+	data->raw_gyro[1] = (int16_t)(((int16_t)raw[10]<<8)|raw[11]);
+	data->raw_gyro[2] = (int16_t)(((int16_t)raw[12]<<8)|raw[13]);
+	// Fill in real unit values
+	data->gyro[0] = data->raw_gyro[0] * data->gyro_to_degs;
+	data->gyro[1] = data->raw_gyro[1] * data->gyro_to_degs;
+	data->gyro[2] = data->raw_gyro[2] * data->gyro_to_degs;
+
 	return 0;
 }
 
@@ -269,14 +280,48 @@ int rc_read_accel_data(rc_imu_data_t *data){
 * at 1khz and this retrieves the latest data.
 *******************************************************************************/
 int rc_read_gyro_data(rc_imu_data_t *data){
+//	// new register data stored here
+//	uint8_t raw[6];
+//	// set the device address
+//	rc_i2c_set_device_address(IMU_BUS, IMU_ADDR);
+//	// Read the six raw data registers into data array
+//	if(rc_i2c_read_bytes(IMU_BUS, GYRO_XOUT_H, 6, &raw[0])<0){
+//		return -1;
+//	}
+//	// Turn the MSB and LSB into a signed 16-bit value
+//	data->raw_gyro[0] = (int16_t)(((int16_t)raw[0]<<8)|raw[1]);
+//	data->raw_gyro[1] = (int16_t)(((int16_t)raw[2]<<8)|raw[3]);
+//	data->raw_gyro[2] = (int16_t)(((int16_t)raw[4]<<8)|raw[5]);
+//	// Fill in real unit values
+//	data->gyro[0] = data->raw_gyro[0] * data->gyro_to_degs;
+//	data->gyro[1] = data->raw_gyro[1] * data->gyro_to_degs;
+//	data->gyro[2] = data->raw_gyro[2] * data->gyro_to_degs;
+	
+
+
+	uint64_t usecs[4] = {0, 0, 0, 0};
+	timespec tv;
+
+	clock_gettime(CLOCK_MONOTONIC, &tv);
+	usecs[0] = tv.tv_sec*(uint64_t)1E6 + tv.tv_nsec/(uint64_t)1E3;
+
+
 	// new register data stored here
 	uint8_t raw[6];
 	// set the device address
 	rc_i2c_set_device_address(IMU_BUS, IMU_ADDR);
+
+	clock_gettime(CLOCK_MONOTONIC, &tv);
+	usecs[1] = tv.tv_sec*(uint64_t)1E6 + tv.tv_nsec/(uint64_t)1E3;
+
 	// Read the six raw data registers into data array
 	if(rc_i2c_read_bytes(IMU_BUS, GYRO_XOUT_H, 6, &raw[0])<0){
 		return -1;
 	}
+
+	clock_gettime(CLOCK_MONOTONIC, &tv);
+	usecs[2] = tv.tv_sec*(uint64_t)1E6 + tv.tv_nsec/(uint64_t)1E3;
+
 	// Turn the MSB and LSB into a signed 16-bit value
 	data->raw_gyro[0] = (int16_t)(((int16_t)raw[0]<<8)|raw[1]);
 	data->raw_gyro[1] = (int16_t)(((int16_t)raw[2]<<8)|raw[3]);
@@ -285,6 +330,15 @@ int rc_read_gyro_data(rc_imu_data_t *data){
 	data->gyro[0] = data->raw_gyro[0] * data->gyro_to_degs;
 	data->gyro[1] = data->raw_gyro[1] * data->gyro_to_degs;
 	data->gyro[2] = data->raw_gyro[2] * data->gyro_to_degs;
+
+	clock_gettime(CLOCK_MONOTONIC, &tv);
+	usecs[3] = tv.tv_sec*(uint64_t)1E6 + tv.tv_nsec/(uint64_t)1E3;
+
+	if (usecs[1]-usecs[0] > 1E6) printf("timeout on set addr\n");
+	if (usecs[2]-usecs[0] > 1E6) printf("timeout on read\n");
+	if (usecs[3]-usecs[0] > 1E6) printf("timeout on math\n");
+
+
 	return 0;
 }
 
