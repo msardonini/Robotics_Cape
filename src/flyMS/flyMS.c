@@ -209,7 +209,7 @@ void* flight_core(void* ptr){
 					Grab the time for Periphal Apps and Logs 			  *
 		******************************************************************/
 		function_control.start_loop_usec = get_usec_timespec(&function_control.start_loop);
-
+		control.time = (float)(function_control.start_loop_usec - function_control.start_time_usec)/1E6f;
 
 
 		/**********************************************************
@@ -268,7 +268,7 @@ void* flight_core(void* ptr){
 		if (flight_config.enable_barometer)
 		{		
 			i1++;
-			if (i1 == 5) // Only read the barometer at 25Hz
+			if (i1 == 1) // Only read the barometer at 25Hz
 			{
 				// perform the i2c reads to the sensor, this takes a bit of time
 				if(rc_read_barometer()<0){

@@ -235,7 +235,7 @@ int main(int argc, char *argv[]){
 		//Set time at the end of loop
 		gettimeofday(&end_loop,NULL);
 		end_loop_usec = end_loop.tv_sec*(uint64_t)1E6 + end_loop.tv_usec;
-		sleep_time = (uint64_t)20000 - (end_loop_usec - start_loop_usec);
+		sleep_time = (uint64_t)5000 - (end_loop_usec - start_loop_usec);
 		//sleep for the elapsed time
 		rc_usleep(sleep_time);
 	}

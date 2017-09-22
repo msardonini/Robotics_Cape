@@ -129,8 +129,9 @@ void* core_log_writer(void* new_log){
 ************************************************************************/
 int start_core_log(logger_t *logger){
 		
-	char *filepath, *logger_filepath, *GPS_filepath, *Error_filepath;
-	
+	char *filepath, *logger_filepath;
+
+	char GPS_filepath[100], Error_filepath[100];	
 	logger_filepath = (char *)malloc(strlen(FLYMS_ROOT_DIR) + 25);
 	filepath = (char *)malloc(strlen(FLYMS_ROOT_DIR) + 25);
 	char n[6];
@@ -139,7 +140,7 @@ int start_core_log(logger_t *logger){
 	
 	sprintf(n,"%03d",m);
 	strcpy(logger_filepath,FLYMS_ROOT_DIR);
-	strcpy(logger_filepath,"/flight_logs/run");
+	strcat(logger_filepath,"/flight_logs/run");
 	strcat(logger_filepath,n);
 	
 	
@@ -148,16 +149,20 @@ int start_core_log(logger_t *logger){
 		sprintf(n,"%03d",m);
 		
 		strcpy(logger_filepath,FLYMS_ROOT_DIR);
-		strcpy(logger_filepath,"/flight_logs/run");
+		strcat(logger_filepath,"/flight_logs/run");
 		strcat(logger_filepath,n);
 		}
 	
 	strcpy(filepath,FLYMS_ROOT_DIR);
-	strcpy(filepath,"/flight_logs/run");
+	strcat(filepath,"/flight_logs/run");
+	strcat(filepath,n);
 	mkdir(filepath,0700);
 	printf("Saving log files in: %s\n",logger_filepath);
 	
-	
+	strcpy(GPS_filepath,logger_filepath);
+	strcat(GPS_filepath,"/GPS_logger.csv");
+	strcpy(Error_filepath,logger_filepath);
+	strcat(Error_filepath,"/Error_logger.txt");
 	strcat(logger_filepath,"/logger.csv");
 	
 	logger->core_logger.log_file = fopen(logger_filepath, "w");
@@ -166,23 +171,36 @@ int start_core_log(logger_t *logger){
 		return -1;
 	}
 	
+	printf("made 111loggers successfully\n");
 	#define X(type, fmt, name) fprintf(logger->core_logger.log_file, "%s," , #name);
     CORE_LOG_TABLE
 	#undef X	
-	GPS_filepath = concat(filepath,"/GPS_logger.csv");
-	Error_filepath = concat(filepath,"/Error_logger.txt");
+//	strcpy(GPS_filepath,filepath);
+//	strcat(GPS_filepath,"/GPS_ligger.csv");
+
+//	Error_filepath = concat(filepath,"/Error_logger.txt");
 	
+	printf("made222 loggers successfully\n");
 	logger->GPS_logger=fopen(GPS_filepath,"w+");
 	logger->Error_logger=fopen(Error_filepath,"w+");
-	if(logger->GPS_logger == NULL) printf("Error! GPS_logger.csv failed to open\n");
+	
+	printf("made333 loggers successfully\n");
+	if(logger->GPS_logger == NULL) 
+	{
+		printf("Error! GPS_logger.csv failed to open\n");
+		printf("Attempted File name %s\n", GPS_filepath);
+	}
+
 	if(logger->Error_logger == NULL) printf("Error! Error_logger.csv failed to open\n");
 	
-	free(filepath);
-	free(logger_filepath);
-	free(GPS_filepath);
-	free(Error_filepath);
+//	free(filepath);
+//	free(logger_filepath);
+//	free(GPS_filepath);
+//	free(Error_filepath);
 	fprintf(logger->core_logger.log_file, "\n");
 	fflush(logger->core_logger.log_file);
+
+	printf("made loggers successfully\n");
 	return 0;
 }
 

@@ -210,7 +210,7 @@ void updateFusion(rc_imu_data_t *imu_data, fusion_data_t *fusion)
 uint64_t get_usec_timespec(struct timespec *tv)
 {
 	clock_gettime(CLOCK_MONOTONIC, tv);
-	return tv->tv_sec*(uint64_t)1E9 + tv->tv_nsec;
+	return tv->tv_sec*(uint64_t)1E6 + tv->tv_nsec/(uint64_t)1E3;
 }
 
 int ready_check(){
