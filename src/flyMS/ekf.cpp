@@ -221,7 +221,8 @@ void* run_ekf(void *ptr)
 			_balt_data_sum += ekf_filter->input.barometer_alt;
 			uint32_t balt_time_ms = _balt_time_sum_ms / _balt_sample_count;
 
-			if (balt_time_ms - _balt_time_ms_last_used > (uint32_t)MIN_INTERVAL_MS) {
+			if (balt_time_ms - _balt_time_ms_last_used > (uint32_t)MIN_INTERVAL_MS) 
+			{
 				// take mean across sample period
 				float balt_data_avg = _balt_data_sum / (float)_balt_sample_count;
 
@@ -232,6 +233,7 @@ void* run_ekf(void *ptr)
 				_balt_data_sum = 0.0f;
 
 			}
+			ekf_filter->input.barometer_updated = 0
 		}
 
 		// read gps data if available
@@ -382,7 +384,7 @@ void* run_ekf(void *ptr)
 			// 		acceleration(1) * acceleration(1));
 			// ctrl_state.horz_acc_mag = _acc_hor_filt;
 		}
-		usleep(5000);
+		usleep(DT);
 	}
 	return NULL;
 }
