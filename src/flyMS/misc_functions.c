@@ -47,6 +47,7 @@ extern "C" {
 #include "ekf2.h"
 #include <inttypes.h>
 #include "pru_handler_client.h"
+#include "IMU_EKF.h"
 //Coordinate system transformations matrices
 
 
@@ -64,7 +65,8 @@ int initialize_flight_program(flyMS_threads_t *flyMS_threads,
 				transform_matrix_t *transform,
 				GPS_data_t *GPS_data,
 				ekf_filter_t *ekf_filter,
-				fusion_data_t *fusion)
+				fusion_data_t *fusion,
+				imu_ekf_t *imu_ekf)
 {
 	//Starts the pru_client which will send commands to ESCs
 	start_pru_client(pru_client_data);
@@ -136,7 +138,13 @@ int initialize_flight_program(flyMS_threads_t *flyMS_threads,
 	init_rotation_matrix(transform, flight_config); //Initialize the rotation matrix from IMU to drone
 	initialize_filters(filters, flight_config);
 
-	init_fusion(fusion, filters);
+	//init_fusion(fusion, filters);
+	imu_ekf->Q[0] = 0.00001;
+	imu_ekf->Q[1] = 0.1;
+	imu_ekf->Q[2] = 1;
+	imu_ekf->dt = DT;
+	imu_ekf->use_mag = 1;
+
 
 	//Start the GPS thread, flash the LED's if GPS has a fix
 	if(flight_config->enable_gps)
@@ -152,9 +160,20 @@ int initialize_flight_program(flyMS_threads_t *flyMS_threads,
 	}
 	//Should be disabled by default but we don't want to be pumping 5V into our BEC ESC output
 	rc_disable_servo_power_rail();
-	sleep(2); //wait for the IMU to level off
 	return 0;
 }
+
+void updateImuEkf(imu_ekf_t *imu_ekf, rc_imu_data_t *imu_data)
+{
+
+	IMU_EKF(imu_ekf->P,imu_ekf->q,
+			imu_ekf->Q,
+			imu_data->gyro,imu_data->raw_accel,imu_data->mag,
+			imu_ekf->dt,imu_ekf->init,imu_ekf->use_mag);
+	if (imu_ekf->init == 1)
+		imu_ekf->init = 0;
+}
+
 
 void init_fusion(fusion_data_t* fusion, filters_t *filters)
 {

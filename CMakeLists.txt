@@ -21,8 +21,11 @@ include(lib/robotics_cape/CMakeLists.txt)
 #Build the Accel/Gyro Fusion library
 include(lib/Fusion/CMakeLists.txt)
 
-#Build the Accel/Gyro Fusion library
+#Build the Digital Filter library
 include(lib/filter/CMakeLists.txt)
+
+#Build the IMU_EKF library
+include(lib/IMU_EKF/CMakeLists.txt)
 
 #Get the flyMS sources
 include(src/flyMS/CMakeLists.txt)

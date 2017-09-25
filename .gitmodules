@@ -4,3 +4,6 @@
 [submodule "lib/Fusion"]
 	path = lib/Fusion
 	url = git@github.com:msardonini/Fusion.git
+[submodule "lib/IMU_EKF"]
+	path = lib/IMU_EKF
+	url = git@github.com:msardonini/IMU_EKF.git

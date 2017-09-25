@@ -55,6 +55,7 @@ extern "C" {
 #include "flyMS.h"
 #include "ekf2.h"
 #include "pru_handler_client.h"
+#include "IMU_EKF.h"
 
 
 void* flight_core(void * ptr);
@@ -77,6 +78,7 @@ flyMS_threads_t			flyMS_threads;
 uint16_t 				imu_err_count;
 rc_imu_data_t			imu_data;			//Struct to relay all IMU info from driver to here
 ekf_filter_t		 	ekf_filter;
+imu_ekf_t				imu_ekf;
 
 void * setpoint_manager(void* ptr)
 {
@@ -228,7 +230,7 @@ void* flight_core(void* ptr){
 			imu_data.accel[i] = update_filter(filters.accel_lpf[i],imu_data.accel[i]);
 
 		}
-		updateFusion(&imu_data, &fusion);
+		updateImuEkf(&imu_ekf, &imu_data);
 
 		//Bring 3 axes of accel, gyro and angle data in to this program
 		for (i=0;i<3;i++) 
@@ -646,7 +648,8 @@ int main(int argc, char *argv[]){
                                &transform,
                                &GPS_data,
                                &ekf_filter,
-                               &fusion))
+                               &fusion,
+                               &imu_ekf));
 	{
 		flyMS_shutdown( &logger, 
 						&GPS_data, 

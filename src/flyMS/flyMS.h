@@ -124,6 +124,20 @@ typedef struct fusion_data_t
 	FusionBias fusionBias;
 }fusion_data_t;
 
+typedef struct imu_ekf_t
+{
+	float P[16];
+	float q[4];
+	float Q[3];
+    float omega[3];
+    float accel[3]; 
+    float mag[3]; 
+    float dt;
+    signed char init;
+    signed char use_mag;
+}imu_ekf_t;
+
+
 typedef struct setpoint_t{
 	float	pitch_ref, roll_ref, yaw_ref[2];	// Reference (Desired) Position
 	float	filt_pitch_ref, filt_roll_ref;		// LPF of pitch and roll (because they are a func of yaw)
@@ -232,7 +246,7 @@ typedef struct led_thread_t{
 	uint8_t GPS_fix_check;	
 }led_thread_t;
 
-
+void updateImuEkf(imu_ekf_t *imu_ekf, rc_imu_data_t *imu_data);
 int ready_check();
 void zero_escs();
 void* barometer_monitor();
@@ -242,16 +256,16 @@ void* LED_thread(void *ptr);
 void init_esc_hardware();
 void* quietEscs(void *ptr);
 int initialize_flight_program(flyMS_threads_t *flyMS_threads,
-                                core_config_t *flight_config,
-                                logger_t *logger,
-                                filters_t *filters,
-                                pru_client_data_t *pru_client_data,
-                                rc_imu_data_t *imu_data,
-                                transform_matrix_t *transform,
-                                GPS_data_t *GPS_data,
-                                ekf_filter_t *ekf_filter,
-                                fusion_data_t *fusion);
-
+				core_config_t *flight_config,
+				logger_t *logger,
+				filters_t *filters,
+				pru_client_data_t *pru_client_data,
+				rc_imu_data_t *imu_data,
+				transform_matrix_t *transform,
+				GPS_data_t *GPS_data,
+				ekf_filter_t *ekf_filter,
+				fusion_data_t *fusion,
+				imu_ekf_t *imu_ekf);
 
 int flyMS_shutdown(			logger_t *logger, 
 					GPS_data_t *GPS_data, 
