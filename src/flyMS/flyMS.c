@@ -167,7 +167,7 @@ void * setpoint_manager(void* ptr)
 		setpoint.yaw_ref[1]=setpoint.yaw_ref[0];
 		setpoint.yaw_ref[0]=setpoint.yaw_ref[1]+(setpoint.yaw_rate_ref[0]+setpoint.yaw_rate_ref[1])*DT/2;
 		
-		usleep(5000); //Run at 200Hz
+		usleep(DT_US); //Run at 200Hz
 	}	
 	return NULL;
 }
@@ -179,8 +179,8 @@ void* flight_core(void* ptr){
 	//control_variables_t *STATE = (control_variables_t*)ptr;
 	//printf("pointer value %f\n", STATE->pitch);
 	//Keep an i for loops
-	static uint8_t i=0, i1=0;
-	
+	static uint8_t i=0, i1=0, first_iteration_count=0;
+
 	//Variables to Initialize things upon startup
 	static uint8_t First_Iteration=1, First_Iteration_GPS=1;
 	
@@ -218,22 +218,25 @@ void* flight_core(void* ptr){
 		if(rc_read_accel_data(&imu_data)<0){
 			printf("read accel data failed\n");
 		}
+	//	if(rc_read_gyro_data(&imu_data)<0){
+	//		printf("read gyro data failed\n");
+	//	}
 		if(rc_read_mag_data(&imu_data)<0){
 			printf("read mag data failed\n");
 		}
-
+/*
 		for (i = 0; i < 3; i++)
 		{
 			imu_data.gyro[i] = update_filter(filters.gyro_lpf[i],imu_data.gyro[i]);
 			imu_data.accel[i] = update_filter(filters.accel_lpf[i],imu_data.accel[i]);
 
 		}
-		updateFusion(&imu_data, &fusion);
+	*/	updateFusion(&imu_data, &fusion);
 
 		//Bring 3 axes of accel, gyro and angle data in to this program
 		for (i=0;i<3;i++) 
 		{	
-			transform.dmp_imu.d[i] = fusion.eulerAngles.array[i];
+			transform.dmp_imu.d[i] = fusion.eulerAngles.array[i] * DEG_TO_RAD;
 			transform.gyro_imu.d[i] = imu_data.gyro[i] * DEG_TO_RAD;
 			transform.accel_imu.d[i] = imu_data.accel[i];
 		}
@@ -242,8 +245,20 @@ void* flight_core(void* ptr){
 		rc_matrix_times_col_vec(transform.IMU_to_drone_gyro, transform.gyro_imu, &transform.gyro_drone);
 		rc_matrix_times_col_vec(transform.IMU_to_drone_accel, transform.accel_imu, &transform.accel_drone);
 
+	//	control.pitch 			= fusion.eulerAngles.angle.pitch;
+	//	control.roll 			= fusion.eulerAngles.angle.roll;
+	//	control.yaw[1] 			= control.yaw[0];	
+	//	control.yaw[0] 			= fusion.eulerAngles.angle.yaw + control.num_wraps*2*M_PI;
+		
+	//	if(fabsf(control.yaw[0] - control.yaw[1])  > 5)
+	//	{
+	//		if(control.yaw[0] > control.yaw[1]) control.num_wraps--;
+	//		if(control.yaw[0] < control.yaw[1]) control.num_wraps++;
+	//	}
+	//	control.yaw[0]= fusion.eulerAngles.angle.yaw + control.num_wraps*2*M_PI;	
+		
+		
 		control.pitch 			= transform.dmp_drone.d[0];
-		//control.pitch 			= dmp_drone.d[0];
 		control.roll 			= transform.dmp_drone.d[1];
 		control.compass_heading = imu_data.compass_heading_raw;	
 		control.yaw[1] 			= control.yaw[0];	
@@ -254,13 +269,19 @@ void* flight_core(void* ptr){
 			if(control.yaw[0] > control.yaw[1]) control.num_wraps--;
 			if(control.yaw[0] < control.yaw[1]) control.num_wraps++;
 		}
-		control.yaw[0]= transform.dmp_drone.d[2] + control.num_wraps*2*M_PI;	
+		control.yaw[0]= transform.dmp_drone.d[2] + control.num_wraps*2*M_PI;
 		control.d_pitch			= transform.gyro_drone.d[0];
 		control.d_roll			= transform.gyro_drone.d[1];
 		control.d_yaw			= transform.gyro_drone.d[2];
-	
-		printf("d_pitch %f\n",control.d_pitch);
-	
+		
+		//Allow some time for imu to settle
+		if (first_iteration_count < 150)
+		{
+			first_iteration_count++;
+			continue;
+		}	
+
+
 		if(First_Iteration){
 			setpoint.yaw_ref[0]=control.yaw[0];
 			First_Iteration=0;

@@ -48,9 +48,9 @@ either expressed or implied, of the FreeBSD Project.
 #define BMP_CHECK_HZ	1
 
 #define SAMPLE_RATE	100
-#define DT 0.01
+#define DT 0.01f
 #define DT_US 10000
-#define MICROTESLA_TO_GAUSS 0.01
+#define MICROTESLA_TO_GAUSS 0.01f
 #define Integrator_TH 0.55
 #define MAX_PITCH_RANGE 0.666 // in radians
 #define MAX_ROLL_RANGE 0.666 // in radians

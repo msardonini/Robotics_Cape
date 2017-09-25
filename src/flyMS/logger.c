@@ -137,8 +137,6 @@ int start_core_log(logger_t *logger){
 	memset(GPS_filepath,0,strlen(GPS_filepath));
 	memset(Error_filepath,0,strlen(Error_filepath));
 
-	printf("string length is %d", strlen(FLYMS_ROOT_DIR));
-
 	char n[6];
 	int m=1;
 	struct stat st = {0};

@@ -108,12 +108,12 @@ int main(int argc, char *argv[]){
 	fprintf(fd,"time,roll,pitch,yaw\n");
 
 	FusionAhrs  fusionAhrs;
-	FusionAhrsInitialise(&fusionAhrs, 8.0f, 0.0f, 70.0f); // valid magnetic field defined as 20 uT to 70 uT
+	FusionAhrsInitialise(&fusionAhrs, 0.5f, 0.0f, 70.0f); // valid magnetic field defined as 20 uT to 70 uT
 	
 	FusionBias fusionBias;
 	init_fusion(&fusionBias);
 
-	digital_filter_t *accel_lpf[3];
+	//digital_filter_t *accel_lpf[3];
 
 	// int i = 0;
 	// for (i = 0; i < 3; i++)
@@ -212,9 +212,9 @@ int main(int argc, char *argv[]){
 			// .axis.x = update_filter(accel_lpf[0],data.raw_accel[0]/9.81f),
 			// .axis.y = update_filter(accel_lpf[1],data.raw_accel[1]/9.81f),
 			// .axis.z = update_filter(accel_lpf[2],data.raw_accel[2]/9.81f),
-			.axis.x = data.raw_accel[0]/9.81f,
-			.axis.y = data.raw_accel[1]/9.81f,
-			.axis.z = data.raw_accel[2]/9.81f,
+			.axis.x = data.accel[0]/9.81f,
+			.axis.y = data.accel[1]/9.81f,
+			.axis.z = data.accel[2]/9.81f,
 		}; // literal values should be replaced with sensor measurements
 
 		const FusionVector3 magnetometer = 
@@ -235,9 +235,10 @@ int main(int argc, char *argv[]){
 		//Set time at the end of loop
 		gettimeofday(&end_loop,NULL);
 		end_loop_usec = end_loop.tv_sec*(uint64_t)1E6 + end_loop.tv_usec;
-		sleep_time = (uint64_t)5000 - (end_loop_usec - start_loop_usec);
+		sleep_time = (uint64_t)10000 - (end_loop_usec - start_loop_usec);
 		//sleep for the elapsed time
-		rc_usleep(sleep_time);
+		if (sleep_time < 10000)
+			rc_usleep(sleep_time);
 	}
 	fflush(stdout);
 	rc_power_off_imu();

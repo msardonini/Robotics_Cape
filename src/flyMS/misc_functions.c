@@ -52,7 +52,7 @@ extern "C" {
 
 
 //Local Variables and Functions
-void init_fusion(fusion_data_t *fusion, filters_t *filters);
+void init_fusion(fusion_data_t *fusion, filters_t *filters, rc_imu_data_t *imu_data);
 uint8_t logger_running = 0;
 
 int initialize_flight_program(flyMS_threads_t *flyMS_threads,
@@ -135,8 +135,8 @@ int initialize_flight_program(flyMS_threads_t *flyMS_threads,
 
 	init_rotation_matrix(transform, flight_config); //Initialize the rotation matrix from IMU to drone
 	initialize_filters(filters, flight_config);
-
-	init_fusion(fusion, filters);
+sleep(2);
+	init_fusion(fusion, filters, imu_data);
 
 	//Start the GPS thread, flash the LED's if GPS has a fix
 	if(flight_config->enable_gps)
@@ -152,37 +152,40 @@ int initialize_flight_program(flyMS_threads_t *flyMS_threads,
 	}
 	//Should be disabled by default but we don't want to be pumping 5V into our BEC ESC output
 	rc_disable_servo_power_rail();
-	sleep(2); //wait for the IMU to level off
 	return 0;
 }
 
-void init_fusion(fusion_data_t* fusion, filters_t *filters)
+
+int init_fusion_bias(FusionBias *fusionBias)
 {
-	FusionAhrsInitialise(&fusion->fusionAhrs, 8.0f, 0.0f, 70.0f); // valid magnetic field defined as 20 uT to 70 uT
-	int i, j;
-	rc_imu_data_t imu_data;
+	rc_imu_data_t data; //struct to hold new data
+	// print gyro data
+	if(rc_read_gyro_data(&data)<0){
+		printf("read gyro data failed\n");
+	}
+    FusionBiasInitialise(fusionBias, 50, DT); // assumes 100 Hz sample rate
+    FusionBiasUpdate(fusionBias, data.gyro[0], data.gyro[1], data.gyro[2]); // literal values should be replaced with sensor measurements
+    return 0;
+}
+
+void init_fusion(fusion_data_t* fusion, filters_t *filters, rc_imu_data_t *imu_data)
+{
+	FusionAhrsInitialise(&fusion->fusionAhrs, 0.75f, 0.0f, 70.0f); // valid magnetic field defined as 20 uT to 70 uT
+//	int i;
+	
+//	FusionBias fusionBias;
+//	init_fusion_bias(&fusionBias);	
 
 	//Give Imu data to the fusion alg for initialization purposes
-	for (i = 0; i < (int)3.0*SAMPLE_RATE; i++)
+	while (FusionAhrsIsInitialising(&fusion->fusionAhrs))
 	{
-		if(rc_read_accel_data(&imu_data)<0){
+		if(rc_read_accel_data(imu_data)<0){
 			printf("read accel data failed\n");
 		}
-//		if(rc_read_gyro_data(&imu_data)<0){
-//			printf("read gyro data failed\n");
-//		}
-		if(rc_read_mag_data(&imu_data)<0){
+		if(rc_read_mag_data(imu_data)<0){
 			printf("read mag data failed\n");
 		}
-
-                 for (j = 0; j < 3; j++)
-                 {
-                         imu_data.gyro[j] = update_filter(filters->gyro_lpf[j],imu_data.gyro[j]);
-                         imu_data.accel[j] = update_filter(filters->accel_lpf[j],imu_data.accel[j])    ;
- 
-                 }
-
-		updateFusion(&imu_data, fusion);
+		updateFusion(imu_data, fusion);
 		rc_usleep(DT_US);
 	}
 
@@ -202,9 +205,9 @@ void updateFusion(rc_imu_data_t *imu_data, fusion_data_t *fusion)
 		// .axis.x = update_filter(accel_lpf[0],imu_data->raw_accel[0]/9.81f),
 		// .axis.y = update_filter(accel_lpf[1],imu_data->raw_accel[1]/9.81f),
 		// .axis.z = update_filter(accel_lpf[2],imu_data->raw_accel[2]/9.81f),
-		.axis.x = imu_data->raw_accel[0]/9.81f,
-		.axis.y = imu_data->raw_accel[1]/9.81f,
-		.axis.z = imu_data->raw_accel[2]/9.81f,
+		.axis.x = imu_data->accel[0]/9.81f,
+		.axis.y = imu_data->accel[1]/9.81f,
+		.axis.z = imu_data->accel[2]/9.81f,
 	}; 
 
 	const FusionVector3 magnetometer = 
@@ -214,7 +217,8 @@ void updateFusion(rc_imu_data_t *imu_data, fusion_data_t *fusion)
 		.axis.z = imu_data->mag[2],
 	};
 	
-	FusionAhrsUpdate(&fusion->fusionAhrs, gyroscope, accelerometer, magnetometer, DT); // assumes 100 Hz sample rate												
+	FusionAhrsUpdate(&fusion->fusionAhrs, gyroscope, accelerometer, magnetometer, DT);												
+//	FusionAhrsUpdate(&fusion->fusionAhrs, gyroscope, accelerometer, FUSION_VECTOR3_ZERO, DT);												
 	fusion->eulerAngles = FusionQuaternionToEulerAngles(fusion->fusionAhrs.quaternion);
 }
 
