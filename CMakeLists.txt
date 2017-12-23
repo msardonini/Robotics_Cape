@@ -11,6 +11,8 @@ add_compile_options(
 	-Wno-unused-local-typedefs
 	-Wno-unused-parameter
 	)
+
+add_definitions(-DFLYMS_ROOT_DIR=\"${CMAKE_CURRENT_SOURCE_DIR}\")
 	
 #Build the PX4 estimation control library
 include(lib/ecl/CMakeLists.txt)
@@ -23,6 +25,9 @@ include(lib/Fusion/CMakeLists.txt)
 
 #Build the Accel/Gyro Fusion library
 include(lib/filter/CMakeLists.txt)
+
+#Get the do_nothing sources
+include(src/do_nothing/CMakeLists.txt)
 
 #Get the flyMS sources
 include(src/flyMS/CMakeLists.txt)
@@ -57,29 +62,14 @@ include(src/rc_calibrate_mag/CMakeLists.txt)
 #Build rc_calibrate_dsm
 include(src/rc_calibrate_dsm/CMakeLists.txt)
 
-
-add_definitions(-DFLYMS_ROOT_DIR=\"${CMAKE_CURRENT_SOURCE_DIR}\")
-
-#Build flyMS
-add_executable(flyMS ${SRCS_FLYMS})
-
-#Link Needed Libraries
-find_library(ECL_LIB ecl)
-find_library(ROBOTICSCAPE_LIB roboticscape)
-target_link_libraries(flyMS m)
-target_link_libraries(flyMS rt)
-target_link_libraries(flyMS pthread)
-target_link_libraries(flyMS ecl)
-target_link_libraries(flyMS roboticscape)
-target_link_libraries(flyMS filter)
-target_link_libraries(flyMS Fusion)
-
 #Define install directory
 install(TARGETS flyMS DESTINATION /usr/bin/)
 install(TARGETS pru_handler DESTINATION /usr/bin/)
 install(TARGETS roboticscape DESTINATION /usr/lib/)
 install(TARGETS ecl DESTINATION /usr/lib/)
 install(TARGETS Fusion DESTINATION /usr/lib)
+install(TARGETS filter DESTINATION /usr/lib)
+install(TARGETS do_nothing DESTINATION /usr/bin)
 
 install(TARGETS rc_calibrate_dsm DESTINATION /usr/bin/)
 install(TARGETS rc_calibrate_gyro DESTINATION /usr/bin/)

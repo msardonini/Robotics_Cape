@@ -101,10 +101,31 @@ void * setpoint_manager(void* ptr)
 			//If Specified by the config file, convert from Drone Coordinate System to User Coordinate System
 			if (flight_config.static_PR_ref)
 			{				
+				//Set roll reference value
+				//DSM2 Receiver is inherently positive to the left
+				setpoint.roll_ref= -rc_get_dsm_ch_normalized(2)*MAX_ROLL_RANGE;	
+
+				//Set Yaw, RC Controller acts on Yaw velocity, save a history for integration
+				//Apply the integration outside of current if statement, needs to run at 200Hz
+				setpoint.yaw_rate_ref[1]=setpoint.yaw_rate_ref[0];		
+				setpoint.yaw_rate_ref[0]=rc_get_dsm_ch_normalized(4)*MAX_YAW_RATE;
+
 				float P_R_MAG=pow(pow(setpoint.roll_ref,2)+pow(setpoint.pitch_ref,2),0.5);
 				float Theta_Ref=atan2f(setpoint.pitch_ref,setpoint.roll_ref);
 				setpoint.roll_ref =P_R_MAG*cos(Theta_Ref+control.yaw[0]-control.yaw_ref_offset);
 				setpoint.pitch_ref=P_R_MAG*sin(Theta_Ref+control.yaw[0]-control.yaw_ref_offset);
+			}
+			else	//This is flying FPV mode
+			{
+				//Set roll reference value
+				//DSM2 Receiver is inherently positive to the left
+				setpoint.roll_ref= -rc_get_dsm_ch_normalized(2)*MAX_ROLL_RANGE;	
+
+				//Set Yaw, RC Controller acts on Yaw velocity, save a history for integration
+				//Apply the integration outside of current if statement, needs to run at 200Hz
+				setpoint.yaw_rate_ref[1]=setpoint.yaw_rate_ref[0];		
+				setpoint.yaw_rate_ref[0]=rc_get_dsm_ch_normalized(4)*MAX_YAW_RATE;
+
 			}
 						
 			//Set Yaw, RC Controller acts on Yaw velocity, save a history for integration
@@ -387,9 +408,9 @@ void* flight_core(void* ptr){
 //		control.d_pitch_f = update_filter(filters.LPF_d_pitch,control.d_pitch);			
 //		control.d_roll_f = update_filter(filters.LPF_d_roll,control.d_roll);
 		
-		control.dpitch_setpoint = update_filter(filters.pitch_PD, setpoint.filt_pitch_ref - control.pitch);
+		control.dpitch_setpoint = update_filter(filters.pitch_PD, setpoint.pitch_ref - control.pitch);
 		
-		control.droll_setpoint = update_filter(filters.roll_PD, setpoint.filt_roll_ref - control.roll);
+		control.droll_setpoint = update_filter(filters.roll_PD, setpoint.roll_ref - control.roll);
 		
 		//Apply the PD Controllers 
 		control.upitch = update_filter(filters.pitch_rate_PD,control.dpitch_setpoint - control.d_pitch);
@@ -544,21 +565,21 @@ void* flight_core(void* ptr){
 		//	printf("Aux %2.1f ", setpoint.Aux[0]);
 		//	printf("function: %f",rc_get_dsm_ch_normalized(6));
 		//	printf("num wraps %d ",control.num_wraps);
-		//	printf(" Pitch_ref %2.2f ", setpoint.filt_pitch_ref);
-		//	printf(" Roll_ref %2.2f ", setpoint.filt_roll_ref);
-		//	printf(" Yaw_ref %2.2f ", setpoint.yaw_ref[0]);
-			printf(" Pitch %1.2f ", control.pitch);
-			printf(" Roll %1.2f ", control.roll);
-			printf(" Yaw %2.3f ", control.yaw[0]); 
+			printf(" Pitch_ref %2.2f ", setpoint.pitch_ref);
+			printf(" Roll_ref %2.2f ", setpoint.roll_ref);
+			printf(" Yaw_ref %2.2f ", setpoint.yaw_ref[0]);
+		//	printf(" Pitch %1.2f ", control.pitch);
+		//	printf(" Roll %1.2f ", control.roll);
+		//	printf(" Yaw %2.3f ", control.yaw[0]); 
 		//	printf(" Mag X %4.2f",imu_data.mag[0]);
 		//	printf(" Mag Y %4.2f",imu_data.mag[1]);
 		//	printf(" Mag Z %4.2f",imu_data.mag[2]);
-			// printf(" Pos N %2.3f ", ekf_filter.output.ned_pos[0]); 
-			// printf(" Pos E %2.3f ", ekf_filter.output.ned_pos[1]); 
-			// printf(" Pos D %2.3f ", ekf_filter.output.ned_pos[2]); 
-			printf(" DPitch %1.2f ", control.d_pitch); 
-			printf(" DRoll %1.2f ", control.d_roll);
-			printf(" DYaw %2.3f ", control.d_yaw); 	
+		// 	printf(" Pos N %2.3f ", ekf_filter.output.ned_pos[0]); 
+		//	printf(" Pos E %2.3f ", ekf_filter.output.ned_pos[1]); 
+		//	printf(" Pos D %2.3f ", ekf_filter.output.ned_pos[2]); 
+		//	printf(" DPitch %1.2f ", control.d_pitch); 
+		//	printf(" DRoll %1.2f ", control.d_roll);
+		//	printf(" DYaw %2.3f ", control.d_yaw); 	
 		//	printf(" uyaw %2.3f ", control.upitch); 		
 		//	printf(" uyaw %2.3f ", control.uroll); 		
 		//	printf(" uyaw %2.3f ", control.uyaw);
@@ -568,7 +589,7 @@ void* flight_core(void* ptr){
 		//	printf(" Pos_Lat %2.3f ", X_state_Lat1->data[0]);	
 		//	printf(" Pos_Lon %2.3f ", X_state_Lon1->data[0]);
 		//	printf("control: %d",rc_get_state());
-			printf("Baro Alt: %f ",control.baro_alt);
+		//	printf("Baro Alt: %f ",control.baro_alt);
 			fflush(stdout);
 		}
 

@@ -1,5 +1,13 @@
 #!/bin/bash
 
+
+while [ ! -f /var/run/pru_handler.pid ]
+do
+  sleep 1
+done
+
+sleep 1
+
 j="1"
 
 

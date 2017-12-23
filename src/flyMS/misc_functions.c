@@ -170,11 +170,11 @@ int init_fusion_bias(FusionBias *fusionBias)
 
 void init_fusion(fusion_data_t* fusion, filters_t *filters, rc_imu_data_t *imu_data)
 {
-	FusionAhrsInitialise(&fusion->fusionAhrs, 0.75f, 0.0f, 70.0f); // valid magnetic field defined as 20 uT to 70 uT
+	FusionAhrsInitialise(&fusion->fusionAhrs, .75f, 0.0f, 120.0f); // valid magnetic field defined as 20 uT to 70 uT
 //	int i;
 	
 //	FusionBias fusionBias;
-//	init_fusion_bias(&fusionBias);	
+	FusionBiasInitialise(&fusion->fusionBias, 25, DT);
 
 	//Give Imu data to the fusion alg for initialization purposes
 	while (FusionAhrsIsInitialising(&fusion->fusionAhrs))
@@ -216,10 +216,20 @@ void updateFusion(rc_imu_data_t *imu_data, fusion_data_t *fusion)
 		.axis.y = imu_data->mag[1],
 		.axis.z = imu_data->mag[2],
 	};
-	
+	FusionBiasUpdate(&fusion->fusionBias, imu_data->raw_gyro[0] & 0xFF, imu_data->raw_gyro[1] & 0xFF, imu_data->raw_gyro[2] & 0xFF);
 	FusionAhrsUpdate(&fusion->fusionAhrs, gyroscope, accelerometer, magnetometer, DT);												
 //	FusionAhrsUpdate(&fusion->fusionAhrs, gyroscope, accelerometer, FUSION_VECTOR3_ZERO, DT);												
 	fusion->eulerAngles = FusionQuaternionToEulerAngles(fusion->fusionAhrs.quaternion);
+	
+	float mag, theta;
+	mag = powf(powf(fusion->eulerAngles.angle.pitch,2.0f)+powf(fusion->eulerAngles.angle.roll,2.0f),0.5f);
+	theta = atan2f(fusion->eulerAngles.angle.roll, fusion->eulerAngles.angle.pitch);
+	
+	fusion->eulerAngles.angle.pitch = mag * cosf(theta-fusion->eulerAngles.angle.yaw*DEG_TO_RAD);
+	fusion->eulerAngles.angle.roll = mag * sinf(theta-fusion->eulerAngles.angle.yaw*DEG_TO_RAD);
+	int i;
+	for (i = 0; i < 3; i++)
+		fusion->eulerAngles.array[i]*=-1.0f;
 }
 
 uint64_t get_usec_timespec(struct timespec *tv)
