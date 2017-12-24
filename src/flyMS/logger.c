@@ -46,7 +46,6 @@ extern "C"
 #include <fcntl.h>
 #include "roboticscape.h"
 #include "logger.h"
-#include "flyMS.c"
 
 /************************************************************************
 * 	print_entry()
@@ -58,9 +57,9 @@ int log_data(control_variables_t *control, setpoint_t *setpoint)
 		control->logger.new_entry.pitch			= control->euler[1];	
 		control->logger.new_entry.roll			= control->euler[0];
 		control->logger.new_entry.yaw			= control->euler[2];
-		control->logger.new_entry.euler_rate[1]	= control->euler_rate[1];	
-		control->logger.new_entry.euler_rate[1]	= control->euler_rate[1];
-		control->logger.new_entry.euler_rate[2]	= control->euler_rate[2];
+		control->logger.new_entry.d_pitch		= control->euler_rate[0];	
+		control->logger.new_entry.d_roll		= control->euler_rate[1];
+		control->logger.new_entry.d_yaw			= control->euler_rate[2];
 		control->logger.new_entry.u_1			= control->u[0];
 		control->logger.new_entry.u_2			= control->u[1];
 		control->logger.new_entry.u_3			= control->u[2];
@@ -69,13 +68,13 @@ int log_data(control_variables_t *control, setpoint_t *setpoint)
 		control->logger.new_entry.upitch		= control->upitch;	
 		control->logger.new_entry.uroll			= control->uroll;
 		control->logger.new_entry.uyaw			= control->uyaw;
-		control->logger.new_entry.pitch_ref		= setpoint->.pitch_ref;
-		control->logger.new_entry.roll_ref		= setpoint->.roll_ref;
-		control->logger.new_entry.yaw_ref		= setpoint->.yaw_ref[0];
-		control->logger.new_entry.yaw_rate_ref	= setpoint->.yaw_rate_ref[0];
-		control->logger.new_entry.Aux			= setpoint->.Aux[0];
-		control->logger.new_entry.lat_error		= control->lat_error;
-		control->logger.new_entry.lon_error		= control->lon_error;
+		control->logger.new_entry.pitch_ref		= setpoint->pitch_ref;
+		control->logger.new_entry.roll_ref		= setpoint->roll_ref;
+		control->logger.new_entry.yaw_ref		= setpoint->yaw_ref[0];
+		control->logger.new_entry.yaw_rate_ref	= setpoint->yaw_rate_ref[0];
+		control->logger.new_entry.Aux			= setpoint->Aux[0];
+		// control->logger.new_entry.lat_error		= control->lat_error;
+		// control->logger.new_entry.lon_error		= control->lon_error;
 		control->logger.new_entry.accel_x		= control->transform.accel_drone.d[0];
 		control->logger.new_entry.accel_y		= control->transform.accel_drone.d[1];
 		control->logger.new_entry.accel_z		= control->transform.accel_drone.d[2];
@@ -87,22 +86,20 @@ int log_data(control_variables_t *control, setpoint_t *setpoint)
 		control->logger.new_entry.ned_vel_x		= control->ekf_filter.output.ned_vel[0];
 		control->logger.new_entry.ned_vel_y		= control->ekf_filter.output.ned_vel[1];
 		control->logger.new_entry.ned_vel_z		= control->ekf_filter.output.ned_vel[2];
-		control->logger.new_entry.mag_x			= imu_data.mag[0];
-		control->logger.new_entry.mag_y			= imu_data.mag[1];
-		control->logger.new_entry.mag_z			= imu_data.mag[2];
+		control->logger.new_entry.mag_x			= control->mag[0];
+		control->logger.new_entry.mag_y			= control->mag[1];
+		control->logger.new_entry.mag_z			= control->mag[2];
 		control->logger.new_entry.compass_heading= control->compass_heading;
 		//control->logger.new_entry.v_batt			= rc_dc_jack_voltage();
 		log_core_data(&control->logger.core_logger, &control->logger.new_entry);
 	return 0;
 }
 
-
-
 /************************************************************************
 * 	print_entry()
 *	write the contents of one entry to the console
 ************************************************************************/
-static int print_entry(core_logger_t* logger, core_log_entry_t* entry){	
+int print_entry(core_logger_t* logger, core_log_entry_t* entry){	
 	
 	#define X(type, fmt, name) printf("%s " fmt "\n", #name, entry->name);
 	CORE_LOG_TABLE
@@ -116,7 +113,7 @@ static int print_entry(core_logger_t* logger, core_log_entry_t* entry){
 * 	log_core_data()
 *	called by an outside function to quickly add new data to local buffer
 ************************************************************************/
-static int log_core_data(core_logger_t* log, core_log_entry_t* new_entry){
+int log_core_data(core_logger_t* log, core_log_entry_t* new_entry){
 	if(log->needs_writing && log->buffer_pos >= CORE_LOG_BUF_LEN){
 		printf("warning, both logging buffers full\n");
 		return -1;
@@ -139,7 +136,7 @@ static int log_core_data(core_logger_t* log, core_log_entry_t* new_entry){
 * 	write_core_log_entry()
 *	append a single entry to the log file
 ************************************************************************/
-static int write_core_log_entry(FILE* f, core_log_entry_t* entry){
+int write_core_log_entry(FILE* f, core_log_entry_t* entry){
 	#define X(type, fmt, name) fprintf(f, fmt "," , entry->name);
     CORE_LOG_TABLE
 	#undef X	

@@ -55,6 +55,7 @@ extern "C" {
 #include "flyMS.h"
 #include "ekf2.h"
 #include "pru_handler_client.h"
+#include "imu_handler.h"
 
 
 void* flight_core(void * ptr);
@@ -71,7 +72,7 @@ filters_t				filters;			//Struct to contain all the filters
 pru_client_data_t		pru_client_data;
 flyMS_threads_t			flyMS_threads;
 uint16_t 				imu_err_count;
-rc_imu_data_t			imu_data;			//Struct to relay all IMU info from driver to here
+
 
 void * setpoint_manager(void* ptr)
 {
@@ -195,12 +196,12 @@ void* flight_core(void* ptr){
 	//control_variables_t *STATE = (control_variables_t*)ptr;
 	//printf("pointer value %f\n", STATE->pitch);
 	//Keep an i for loops
-	static uint8_t i=0, i1=0, first_iteration_count=0;
+	static uint8_t i=0, first_iteration_count=0;
 
 	//Variables to Initialize things upon startup
 	static uint8_t First_Iteration=1, First_Iteration_GPS=1;
 	
-	static float initial_alt = 0;
+	// float initial_alt = 0;
 	//Initialize some variables if it is the first iteration
 	if(First_Iteration){
 		
@@ -210,7 +211,7 @@ void* flight_core(void* ptr){
 		setpoint.Aux[0] = 1; control.kill_switch[0]=1;
 		function_control.dsm2_timeout=0;
 		rc_read_barometer();
-		initial_alt = rc_bmp_get_altitude_m();
+		// initial_alt = rc_bmp_get_altitude_m();
 		rc_set_state(RUNNING);
 
 		fprintf(control.logger.GPS_logger,"time,deg_lon,min_lon,deg_lat,min_lat,speed,direction,gps_alt,hdop,fix\n");
@@ -231,7 +232,7 @@ void* flight_core(void* ptr){
 		/******************************************************************
 					Read, Parse, and Translate IMU data for Flight		  *
 		******************************************************************/
-		imu_handler(&control, &imu_data);
+		imu_handler(&control);
 
 		//Allow some time for imu to settle
 		if (first_iteration_count < 150)
@@ -427,15 +428,15 @@ void* flight_core(void* ptr){
 		//	printf("Aux %2.1f ", setpoint.Aux[0]);
 		//	printf("function: %f",rc_get_dsm_ch_normalized(6));
 		//	printf("num wraps %d ",control.num_wraps);
-			printf(" Pitch_ref %2.2f ", setpoint.pitch_ref);
-			printf(" Roll_ref %2.2f ", setpoint.roll_ref);
-			printf(" Yaw_ref %2.2f ", setpoint.yaw_ref[0]);
-		//	printf(" Pitch %1.2f ", control.euler[1]);
-		//	printf(" Roll %1.2f ", control.euler[0]);
-		//	printf(" Yaw %2.3f ", control.euler[2]); 
-		//	printf(" Mag X %4.2f",imu_data.mag[0]);
-		//	printf(" Mag Y %4.2f",imu_data.mag[1]);
-		//	printf(" Mag Z %4.2f",imu_data.mag[2]);
+			// printf(" Pitch_ref %2.2f ", setpoint.pitch_ref);
+			// printf(" Roll_ref %2.2f ", setpoint.roll_ref);
+			// printf(" Yaw_ref %2.2f ", setpoint.yaw_ref[0]);
+			printf(" Roll %1.2f ", control.euler[0]);
+			printf(" Pitch %1.2f ", control.euler[1]);
+			printf(" Yaw %2.3f ", control.euler[2]); 
+		//	printf(" Mag X %4.2f",control.mag[0]);
+		//	printf(" Mag Y %4.2f",control.mag[1]);
+		//	printf(" Mag Z %4.2f",control.mag[2]);
 		// 	printf(" Pos N %2.3f ", control.ekf_filter.output.ned_pos[0]); 
 		//	printf(" Pos E %2.3f ", control.ekf_filter.output.ned_pos[1]); 
 		//	printf(" Pos D %2.3f ", control.ekf_filter.output.ned_pos[2]); 
@@ -472,15 +473,15 @@ void* flight_core(void* ptr){
 			//	printf("%s",GPS_data.VTGbuf);
 
 			if (First_Iteration_GPS==1  && GPS_data.GPS_fix==1){
-				control.initial_pos_lat=GPS_data.meters_lat;
-				control.initial_pos_lon=GPS_data.meters_lon;
+				// control.initial_pos_lat=GPS_data.meters_lat;
+				// control.initial_pos_lon=GPS_data.meters_lon;
 				First_Iteration_GPS=0;
 				GPS_data.GPS_fix_check=1;
 				printf("First Iteration GPS\n");
 			}
 			if(GPS_data.HDOP<4 && GPS_data.GPS_fix==1){
-				GPS_data.pos_lat=GPS_data.meters_lat-control.initial_pos_lat;
-				GPS_data.pos_lon=GPS_data.meters_lon-control.initial_pos_lon;
+				// GPS_data.pos_lat=GPS_data.meters_lat-control.initial_pos_lat;
+				// GPS_data.pos_lon=GPS_data.meters_lon-control.initial_pos_lon;
 			}
 
 			control.ekf_filter.input.gps_updated = 1;

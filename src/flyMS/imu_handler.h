@@ -50,7 +50,7 @@ either expressed or implied, of the FreeBSD Project.
 			5. Sends data to the EKF for position control
 
 ************************************************************************/
-int imu_handler(control_variables_t *control, imu_data_t *imu_data);
+int imu_handler(control_variables_t *control);
 
 
 

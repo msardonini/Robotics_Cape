@@ -31,89 +31,71 @@ either expressed or implied, of the FreeBSD Project.
 #pragma once
 #include <stdlib.h>
 #include <stdio.h>
-#include "flyMS.h"
 
 #ifndef LOGGER_H
 #define LOGGER_H
 
  
 #define CORE_LOG_TABLE \
-    X(float,  "%f",	 time			) \
-    X(float,  "%f",	 roll			) \
-    X(float,  "%f",	 pitch			) \
-    X(float,  "%f",	 yaw			) \
-	X(float,  "%f",	 d_roll			) \
-    X(float,  "%f",	 d_pitch		) \
-    X(float,  "%f",	 d_yaw			) \
-	X(float,  "%f",	 u_1			) \
-    X(float,  "%f",	 u_2			) \
-    X(float,  "%f",	 u_3			) \
-	X(float,  "%f",	 u_4			) \
-    X(float,  "%f",	 throttle		) \
-    X(float,  "%f",	 upitch			) \
-	X(float,  "%f",	 uroll			) \
-    X(float,  "%f",	 uyaw			) \
-    X(float,  "%f",	 pitch_ref		) \
-    X(float,  "%f",	 roll_ref		) \
-    X(float,  "%f",	 yaw_ref		) \
-    X(float,  "%f",	 yaw_rate_ref	) \
-    X(float,  "%f",	 Aux			) \
-    X(float,  "%f",	 lat_error		) \
-    X(float,  "%f",	 lon_error		) \
-    X(float,  "%f",	 kalman_lat		) \
-    X(float,  "%f",	 kalman_lon		) \
-    X(float,  "%f",	 accel_x		) \
+    X(float,  "%f",  time           ) \
+    X(float,  "%f",  roll           ) \
+    X(float,  "%f",  pitch          ) \
+    X(float,  "%f",  yaw            ) \
+    X(float,  "%f",  d_roll         ) \
+    X(float,  "%f",  d_pitch        ) \
+    X(float,  "%f",  d_yaw          ) \
+    X(float,  "%f",  u_1            ) \
+    X(float,  "%f",  u_2            ) \
+    X(float,  "%f",  u_3            ) \
+    X(float,  "%f",  u_4            ) \
+    X(float,  "%f",  throttle       ) \
+    X(float,  "%f",  upitch         ) \
+    X(float,  "%f",  uroll          ) \
+    X(float,  "%f",  uyaw           ) \
+    X(float,  "%f",  pitch_ref      ) \
+    X(float,  "%f",  roll_ref       ) \
+    X(float,  "%f",  yaw_ref        ) \
+    X(float,  "%f",  yaw_rate_ref   ) \
+    X(float,  "%f",  Aux            ) \
+    X(float,  "%f",  lat_error      ) \
+    X(float,  "%f",  lon_error      ) \
+    X(float,  "%f",  kalman_lat     ) \
+    X(float,  "%f",  kalman_lon     ) \
+    X(float,  "%f",  accel_x        ) \
     X(float,  "%f",  accel_y        ) \
-    X(float,  "%f",	 accel_z		) \
-    X(float,  "%f",	 baro_alt		) \
-    X(float,  "%f",	 v_batt			) \
+    X(float,  "%f",  accel_z        ) \
+    X(float,  "%f",  baro_alt       ) \
+    X(float,  "%f",  v_batt         ) \
     X(float,  "%f",  compass_heading) \
     X(float,  "%f",  ned_pos_x) \
     X(float,  "%f",  ned_pos_y) \
     X(float,  "%f",  ned_pos_z) \
     X(float,  "%f",  ned_vel_x) \
     X(float,  "%f",  ned_vel_y) \
-    X(float,  "%f",	 ned_vel_z) \
-    X(float,  "%f",	 mag_x) \
-    X(float,  "%f",	 mag_y) \
-    X(float,  "%f",	 mag_z)
-	
-	
+    X(float,  "%f",  ned_vel_z) \
+    X(float,  "%f",  mag_x) \
+    X(float,  "%f",  mag_y) \
+    X(float,  "%f",  mag_z)
+    
 
 #define CORE_LOG_BUF_LEN 200 //once per second is reasonable
 
 /************************************************************************
-* 	core_log_entry_t
-*	struct definition to contain single line of the log
+*   core_log_entry_t
+*   struct definition to contain single line of the log
 ************************************************************************/
 #define X(type, fmt, name) type name ;
 typedef struct core_log_entry_t { CORE_LOG_TABLE } core_log_entry_t;
 #undef X
 
+#include "flyMS_common.h"
 /************************************************************************
-* 	Global Variables
+*   Global Variables
 ************************************************************************/
-typedef struct core_logger_t{
-	long num_entries;	// number of entries logged so far
-	int buffer_pos; // position in current buffer
-	int current_buf; //0 or 1 to indicate which buffer is being filled
-	int needs_writing;
-	FILE* log_file;
-	// array of two buffers so one can fill while writing the other to file
-	core_log_entry_t log_buffer[2][CORE_LOG_BUF_LEN];
-}core_logger_t;
-
-typedef struct logger_t{
-	core_logger_t			core_logger;
-	FILE 					*logger;			//File to log data with
-	FILE 					*GPS_logger;		//File to log GPS data with
-	FILE					*Error_logger;		//File with catches errors and shutdowns
-	core_log_entry_t 		new_entry;
-}logger_t;
 
 
 /************************************************************************
-*   print_entry()
+*   log_data()
 *   populates the logger substructure and pushes it out to the logfile
 ************************************************************************/
 int log_data(control_variables_t *control, setpoint_t *setpoint);
@@ -122,20 +104,20 @@ int log_data(control_variables_t *control, setpoint_t *setpoint);
 * 	print_entry()
 *	write the contents of one entry to the console
 ************************************************************************/
-static int print_entry(core_logger_t* logger, core_log_entry_t* entry);
+int print_entry(core_logger_t* logger, core_log_entry_t* entry);
 
 
 /************************************************************************
 * 	log_core_data()
 *	called by an outside function to quickly add new data to local buffer
 ************************************************************************/
-static int log_core_data(core_logger_t* log, core_log_entry_t* new_entry);
+int log_core_data(core_logger_t* log, core_log_entry_t* new_entry);
 
 /************************************************************************
 * 	write_core_log_entry()
 *	append a single entry to the log file
 ************************************************************************/
-static int write_core_log_entry(FILE* f, core_log_entry_t* entry);
+int write_core_log_entry(FILE* f, core_log_entry_t* entry);
 
 	
 /************************************************************************

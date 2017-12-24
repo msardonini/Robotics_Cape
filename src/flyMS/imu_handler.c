@@ -39,7 +39,7 @@ extern "C" {
 
 
 //Local Functions
-static int init_fusion_bias(FusionBias *fusionBias);
+// static int init_fusion_bias(FusionBias *fusionBias);
 static void init_fusion(fusion_data_t* fusion);
 static void updateFusion(fusion_data_t *fusion);
 
@@ -55,96 +55,96 @@ rc_imu_data_t imu_data;
 			3. Unwraps the yaw value for proper PID control
 			4. Reads Barometer for altitude measurement
 			5. Sends data to the EKF for position control
-
 */
 
-int imu_handler(control_variables_t *control, imu_data_t *imu_data)
+int imu_handler(control_variables_t *control)
 {
+	int i = 0, i1 = 0;
+	/**********************************************************
+	*    				Read the Raw IMU Data     			  *
+	**********************************************************/
+	if(rc_read_accel_data(&imu_data)<0){
+		printf("read accel data failed\n");
+	}
 
-		/**********************************************************
-		*    				Read the Raw IMU Data     			  *
-		**********************************************************/
-		if(rc_read_accel_data(&imu_data)<0){
-			printf("read accel data failed\n");
-		}
+	if(rc_read_mag_data(&imu_data)<0){
+		printf("read mag data failed\n");
+	}
+
+	//Perform the data fusion to calculate pitch, roll, and yaw angles
+	updateFusion(&control->fusion);
+
+	/**********************************************************
+	*		Perform the Coordinate System Transformation	  *
+	**********************************************************/
+	for (i=0;i<3;i++) 
+	{	
+		control->transform.dmp_imu.d[i] = control->fusion.eulerAngles.array[i] * DEG_TO_RAD;
+		control->transform.gyro_imu.d[i] = imu_data.gyro[i] * DEG_TO_RAD;
+		control->transform.accel_imu.d[i] = imu_data.accel[i];
+	}
+	//Convert from IMU coordinate system to drone's
+	rc_matrix_times_col_vec(control->transform.IMU_to_drone_dmp, control->transform.dmp_imu, &control->transform.dmp_drone);
+	rc_matrix_times_col_vec(control->transform.IMU_to_drone_gyro, control->transform.gyro_imu, &control->transform.gyro_drone);
+	rc_matrix_times_col_vec(control->transform.IMU_to_drone_accel, control->transform.accel_imu, &control->transform.accel_drone);
 	
-		if(rc_read_mag_data(&imu_data)<0){
-			printf("read mag data failed\n");
-		}
-	
-		//Perform the data fusion to calculate pitch, roll, and yaw angles
-		updateFusion(&imu_data, &fusion);
+	//Save newly calculated data into our control variable structure
+	for (i = 0; i < 3; i++)
+	{
+		control->euler_previous[i] 		= control->euler[i];	
+		control->euler[i] 				= control->transform.dmp_drone.d[i];
+		control->euler_rate[i]			= control->transform.gyro_drone.d[i];
+		control->mag[i]					= imu_data.mag[i];
+	}
+	control->compass_heading = imu_data.compass_heading_raw;	
 
-		/**********************************************************
-		*		Perform the Coordinate System Transformation	  *
-		**********************************************************/
-		for (i=0;i<3;i++) 
-		{	
-			control->transform.dmp_imu.d[i] = fusion.eulerAngles.array[i] * DEG_TO_RAD;
-			control->transform.gyro_imu.d[i] = imu_data->gyro[i] * DEG_TO_RAD;
-			control->transform.accel_imu.d[i] = imu_data->accel[i];
-		}
-		//Convert from IMU coordinate system to drone's
-		rc_matrix_times_col_vec(control->transform.IMU_to_drone_dmp, control->transform.dmp_imu, &control->transform.dmp_drone);
-		rc_matrix_times_col_vec(control->transform.IMU_to_drone_gyro, control->transform.gyro_imu, &control->transform.gyro_drone);
-		rc_matrix_times_col_vec(control->transform.IMU_to_drone_accel, control->transform.accel_imu, &control->transform.accel_drone);
-		
-		//Save newly calculated data into our control variable structure
-		for (i = 0; i < 3; i++)
+	/**********************************************************
+	*					Unwrap the Yaw value				  *
+	**********************************************************/
+	control->euler[2] 			= control->transform.dmp_drone.d[2] + control->num_wraps*2*M_PI;
+	if(fabs(control->euler[2] - control->euler_previous[2])  > 5)
+	{
+		if(control->euler[2] > control->euler_previous[2]) control->num_wraps--;
+		if(control->euler[2] < control->euler_previous[2]) control->num_wraps++;
+	}
+	control->euler[2]= control->transform.dmp_drone.d[2] + control->num_wraps*2*M_PI;
+
+
+	/**********************************************************
+	*           Read the Barometer for Altitude				  *
+	**********************************************************/	
+	if (control->flight_config.enable_barometer)
+	{		
+		i1++;
+		if (i1 == 1) // Only read the barometer at 25Hz
 		{
-			control->euler_previous[i] 		= control->euler[i];	
-			control->euler[i] 				= control->transform.dmp_drone.d[i];
-			control->euler_rate[i]			= control->transform.gyro_drone.d[i];
-			control->mag[i]					= imu_data.mag[i];
-		}
-		control->compass_heading = imu_data->compass_heading_raw;	
-
-		/**********************************************************
-		*					Unwrap the Yaw value				  *
-		**********************************************************/
-		control->euler[2] 			= control->transform.dmp_drone.d[2] + control->num_wraps*2*M_PI;
-		if(fabs(control->euler[2] - control->euler_previous[2])  > 5)
-		{
-			if(control->euler[2] > control->euler_previous[2]) control->num_wraps--;
-			if(control->euler[2] < control->euler_previous[2]) control->num_wraps++;
-		}
-		control->euler[2]= control->transform.dmp_drone.d[2] + control->num_wraps*2*M_PI;
-
-
-		/**********************************************************
-		*           Read the Barometer for Altitude				  *
-		**********************************************************/	
-		if (control->flight_config.enable_barometer)
-		{		
-			i1++;
-			if (i1 == 1) // Only read the barometer at 25Hz
-			{
-				// perform the i2c reads to the sensor, this takes a bit of time
-				if(rc_read_barometer()<0){
-					printf("\rERROR: Can't read Barometer");
-					fflush(stdout);
-				}
-				i1=0;
+			// perform the i2c reads to the sensor, this takes a bit of time
+			if(rc_read_barometer()<0){
+				printf("\rERROR: Can't read Barometer");
+				fflush(stdout);
 			}
-			control->baro_alt = update_filter(filters.LPF_baro_alt,rc_bmp_get_altitude_m() - initial_alt);
-			control->ekf_filter.input.barometer_updated = 1;
-			control->ekf_filter.input.barometer_alt = control->baro_alt;
+			i1=0;
 		}
+		// control->baro_alt = update_filter(filters.LPF_baro_alt,rc_bmp_get_altitude_m() - initial_alt);
+		control->baro_alt = rc_bmp_get_altitude_m();
+		control->ekf_filter.input.barometer_updated = 1;
+		control->ekf_filter.input.barometer_alt = control->baro_alt;
+	}
 
-		/************************************************************************
-		*                   	Send data to PX4's EKF                          *
-		************************************************************************/
-		for (i = 0; i < 3; i++)
-		{
-			control->ekf_filter.input.accel[i] = transform.accel_drone.d[i];
-			control->ekf_filter.input.mag[i] = imu_data->mag[i] * MICROTESLA_TO_GAUSS;
-		}
-		control->ekf_filter.input.gyro[0] = control->euler_rate[1];
-		control->ekf_filter.input.gyro[1] = control->euler_rate[1];
-		control->ekf_filter.input.gyro[2] = control->euler_rate[2];
-		control->ekf_filter.input.IMU_timestamp = control->time;
+	/************************************************************************
+	*                   	Send data to PX4's EKF                          *
+	************************************************************************/
+	for (i = 0; i < 3; i++)
+	{
+		control->ekf_filter.input.accel[i] = control->transform.accel_drone.d[i];
+		control->ekf_filter.input.mag[i] = imu_data.mag[i] * MICROTESLA_TO_GAUSS;
+	}
+	control->ekf_filter.input.gyro[0] = control->euler_rate[1];
+	control->ekf_filter.input.gyro[1] = control->euler_rate[1];
+	control->ekf_filter.input.gyro[2] = control->euler_rate[2];
+	control->ekf_filter.input.IMU_timestamp = control->time;
 
-		return 0;
+	return 0;
 }
 
 /************************************************************************
@@ -154,14 +154,14 @@ int initialize_imu(control_variables_t *control)
 {
 	// set up IMU configuration
 	rc_imu_config_t imu_config = rc_default_imu_config();
-	imu_config.orientation = get_orientation_config(control->flight_config->imu_orientation);
+	imu_config.orientation = get_orientation_config(control->flight_config.imu_orientation);
 	imu_config.accel_fsr = A_FSR_2G;
 	imu_config.enable_magnetometer=1;
 //	imu_config.accel_dlpf = ACCEL_DLPF_5;
 //	imu_config.gyro_dlpf = GYRO_DLPF_5;
 
 	// start imu
-	if(rc_initialize_imu(imu_data, imu_config)){
+	if(rc_initialize_imu(&imu_data, imu_config)){
 		printf("ERROR: can't talk to IMU, all hope is lost\n");
 		rc_blink_led(RED, 5, 5);
 		return -1;
@@ -173,19 +173,19 @@ int initialize_imu(control_variables_t *control)
 	return 0;
 }
 
-/************************************************************************
-*              Set the Bias value in the Fuction Algorithm              *
-************************************************************************/
-static int init_fusion_bias(FusionBias *fusionBias)
-{
-	// print gyro data
-	if(rc_read_gyro_data(&imu_data)<0){
-		printf("read gyro data failed\n");
-	}
-    FusionBiasInitialise(fusionBias, 50, DT); // assumes 100 Hz sample rate
-    FusionBiasUpdate(fusionBias, imu_data.gyro[0], imu_data.gyro[1], imu_data.gyro[2]); // literal values should be replaced with sensor measurements
-    return 0;
-}
+// /************************************************************************
+// *              Set the Bias value in the Fuction Algorithm              *
+// ************************************************************************/
+// static int init_fusion_bias(FusionBias *fusionBias)
+// {
+// 	// print gyro data
+// 	if(rc_read_gyro_data(&imu_data)<0){
+// 		printf("read gyro data failed\n");
+// 	}
+//     FusionBiasInitialise(fusionBias, 50, DT); // assumes 100 Hz sample rate
+//     FusionBiasUpdate(fusionBias, imu_data.gyro[0], imu_data.gyro[1], imu_data.gyro[2]); // literal values should be replaced with sensor measurements
+//     return 0;
+// }
 
 /************************************************************************
 *              		Initialize the IMU Fusion Algorithm					*
@@ -207,7 +207,7 @@ static void init_fusion(fusion_data_t* fusion)
 		if(rc_read_mag_data(&imu_data)<0){
 			printf("read mag data failed\n");
 		}
-		updateFusion(imu_data, fusion);
+		updateFusion(fusion);
 		rc_usleep(DT_US);
 	}
 
@@ -220,25 +220,25 @@ static void updateFusion(fusion_data_t *fusion)
 {
 	const FusionVector3 gyroscope = 
 	{
-		.axis.x = imu_data->gyro[0],
-		.axis.y = imu_data->gyro[1],
-		.axis.z = imu_data->gyro[2],
+		.axis.x = imu_data.gyro[0],
+		.axis.y = imu_data.gyro[1],
+		.axis.z = imu_data.gyro[2],
 	}; 
 
 	const FusionVector3 accelerometer = 
 	{
-		.axis.x = imu_data->accel[0]/9.81f,
-		.axis.y = imu_data->accel[1]/9.81f,
-		.axis.z = imu_data->accel[2]/9.81f,
+		.axis.x = imu_data.accel[0]/9.81f,
+		.axis.y = imu_data.accel[1]/9.81f,
+		.axis.z = imu_data.accel[2]/9.81f,
 	}; 
 
 	const FusionVector3 magnetometer = 
 	{
-		.axis.x = imu_data->mag[0],
-		.axis.y = imu_data->mag[1],
-		.axis.z = imu_data->mag[2],
+		.axis.x = imu_data.mag[0],
+		.axis.y = imu_data.mag[1],
+		.axis.z = imu_data.mag[2],
 	};
-	FusionBiasUpdate(&fusion->fusionBias, imu_data->raw_gyro[0] & 0xFF, imu_data->raw_gyro[1] & 0xFF, imu_data->raw_gyro[2] & 0xFF);
+	FusionBiasUpdate(&fusion->fusionBias, imu_data.raw_gyro[0] & 0xFF, imu_data.raw_gyro[1] & 0xFF, imu_data.raw_gyro[2] & 0xFF);
 	FusionAhrsUpdate(&fusion->fusionAhrs, gyroscope, accelerometer, magnetometer, DT);												
 //	FusionAhrsUpdate(&fusion->fusionAhrs, gyroscope, accelerometer, FUSION_VECTOR3_ZERO, DT);												
 	fusion->eulerAngles = FusionQuaternionToEulerAngles(fusion->fusionAhrs.quaternion);

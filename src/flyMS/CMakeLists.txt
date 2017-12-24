@@ -12,6 +12,7 @@ set(SRCS_FLYMS
 	${FLYMS_DIR}gps.c
 	${FLYMS_DIR}logger.c
 	${FLYMS_DIR}misc_functions.c
+	${FLYMS_DIR}imu_handler.c
 	)
 
 #Build flyMS

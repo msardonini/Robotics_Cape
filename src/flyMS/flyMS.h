@@ -30,7 +30,6 @@ either expressed or implied, of the FreeBSD Project.
 #pragma once
 #include "roboticscape.h"
 #include "pru_handler_client.h"
-#include "Fusion.h"
 #include "filter.h"
 #include "config.h"
 #include "logger.h"
@@ -86,59 +85,7 @@ float get_dsm2_ch_normalizedMS(int channel);
 void* uart4_checkerMS(void *ptr); //background thread
 int is_new_dsm2_dataMS();
 
-typedef struct control_variables_t{
-	float	euler[3];					// Euler angles of aircraft (in roll, pitch, yaw)
-	float	euler_previous[3];			// 1 Timestampe previousEuler angles of aircraft (in roll, pitch, yaw)
-	float	euler_rate[3];				// First derivative of euler angles (in roll/s, pitch/s, yaw/s)
-	float	compass_heading;
-	float	d_pitch_f, d_roll_f, d_yaw_f; 		// Filtered First derivative of Eulter Angles	
-	float	mag[3];
-	float	dpitch_setpoint, droll_setpoint;	// Desired attitude
-	int		num_wraps;				// Number of spins in Yaw
-	float	unwrapped_yaw[2];					// Some Yaw Varibles
-	float	initial_yaw;
-	float 	throttle;				
-	float	droll_err_integrator;
-	float	dpitch_err_integrator;
-	float	dyaw_err_integrator;
-	float 	uyaw, upitch, uroll, uthrottle;		// Controller effort for each state variable
-	float	u[4]; 								// Duty Cycle to send to each motor
-	float	time; 								// Time since execution of the program
-	float	yaw_ref_offset;
-	// float 	alt_rate_ref, d_alt_filt, alt_ref;	//Height Variables for control with Lidar
-	// float	height_damping;
-	float	baro_alt;							// Barometer Altitude
-	// double	initial_pos_lon, initial_pos_lat; 	// Lat & Long positions from GPS
-	// double	lat_error, lon_error;
-	float 	kill_switch[2];
- 
-	float	standing_throttle, alt_error;
-	transform_matrix_t transform;
-	fusion_data_t fusion;
-	core_config_t flight_config;
-	ekf_filter_t ekf_filter;
-	logger_t logger;
-}control_variables_t;
 
-typedef struct fusion_data_t
-{
-	FusionVector3 gyroscope;
-	FusionVector3 accelerometer;
-	FusionVector3 magnetometer;
-	FusionAhrs  fusionAhrs;
-	FusionEulerAngles eulerAngles;
-	FusionBias fusionBias;
-}fusion_data_t;
-
-typedef struct setpoint_t{
-	float	pitch_ref, roll_ref, yaw_ref[2];	// Reference (Desired) Position
-	float	filt_pitch_ref, filt_roll_ref;		// LPF of pitch and roll (because they are a func of yaw)
-	float	yaw_rate_ref[2];
-	float	Aux[2];
-	double	lat_setpoint, lon_setpoint;			// Controller Variables for Autonomous Flight
-	float	altitudeSetpointRate;
-	float	altitudeSetpoint;
-}setpoint_t;
  
 typedef struct function_control_t{
 	int 				Lidar_kill_counter;					//Kill the lidar thread if returns negative 20 times consecutively
@@ -155,49 +102,6 @@ typedef struct function_control_t{
 	uint64_t 			start_time_usec, start_loop_usec, end_loop_usec; 
 	}function_control_t;
 	
-typedef struct transform_matrix_t{
-	rc_matrix_t 	IMU_to_drone_dmp, IMU_to_drone_gyro, IMU_to_drone_accel;
-	rc_vector_t 	dmp_imu, gyro_imu, accel_imu;
-	rc_vector_t 	dmp_drone, gyro_drone, accel_drone;
-}transform_matrix_t;
-
-typedef struct ekf_filter_input_t{
-	uint64_t IMU_timestamp;
-	float mag[3];
-	float gyro[3];
-	float accel[3];
-	
-	uint64_t barometer_timestamp; 
-	uint8_t barometer_updated;
-	float barometer_alt;
-
-	uint8_t gps_updated;
-	uint64_t gps_timestamp;
-	double gps_latlon[3];
-	uint8_t gps_fix;
-	uint8_t nsats;
-
-	uint8_t vehicle_land;
-
-}ekf_filter_input_t;
-
-
-typedef struct ekf_filter_output_t{
-	double ned_pos[3];
-	double ned_vel[3];
-	double ned_acc[3];
-
-	float vertical_time_deriv;
-	float gyro[3];
-
-}ekf_filter_output_t;
-
-typedef struct ekf_filter_t{
-	ekf_filter_input_t input;
-	ekf_filter_output_t output;
-
-}ekf_filter_t;
-
 	
 typedef struct filters_t{
 	digital_filter_t			*pitch_rate_PD;
@@ -233,18 +137,11 @@ typedef struct flyMS_threads_t{
 	pthread_t flight_core;
 }flyMS_threads_t;
 
-typedef struct led_thread_t{
-	uint8_t GPS_init_check;
-	uint8_t GPS_fix_check;	
-}led_thread_t;
 
-
-int ready_check();
 void zero_escs();
 void* barometer_monitor();
 int initialize_filters(filters_t *filters, core_config_t *flight_config);
 int init_rotation_matrix(transform_matrix_t *transform, core_config_t *flight_config);
-void* LED_thread(void *ptr);
 void init_esc_hardware();
 void* quietEscs(void *ptr);
 int initialize_flight_program(	control_variables_t *control,
@@ -259,6 +156,5 @@ int flyMS_shutdown(			logger_t *logger,
 					flyMS_threads_t *flyMS_threads);
 void* pru_sender(void* ptr);
 void* setpoint_manager(void* ptr);
-void updateFusion(rc_imu_data_t *imu_data, fusion_data_t *fusion);
 uint64_t get_usec_timespec(timespec *tv);
 #endif

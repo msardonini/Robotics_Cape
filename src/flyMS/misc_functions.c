@@ -47,13 +47,15 @@ extern "C" {
 #include "ekf2.h"
 #include <inttypes.h>
 #include "pru_handler_client.h"
+#include "imu_handler.h"
 //Coordinate system transformations matrices
 
 
 
 //Local Variables and Functions
-static void init_fusion(fusion_data_t *fusion, filters_t *filters, rc_imu_data_t *imu_data);
 uint8_t logger_running = 0;
+static int ready_check();
+
 
 int initialize_flight_program(control_variables_t *control,
 				flyMS_threads_t *flyMS_threads,
@@ -73,7 +75,7 @@ int initialize_flight_program(control_variables_t *control,
 	}
 	
 	
-	initialize_imu(control)
+	initialize_imu(control);
 
 	//Initialize the remote controller
 	rc_initialize_dsm();
@@ -88,10 +90,10 @@ int initialize_flight_program(control_variables_t *control,
 	int debug_mode = control->flight_config.enable_debug_mode;
 	
 	// load flight_core settings
-	if(load_core_config(flight_config)){
+	if(load_core_config(&control->flight_config)){
 		printf("WARNING: no configuration file found\n");
 		printf("loading default settings\n");
-		if(create_default_core_config_file(flight_config)){
+		if(create_default_core_config_file(&control->flight_config)){
 			printf("Warning, can't write default flight_config file\n");
 		}
 	}
@@ -100,11 +102,11 @@ int initialize_flight_program(control_variables_t *control,
 	if(control->flight_config.enable_logging)
 	{
 		// start a core_log and logging thread
-		if(start_core_log(logger)<0){
+		if(start_core_log(&control->logger)<0){
 			printf("WARNING: failed to open a core_log file\n");
 		}
 		else{
-			pthread_create(&flyMS_threads->core_logging_thread, NULL, core_log_writer, &logger->core_logger);
+			pthread_create(&flyMS_threads->core_logging_thread, NULL, core_log_writer, &control->logger.core_logger);
 			logger_running = 1;
 		}
 	}
@@ -114,7 +116,7 @@ int initialize_flight_program(control_variables_t *control,
 	/* --------- Start the EKF for position estimates ----*/
 //	pthread_create(&flyMS_threads->ekf_thread, NULL, run_ekf, control->ekf_filter );
 
-	init_rotation_matrix(transform, &control->flight_config); //Initialize the rotation matrix from IMU to drone
+	init_rotation_matrix(&control->transform, &control->flight_config); //Initialize the rotation matrix from IMU to drone
 	initialize_filters(filters, &control->flight_config);
 
 
@@ -122,10 +124,6 @@ int initialize_flight_program(control_variables_t *control,
 	if(control->flight_config.enable_gps)
 	{
 		GPS_data->GPS_init_check=GPS_init(GPS_data);
-		
-		memset(&GPS_ready,0,sizeof(GPS_ready));
-		GPS_ready.GPS_fix_check = GPS_data->GPS_fix_check;
-		GPS_ready.GPS_init_check = GPS_data->GPS_init_check;
 	}
 	//Should be disabled by default but we don't want to be pumping 5V into our BEC ESC output
 	rc_disable_servo_power_rail();
