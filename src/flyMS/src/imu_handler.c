@@ -35,6 +35,7 @@ either expressed or implied, of the FreeBSD Project.
 extern "C" {
 #endif
 
+#include "flyMS_common.h"
 #include "flyMS.h"
 
 

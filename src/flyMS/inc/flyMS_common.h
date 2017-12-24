@@ -35,7 +35,6 @@ either expressed or implied, of the FreeBSD Project.
 #include "Fusion.h"
 #include "filter.h"
 #include "config.h"
-#include "logger.h"
 #include "gps.h"
 
 
@@ -105,23 +104,7 @@ typedef struct transform_matrix_t{
 	rc_vector_t 	dmp_drone, gyro_drone, accel_drone;
 }transform_matrix_t;
 
-typedef struct core_logger_t{
-	long num_entries;	// number of entries logged so far
-	int buffer_pos; // position in current buffer
-	int current_buf; //0 or 1 to indicate which buffer is being filled
-	int needs_writing;
-	FILE* log_file;
-	// array of two buffers so one can fill while writing the other to file
-	core_log_entry_t log_buffer[2][CORE_LOG_BUF_LEN];
-}core_logger_t;
 
-typedef struct logger_t{
-	core_logger_t			core_logger;
-	FILE 					*logger;			//File to log data with
-	FILE 					*GPS_logger;		//File to log GPS data with
-	FILE					*Error_logger;		//File with catches errors and shutdowns
-	core_log_entry_t 		new_entry;
-}logger_t;
 
 typedef struct control_variables_t{
 	float	euler[3];					// Euler angles of aircraft (in roll, pitch, yaw)
@@ -154,7 +137,6 @@ typedef struct control_variables_t{
 	fusion_data_t fusion;
 	core_config_t flight_config;
 	ekf_filter_t ekf_filter;
-	logger_t logger;
 }control_variables_t;
 
 

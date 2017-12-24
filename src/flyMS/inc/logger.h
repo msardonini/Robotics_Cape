@@ -88,11 +88,39 @@ either expressed or implied, of the FreeBSD Project.
 typedef struct core_log_entry_t { CORE_LOG_TABLE } core_log_entry_t;
 #undef X
 
-#include "flyMS_common.h"
-/************************************************************************
-*   Global Variables
-************************************************************************/
+typedef struct core_logger_t{
+    long num_entries;   // number of entries logged so far
+    int buffer_pos; // position in current buffer
+    int current_buf; //0 or 1 to indicate which buffer is being filled
+    int needs_writing;
+    FILE* log_file;
+    // array of two buffers so one can fill while writing the other to file
+    core_log_entry_t log_buffer[2][CORE_LOG_BUF_LEN];
+}core_logger_t;
 
+typedef struct logger_t{
+    int                     logger_running;
+    core_logger_t           core_logger;
+    FILE                    *logger;            //File to log data with
+    FILE                    *GPS_logger;        //File to log GPS data with
+    FILE                    *Error_logger;      //File with catches errors and shutdowns
+    core_log_entry_t        new_entry;
+}logger_t;
+
+
+/************************************************************************
+*   logger_init()
+*   Called by an outside function to initialize the logger and start
+*   the logging thread
+************************************************************************/
+int logger_init();
+
+/************************************************************************
+*   logger_deinit()
+*   Called by an outside function to deinit the logger. Finishes writing
+*   to the log and stops the logging thread for shutdown
+************************************************************************/
+int logger_deinit();
 
 /************************************************************************
 *   log_data()
@@ -101,45 +129,24 @@ typedef struct core_log_entry_t { CORE_LOG_TABLE } core_log_entry_t;
 int log_data(control_variables_t *control, setpoint_t *setpoint);
 
 /************************************************************************
+*   log_GPS_data()
+*   populates the logger substructure and pushes it out to the logfile
+*   GPS data is only logged once per second so efficiency is less important
+************************************************************************/
+int log_GPS_data(GPS_data_t *GPS_data, float timestamp_sec);
+
+/************************************************************************
+*   flyMS_Error_Log()
+*   Called by an outside function to deinit the logger. Finishes writing
+*   to the log and stops the logging thread for shutdown
+************************************************************************/
+int flyMS_Error_Log(const char* errString);
+
+/************************************************************************
 * 	print_entry()
 *	write the contents of one entry to the console
 ************************************************************************/
 int print_entry(core_logger_t* logger, core_log_entry_t* entry);
 
-
-/************************************************************************
-* 	log_core_data()
-*	called by an outside function to quickly add new data to local buffer
-************************************************************************/
-int log_core_data(core_logger_t* log, core_log_entry_t* new_entry);
-
-/************************************************************************
-* 	write_core_log_entry()
-*	append a single entry to the log file
-************************************************************************/
-int write_core_log_entry(FILE* f, core_log_entry_t* entry);
-
-	
-/************************************************************************
-* 	core_log_writer()
-*	independent thread that monitors the needs_writing flag
-*	and dumps a buffer to file in one go
-************************************************************************/
-void* core_log_writer(void* new_log);
-
-/************************************************************************
-* 	start_core_log()
-*	create a new csv log file with the date and time as a name
-*	also print header as the first line to give variable names
-*	and start a thread to write
-************************************************************************/
-int start_core_log(logger_t *logger);
-
-/************************************************************************
-* 	stop_core_log()
-*	finish writing remaining data to log and close it
-************************************************************************/
-int stop_core_log(core_logger_t* log);
-	
 
 #endif

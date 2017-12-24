@@ -47,22 +47,19 @@ extern "C" {
 #include <pthread.h>
 #include <math.h>
 #include <time.h>
-#include "filter.h"
-#include "gps.h"
-#include "logger.h"
-#include "config.h"
-#include "Fusion.h"
-#include "flyMS.h"
-#include "ekf2.h"
-#include "pru_handler_client.h"
-#include "imu_handler.h"
+
+#include <flyMS_common.h>
+#include <flyMS.h>
+#include <imu_handler.h>
 
 
-void* flight_core(void * ptr);
+
+//Local functions
+static void* flight_core(void * ptr);
 
 
 /************************************************************************
-* 	Global Variables				
+* 	Local Variables				
 ************************************************************************/
 control_variables_t		control;			//Structure to contain all system states
 setpoint_t 				setpoint; 			//Structure to store all Setpoints
@@ -174,8 +171,10 @@ void * setpoint_manager(void* ptr)
 			{
 				function_control.dsm2_timeout=function_control.dsm2_timeout+1;
 				if(function_control.dsm2_timeout>1.5/DT) {
-					printf("\nLost Connection with Remote!! Shutting Down Immediately \n");	
-					fprintf(control.logger.Error_logger,"\nLost Connection with Remote!! Shutting Down Immediately \n");	
+					char errMsg[50];
+					sprintf(errMsg,"\nLost Connection with Remote!! Shutting Down Immediately \n");	
+					printf("%s",errMsg);
+					flyMS_Error_Log(errMsg);
 					rc_set_state(EXITING);
 				}
 			}
@@ -213,9 +212,6 @@ void* flight_core(void* ptr){
 		rc_read_barometer();
 		// initial_alt = rc_bmp_get_altitude_m();
 		rc_set_state(RUNNING);
-
-		fprintf(control.logger.GPS_logger,"time,deg_lon,min_lon,deg_lat,min_lat,speed,direction,gps_alt,hdop,fix\n");
-		fflush(control.logger.GPS_logger);
 		printf("First Iteration ");
 		}
 
@@ -234,13 +230,14 @@ void* flight_core(void* ptr){
 		******************************************************************/
 		imu_handler(&control);
 
-		//Allow some time for imu to settle
+		/******************************************************************
+						Take Care of Some Initialization Tasks			  *
+		******************************************************************/
 		if (first_iteration_count < 150)
 		{
 			first_iteration_count++;
 			continue;
-		}	
-
+		}
 
 		if(First_Iteration){
 			setpoint.yaw_ref[0]=control.euler[2];
@@ -248,7 +245,6 @@ void* flight_core(void* ptr){
 			control.yaw_ref_offset = control.euler[2];
 			printf("Started \n");
 		}
-
 
 		/************************************************************************
 		*                   	Throttle Controller                             *
@@ -402,23 +398,19 @@ void* flight_core(void* ptr){
 			}
 
 			if(control.kill_switch[0] < .5) {
-				printf("\nKill Switch Hit! Shutting Down\n");
-				fprintf(control.logger.Error_logger,"\nKill Switch Hit! Shutting Down\n");	
+				char errMsg[50];
+				sprintf(errMsg, "\nKill Switch Hit! Shutting Down\n");
+				printf("%s",errMsg);
+				flyMS_Error_Log(errMsg);
 				rc_set_state(EXITING);
 			}
 		}
 		
-
-
-
-		//Print some stuff if in debug mode
+		//Print some stuff to the console in debug mode
 		if(control.flight_config.enable_debug_mode)
 		{	
 			printf("\r ");
 		//	printf("time %3.3f ", control.time);
-		//	printf("Alt %2.2f ",lidar_data.altitude[0]);
-		//	printf("vel %2.2f ",lidar_data.d_altitude[0]);		
-		//	printf("H_d %3.3f ", control.height_damping);
 		//	printf("Alt_ref %3.1f ",control.alt_ref);
 		//	printf(" U1:  %2.2f ",control.u[0]);
 		//	printf(" U2: %2.2f ",control.u[1]);
@@ -459,18 +451,7 @@ void* flight_core(void* ptr){
 			/***************** Get GPS Data if available *******************/
 		if(is_new_GPS_data())
 		{
-
-			 //printf("\n new GPS data in \n");
-			fprintf(control.logger.GPS_logger,"%4.5f,",control.time);
-			fprintf(control.logger.GPS_logger,"%3.0f,%f,",GPS_data.deg_longitude,GPS_data.min_longitude);
-			fprintf(control.logger.GPS_logger,"%3.0f,%f,",GPS_data.deg_latitude,GPS_data.min_latitude);
-			fprintf(control.logger.GPS_logger,"%f,%f,",GPS_data.speed,GPS_data.direction);
-			fprintf(control.logger.GPS_logger,"%f,",GPS_data.gps_altitude);
-			fprintf(control.logger.GPS_logger,"%2.2f,%d",GPS_data.HDOP,GPS_data.GPS_fix);
-			fprintf(control.logger.GPS_logger,"\n");
-			fflush(control.logger.GPS_logger);
-			//	printf("%s",GPS_data.GGAbuf);
-			//	printf("%s",GPS_data.VTGbuf);
+			log_GPS_data(&GPS_data, control.time);
 
 			if (First_Iteration_GPS==1  && GPS_data.GPS_fix==1){
 				// control.initial_pos_lat=GPS_data.meters_lat;
@@ -548,8 +529,7 @@ int main(int argc, char *argv[]){
 									&pru_client_data,
 									&GPS_data))
 	{
-		flyMS_shutdown( &control.logger, 
-						&GPS_data, 
+		flyMS_shutdown(	&GPS_data, 
 						&flyMS_threads); 
 		rc_cleanup();
 		return -1;
@@ -565,15 +545,16 @@ int main(int argc, char *argv[]){
 		imu_err_count++;
 		if (imu_err_count == 5 || imu_err_count % 50 == 0)
 		{
-			fprintf(control.logger.Error_logger,"Error! IMU read failed for more than\
+			char errMsg[100];
+			sprintf(errMsg,"Error! IMU read failed for more than\
 											5 consecutive timesteps. time: = %f\
 											number of missed reads: %u \n",
 											control.time,imu_err_count);
+			flyMS_Error_Log(errMsg);
 		}
 	}
 
-	flyMS_shutdown( &control.logger, 
-					&GPS_data, 
+	flyMS_shutdown(	&GPS_data, 
 					&flyMS_threads); 
 	rc_cleanup();
 	return 0;

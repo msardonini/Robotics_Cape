@@ -41,6 +41,7 @@ either expressed or implied, of the FreeBSD Project.
 #include <unistd.h>
 #include <fcntl.h>
 #include "roboticscape.h"
+#include "flyMS_common.h"
 #include "gps.h"
 #include "flyMS.h"
 

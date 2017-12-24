@@ -151,8 +151,7 @@ int initialize_flight_program(	control_variables_t *control,
                                 GPS_data_t *GPS_data);
 
 
-int flyMS_shutdown(			logger_t *logger, 
-					GPS_data_t *GPS_data, 
+int flyMS_shutdown(	GPS_data_t *GPS_data, 
 					flyMS_threads_t *flyMS_threads);
 void* pru_sender(void* ptr);
 void* setpoint_manager(void* ptr);

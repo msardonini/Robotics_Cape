@@ -6,14 +6,16 @@ cmake_minimum_required(VERSION 2.8)
 set(FLYMS_DIR src/flyMS/)
 
 set(SRCS_FLYMS
-	${FLYMS_DIR}config.c
-	${FLYMS_DIR}flyMS.c
-	${FLYMS_DIR}ekf.cpp
-	${FLYMS_DIR}gps.c
-	${FLYMS_DIR}logger.c
-	${FLYMS_DIR}misc_functions.c
-	${FLYMS_DIR}imu_handler.c
+	${FLYMS_DIR}src/config.c
+	${FLYMS_DIR}src/flyMS.c
+	${FLYMS_DIR}src/ekf.cpp
+	${FLYMS_DIR}src/gps.c
+	${FLYMS_DIR}src/logger.c
+	${FLYMS_DIR}src/misc_functions.c
+	${FLYMS_DIR}src/imu_handler.c
 	)
+
+include_directories(flyMS ${FLYMS_DIR}inc)
 
 #Build flyMS
 add_executable(flyMS ${SRCS_FLYMS})

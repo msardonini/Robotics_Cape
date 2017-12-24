@@ -40,12 +40,14 @@ extern "C" {
 #include <errno.h>
 #include <string.h>
 #include <sys/types.h>
+#include <pthread.h>
+#include <inttypes.h>
+	
+#include "flyMS_common.h"
 #include "flyMS.h"
 #include "logger.h"
-#include <pthread.h>
 #include "gps.h"
 #include "ekf2.h"
-#include <inttypes.h>
 #include "pru_handler_client.h"
 #include "imu_handler.h"
 //Coordinate system transformations matrices
@@ -101,14 +103,7 @@ int initialize_flight_program(control_variables_t *control,
 
 	if(control->flight_config.enable_logging)
 	{
-		// start a core_log and logging thread
-		if(start_core_log(&control->logger)<0){
-			printf("WARNING: failed to open a core_log file\n");
-		}
-		else{
-			pthread_create(&flyMS_threads->core_logging_thread, NULL, core_log_writer, &control->logger.core_logger);
-			logger_running = 1;
-		}
+		logger_init();
 	}
 
 	pthread_create(&flyMS_threads->setpoint_manager_thread, NULL, setpoint_manager, (void*)NULL );
@@ -321,8 +316,7 @@ int init_rotation_matrix(transform_matrix_t *transform, core_config_t *flight_co
 }
 
 
-int flyMS_shutdown(	logger_t *logger, 
-					GPS_data_t *GPS_data, 
+int flyMS_shutdown(	GPS_data_t *GPS_data, 
 					flyMS_threads_t *flyMS_threads) 
 {
 	//Join the threads for a safe process shutdown
@@ -331,20 +325,10 @@ int flyMS_shutdown(	logger_t *logger,
 		join_GPS_thread(GPS_data);
 		printf("GPS thread joined\n");
 	}
-	if (logger_running)
-	{	
-		stop_core_log(&logger->core_logger);// finish writing core_log
-		pthread_join(flyMS_threads->core_logging_thread, NULL);
-		printf("Logging thread joined\n");
-		static char* StateStrings[] = {	"UNINITIALIZED", "RUNNING", 
-										"PAUSED", "EXITING" };
-		fprintf(logger->Error_logger,"Exiting program, system state is %s\n", StateStrings[rc_get_state()]);
-		fflush(stdout);
+	
+	logger_deinit();
 
-		// Close the log files
-		close(GPS_data->GPS_file);
-		fclose(logger->GPS_logger);
-	}
+	close(GPS_data->GPS_file);
 	join_pru_client();
 	
 	rc_set_led(GREEN,OFF);

@@ -44,54 +44,175 @@ extern "C"
 #include <sys/stat.h>
 #include <unistd.h>
 #include <fcntl.h>
+
 #include "roboticscape.h"
+#include "flyMS_common.h"
 #include "logger.h"
 
+//Local Variables
+logger_t logger;
+pthread_t logging_thread;
+
+//Local Functions
+
+/************************************************************************
+* 	log_core_data()
+*	called by an outside function to quickly add new data to local buffer
+************************************************************************/
+static int log_core_data(core_logger_t* log, core_log_entry_t* new_entry);
+
+/************************************************************************
+* 	write_core_log_entry()
+*	append a single entry to the log file
+************************************************************************/
+static int write_core_log_entry(FILE* f, core_log_entry_t* entry);
+
+	
+/************************************************************************
+* 	core_log_writer()
+*	independent thread that monitors the needs_writing flag
+*	and dumps a buffer to file in one go
+************************************************************************/
+static void* core_log_writer(void* new_log);
+
+/************************************************************************
+* 	start_core_log()
+*	create a new csv log file with the date and time as a name
+*	also print header as the first line to give variable names
+*	and start a thread to write
+************************************************************************/
+static int start_core_log();
+
+/************************************************************************
+* 	stop_core_log()
+*	finish writing remaining data to log and close it
+************************************************************************/
+static int stop_core_log(core_logger_t* log);
+	
+
+
+/************************************************************************
+* 	logger_init()
+*	Called by an outside function to initialize the logger and start
+*	the logging thread
+************************************************************************/
+int logger_init()
+{
+	// start a core_log and logging thread
+	if(start_core_log()<0){
+		printf("WARNING: failed to open a core_log file\n");
+		return -1;
+	}
+	else{
+		pthread_create(&logging_thread, NULL, core_log_writer, &logger.core_logger);
+		logger.logger_running = 1;
+	}
+	return 0;
+}
+/************************************************************************
+* 	logger_deinit()
+*	Called by an outside function to deinit the logger. Finishes writing
+*	to the log and stops the logging thread for shutdown
+************************************************************************/
+int logger_deinit()
+{
+	if(logger.logger_running)
+	{		
+		stop_core_log(&logger.core_logger);// finish writing core_log
+		pthread_join(logging_thread, NULL);
+		printf("Logging thread joined\n");
+
+		static char* StateStrings[] = {	"UNINITIALIZED", "RUNNING", 
+										"PAUSED", "EXITING" };
+		char endMsg[50];
+		sprintf(endMsg, "Exiting program, system state is %s\n", StateStrings[rc_get_state()]);
+
+		flyMS_Error_Log(endMsg);
+		fflush(stdout);
+
+		// Close the log files
+		fclose(logger.GPS_logger);
+		fclose(logger.Error_logger);
+
+	}
+	return 0;
+}
 /************************************************************************
 * 	print_entry()
 *	populates the logger substructure and pushes it out to the logfile
 ************************************************************************/
 int log_data(control_variables_t *control, setpoint_t *setpoint)
 {
-		control->logger.new_entry.time			= control->time;	
-		control->logger.new_entry.pitch			= control->euler[1];	
-		control->logger.new_entry.roll			= control->euler[0];
-		control->logger.new_entry.yaw			= control->euler[2];
-		control->logger.new_entry.d_pitch		= control->euler_rate[0];	
-		control->logger.new_entry.d_roll		= control->euler_rate[1];
-		control->logger.new_entry.d_yaw			= control->euler_rate[2];
-		control->logger.new_entry.u_1			= control->u[0];
-		control->logger.new_entry.u_2			= control->u[1];
-		control->logger.new_entry.u_3			= control->u[2];
-		control->logger.new_entry.u_4			= control->u[3];
-		control->logger.new_entry.throttle		= control->throttle;
-		control->logger.new_entry.upitch		= control->upitch;	
-		control->logger.new_entry.uroll			= control->uroll;
-		control->logger.new_entry.uyaw			= control->uyaw;
-		control->logger.new_entry.pitch_ref		= setpoint->pitch_ref;
-		control->logger.new_entry.roll_ref		= setpoint->roll_ref;
-		control->logger.new_entry.yaw_ref		= setpoint->yaw_ref[0];
-		control->logger.new_entry.yaw_rate_ref	= setpoint->yaw_rate_ref[0];
-		control->logger.new_entry.Aux			= setpoint->Aux[0];
+		logger.new_entry.time			= control->time;	
+		logger.new_entry.pitch			= control->euler[1];	
+		logger.new_entry.roll			= control->euler[0];
+		logger.new_entry.yaw			= control->euler[2];
+		logger.new_entry.d_pitch		= control->euler_rate[0];	
+		logger.new_entry.d_roll		= control->euler_rate[1];
+		logger.new_entry.d_yaw			= control->euler_rate[2];
+		logger.new_entry.u_1			= control->u[0];
+		logger.new_entry.u_2			= control->u[1];
+		logger.new_entry.u_3			= control->u[2];
+		logger.new_entry.u_4			= control->u[3];
+		logger.new_entry.throttle		= control->throttle;
+		logger.new_entry.upitch		= control->upitch;	
+		logger.new_entry.uroll			= control->uroll;
+		logger.new_entry.uyaw			= control->uyaw;
+		logger.new_entry.pitch_ref		= setpoint->pitch_ref;
+		logger.new_entry.roll_ref		= setpoint->roll_ref;
+		logger.new_entry.yaw_ref		= setpoint->yaw_ref[0];
+		logger.new_entry.yaw_rate_ref	= setpoint->yaw_rate_ref[0];
+		logger.new_entry.Aux			= setpoint->Aux[0];
 		// control->logger.new_entry.lat_error		= control->lat_error;
 		// control->logger.new_entry.lon_error		= control->lon_error;
-		control->logger.new_entry.accel_x		= control->transform.accel_drone.d[0];
-		control->logger.new_entry.accel_y		= control->transform.accel_drone.d[1];
-		control->logger.new_entry.accel_z		= control->transform.accel_drone.d[2];
-		control->logger.new_entry.baro_alt		= control->baro_alt;
-		control->logger.new_entry.v_batt		= 0;
-		control->logger.new_entry.ned_pos_x		= control->ekf_filter.output.ned_pos[0];
-		control->logger.new_entry.ned_pos_y		= control->ekf_filter.output.ned_pos[1];
-		control->logger.new_entry.ned_pos_z		= control->ekf_filter.output.ned_pos[2];
-		control->logger.new_entry.ned_vel_x		= control->ekf_filter.output.ned_vel[0];
-		control->logger.new_entry.ned_vel_y		= control->ekf_filter.output.ned_vel[1];
-		control->logger.new_entry.ned_vel_z		= control->ekf_filter.output.ned_vel[2];
-		control->logger.new_entry.mag_x			= control->mag[0];
-		control->logger.new_entry.mag_y			= control->mag[1];
-		control->logger.new_entry.mag_z			= control->mag[2];
-		control->logger.new_entry.compass_heading= control->compass_heading;
+		logger.new_entry.accel_x		= control->transform.accel_drone.d[0];
+		logger.new_entry.accel_y		= control->transform.accel_drone.d[1];
+		logger.new_entry.accel_z		= control->transform.accel_drone.d[2];
+		logger.new_entry.baro_alt		= control->baro_alt;
+		logger.new_entry.v_batt		= 0;
+		logger.new_entry.ned_pos_x		= control->ekf_filter.output.ned_pos[0];
+		logger.new_entry.ned_pos_y		= control->ekf_filter.output.ned_pos[1];
+		logger.new_entry.ned_pos_z		= control->ekf_filter.output.ned_pos[2];
+		logger.new_entry.ned_vel_x		= control->ekf_filter.output.ned_vel[0];
+		logger.new_entry.ned_vel_y		= control->ekf_filter.output.ned_vel[1];
+		logger.new_entry.ned_vel_z		= control->ekf_filter.output.ned_vel[2];
+		logger.new_entry.mag_x			= control->mag[0];
+		logger.new_entry.mag_y			= control->mag[1];
+		logger.new_entry.mag_z			= control->mag[2];
+		logger.new_entry.compass_heading= control->compass_heading;
 		//control->logger.new_entry.v_batt			= rc_dc_jack_voltage();
-		log_core_data(&control->logger.core_logger, &control->logger.new_entry);
+		log_core_data(&logger.core_logger, &logger.new_entry);
+	return 0;
+}
+
+/************************************************************************
+* 	log_GPS_data()
+*	populates the logger substructure and pushes it out to the logfile
+*	GPS data is only logged once per second so efficiency is less important
+************************************************************************/
+int log_GPS_data(GPS_data_t *GPS_data, float timestamp_sec)
+{
+	fprintf(logger.GPS_logger,"%4.5f,",timestamp_sec);
+	fprintf(logger.GPS_logger,"%3.0f,%f,",GPS_data->deg_longitude,GPS_data->min_longitude);
+	fprintf(logger.GPS_logger,"%3.0f,%f,",GPS_data->deg_latitude,GPS_data->min_latitude);
+	fprintf(logger.GPS_logger,"%f,%f,",GPS_data->speed,GPS_data->direction);
+	fprintf(logger.GPS_logger,"%f,",GPS_data->gps_altitude);
+	fprintf(logger.GPS_logger,"%2.2f,%d",GPS_data->HDOP,GPS_data->GPS_fix);
+	fprintf(logger.GPS_logger,"\n");
+	fflush(logger.GPS_logger);
+	return 0;
+}
+/************************************************************************
+* 	flyMS_Error_Log()
+*	Called by an outside function to write error debug information to the
+*	dedicated error logger file
+************************************************************************/
+int flyMS_Error_Log(const char* errString)
+{
+	if(logger.logger_running)
+	{		
+		fprintf(logger.Error_logger, "%s", errString);
+	}
 	return 0;
 }
 
@@ -113,7 +234,7 @@ int print_entry(core_logger_t* logger, core_log_entry_t* entry){
 * 	log_core_data()
 *	called by an outside function to quickly add new data to local buffer
 ************************************************************************/
-int log_core_data(core_logger_t* log, core_log_entry_t* new_entry){
+static int log_core_data(core_logger_t* log, core_log_entry_t* new_entry){
 	if(log->needs_writing && log->buffer_pos >= CORE_LOG_BUF_LEN){
 		printf("warning, both logging buffers full\n");
 		return -1;
@@ -136,7 +257,7 @@ int log_core_data(core_logger_t* log, core_log_entry_t* new_entry){
 * 	write_core_log_entry()
 *	append a single entry to the log file
 ************************************************************************/
-int write_core_log_entry(FILE* f, core_log_entry_t* entry){
+static int write_core_log_entry(FILE* f, core_log_entry_t* entry){
 	#define X(type, fmt, name) fprintf(f, fmt "," , entry->name);
     CORE_LOG_TABLE
 	#undef X	
@@ -174,7 +295,7 @@ void* core_log_writer(void* new_log){
 *	also print header as the first line to give variable names
 *	and start a thread to write
 ************************************************************************/
-int start_core_log(logger_t *logger){
+static int start_core_log(){
 		
 	char logger_filepath[strlen(FLYMS_ROOT_DIR) + 40];
 	char GPS_filepath[strlen(FLYMS_ROOT_DIR) + 40];
@@ -220,36 +341,40 @@ int start_core_log(logger_t *logger){
 	strcat(logger_filepath,"/logger.csv");
 	
 	//Open logging file and check
-	logger->core_logger.log_file = fopen(logger_filepath, "w");
-	if (logger->core_logger.log_file==NULL){
+	logger.core_logger.log_file = fopen(logger_filepath, "w");
+	if (logger.core_logger.log_file==NULL){
 		printf("could not open logging directory\n");
 		printf("Attempted File name %s\n", logger_filepath);
 		return -1;
 	}
 	
 	//Open GPS log file and check
-	logger->GPS_logger=fopen(GPS_filepath,"w+");
-	if(logger->GPS_logger == NULL) 
+	logger.GPS_logger=fopen(GPS_filepath,"w+");
+	if(logger.GPS_logger == NULL) 
 	{
 		printf("Error! GPS_logger.csv failed to open\n");
 		printf("Attempted File name %s\n", GPS_filepath);
 		return -1;
 	}
+	//Write the header for the GPS log file
+	fprintf(logger.GPS_logger,"time,deg_lon,min_lon,deg_lat,min_lat,speed,direction,gps_alt,hdop,fix\n");
+	fflush(logger.GPS_logger);
 
 	//Open Error logger and check
-	logger->Error_logger=fopen(Error_filepath,"w+");
-	if(logger->Error_logger == NULL) 
+	logger.Error_logger=fopen(Error_filepath,"w+");
+	if(logger.Error_logger == NULL) 
 	{
 		printf("Error! Error_logger.csv failed to open\n");
 		printf("Attempted File name %s\n", Error_filepath);
 		return -1;
 	}
+	fflush(logger.Error_logger);
 	
-	#define X(type, fmt, name) fprintf(logger->core_logger.log_file, "%s," , #name);
+	#define X(type, fmt, name) fprintf(logger.core_logger.log_file, "%s," , #name);
     CORE_LOG_TABLE
 	#undef X
-	fprintf(logger->core_logger.log_file, "\n");
-	fflush(logger->core_logger.log_file);
+	fprintf(logger.core_logger.log_file, "\n");
+	fflush(logger.core_logger.log_file);
 
 	return 0;
 }
@@ -258,7 +383,7 @@ int start_core_log(logger_t *logger){
 * 	stop_core_log()
 *	finish writing remaining data to log and close it
 ************************************************************************/
-int stop_core_log(core_logger_t* log){
+static int stop_core_log(core_logger_t* log){
 	int i;
 	// wait for previous write to finish if it was going
 	while(log->needs_writing){

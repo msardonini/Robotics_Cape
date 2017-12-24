@@ -57,6 +57,7 @@
 #define MIN_INTERVAL_MS 20
 
 extern "C"{
+#include "flyMS_common.h"
 #include "ekf2.h"
 #include "flyMS.h"
 }

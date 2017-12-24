@@ -34,8 +34,9 @@ extern "C" {
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include "roboticscape.h"
-#include "config.h"
+#include <roboticscape.h>
+#include <config.h>
+
 /************************************************************************
 * 	print_core_config()
 *	print configuration table to console
@@ -119,7 +120,7 @@ int load_core_config(core_config_t* config){
 	f = fopen(core_config_path, "r");
 	if (f==NULL){
 		printf("could not open core_config file\n");
-		printf(core_config_path);
+		printf("%s",core_config_path);
 		printf("\n");
 		return -1;
 	}
@@ -130,7 +131,7 @@ int load_core_config(core_config_t* config){
 	fscanf(f, CORE_FILE_HEADER);
 	fscanf(f, "%s\n", name);
 	printf("using flight_core_config: ");
-	printf(name);
+	printf("%s", name);
 	printf("\n");
 	
 	#define X(type, fmt, name, default) fscanf(f, #name "," fmt"\n", &config->name);
