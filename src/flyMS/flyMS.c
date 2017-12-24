@@ -278,34 +278,34 @@ void* flight_core(void* ptr){
 			function_control.gps_pos_mode=0;
 		}
 		else{
-			//Using GPS Control
-			if(function_control.gps_pos_mode==0){
-				printf("gps position mode\n");
-				setpoint.lat_setpoint=GPS_data.pos_lat;
-				setpoint.lon_setpoint=GPS_data.pos_lon;
-				function_control.gps_pos_mode=1;
-				control.standing_throttle=control.throttle;
-				control.alt_ref=GPS_data.gps_altitude+1;
-			}
-			control.lat_error=setpoint.lat_setpoint-GPS_data.pos_lat;
-			control.lon_error=setpoint.lon_setpoint-GPS_data.pos_lon;
+			// //Using GPS Control
+			// if(function_control.gps_pos_mode==0){
+			// 	printf("gps position mode\n");
+			// 	setpoint.lat_setpoint=GPS_data.pos_lat;
+			// 	setpoint.lon_setpoint=GPS_data.pos_lon;
+			// 	function_control.gps_pos_mode=1;
+			// 	control.standing_throttle=control.throttle;
+			// 	control.alt_ref=GPS_data.gps_altitude+1;
+			// }
+			// control.lat_error=setpoint.lat_setpoint-GPS_data.pos_lat;
+			// control.lon_error=setpoint.lon_setpoint-GPS_data.pos_lon;
 			
-			setpoint.pitch_ref=0.14*update_filter(filters.Outer_Loop_TF_pitch,control.lat_error);
-			setpoint.roll_ref=-0.14*update_filter(filters.Outer_Loop_TF_roll,control.lon_error);
+			// setpoint.pitch_ref=0.14*update_filter(filters.Outer_Loop_TF_pitch,control.lat_error);
+			// setpoint.roll_ref=-0.14*update_filter(filters.Outer_Loop_TF_roll,control.lon_error);
 			
-			setpoint.pitch_ref=saturateFilter(setpoint.pitch_ref,-0.2,0.2);
-			setpoint.roll_ref=saturateFilter(setpoint.roll_ref,-0.2,0.2);
+			// setpoint.pitch_ref=saturateFilter(setpoint.pitch_ref,-0.2,0.2);
+			// setpoint.roll_ref=saturateFilter(setpoint.roll_ref,-0.2,0.2);
 			
-			//Convert to Drone Coordinate System from User Coordinate System
-			float P_R_MAG=pow(pow(setpoint.roll_ref,2)+pow(setpoint.pitch_ref,2),0.5);
-			float Theta_Ref=atan2f(setpoint.pitch_ref,setpoint.roll_ref);
-			setpoint.roll_ref=P_R_MAG*cos(Theta_Ref-control.euler[2]);
-			setpoint.pitch_ref=P_R_MAG*sin(Theta_Ref-control.euler[2]);
+			// //Convert to Drone Coordinate System from User Coordinate System
+			// float P_R_MAG=pow(pow(setpoint.roll_ref,2)+pow(setpoint.pitch_ref,2),0.5);
+			// float Theta_Ref=atan2f(setpoint.pitch_ref,setpoint.roll_ref);
+			// setpoint.roll_ref=P_R_MAG*cos(Theta_Ref-control.euler[2]);
+			// setpoint.pitch_ref=P_R_MAG*sin(Theta_Ref-control.euler[2]);
 			
-			control.alt_error=control.alt_ref-GPS_data.gps_altitude;
-			//control.throttle=0.12*update_filter(&filters.Throttle_controller,control.alt_error);
+			// control.alt_error=control.alt_ref-GPS_data.gps_altitude;
+			// //control.throttle=0.12*update_filter(&filters.Throttle_controller,control.alt_error);
 			
-			//control.throttle=saturateFilter(control.throttle,-0.15,0.15)+control.standing_throttle;
+			// //control.throttle=saturateFilter(control.throttle,-0.15,0.15)+control.standing_throttle;
 		}
 		
 		control.dpitch_setpoint = update_filter(filters.pitch_PD, setpoint.pitch_ref - control.euler[1]);
@@ -547,7 +547,7 @@ int main(int argc, char *argv[]){
 									&pru_client_data,
 									&GPS_data))
 	{
-		flyMS_shutdown( &control->logger, 
+		flyMS_shutdown( &control.logger, 
 						&GPS_data, 
 						&flyMS_threads); 
 		rc_cleanup();
@@ -571,7 +571,7 @@ int main(int argc, char *argv[]){
 		}
 	}
 
-	flyMS_shutdown( &control->logger, 
+	flyMS_shutdown( &control.logger, 
 					&GPS_data, 
 					&flyMS_threads); 
 	rc_cleanup();
