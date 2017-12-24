@@ -52,24 +52,19 @@ extern "C" {
 
 
 //Local Variables and Functions
-void init_fusion(fusion_data_t *fusion, filters_t *filters, rc_imu_data_t *imu_data);
+static void init_fusion(fusion_data_t *fusion, filters_t *filters, rc_imu_data_t *imu_data);
 uint8_t logger_running = 0;
 
-int initialize_flight_program(flyMS_threads_t *flyMS_threads,
-				core_config_t *flight_config,
-				logger_t *logger,
+int initialize_flight_program(control_variables_t *control,
+				flyMS_threads_t *flyMS_threads,
 				filters_t *filters,
 				pru_client_data_t *pru_client_data,
-				rc_imu_data_t *imu_data,
-				transform_matrix_t *transform,
-				GPS_data_t *GPS_data,
-				ekf_filter_t *ekf_filter,
-				fusion_data_t *fusion)
+				GPS_data_t *GPS_data)
 {
 	//Starts the pru_client which will send commands to ESCs
 	start_pru_client(pru_client_data);
 
-	if(flight_config->enable_barometer)
+	if(control->flight_config.enable_barometer)
 	{
 		if(rc_initialize_barometer(OVERSAMPLE, INTERNAL_FILTER)<0){
 			printf("initialize_barometer failed\n");
@@ -78,25 +73,11 @@ int initialize_flight_program(flyMS_threads_t *flyMS_threads,
 	}
 	
 	
-	// set up IMU configuration
-	rc_imu_config_t imu_config = rc_default_imu_config();
-	imu_config.orientation = get_orientation_config(flight_config->imu_orientation);
-//	imu_config.dmp_sample_rate = SAMPLE_RATE;
-	imu_config.accel_fsr = A_FSR_2G;
-	imu_config.enable_magnetometer=1;
-//	imu_config.accel_dlpf = ACCEL_DLPF_5;
-//	imu_config.gyro_dlpf = GYRO_DLPF_5;
+	initialize_imu(control)
 
-	// start imu
-	if(rc_initialize_imu(imu_data, imu_config)){
-		printf("ERROR: can't talk to IMU, all hope is lost\n");
-		rc_blink_led(RED, 5, 5);
-		return -1;
-	}
-	
 	//Initialize the remote controller
 	rc_initialize_dsm();
-	if(!flight_config->enable_debug_mode)
+	if(!control->flight_config.enable_debug_mode)
 	{	
 		if(ready_check()){
 			printf("Exiting Program \n");
@@ -104,7 +85,7 @@ int initialize_flight_program(flyMS_threads_t *flyMS_threads,
 		} //Toggle the kill switch a few times to signal it's ready
 	}
 
-	int debug_mode = flight_config->enable_debug_mode;
+	int debug_mode = control->flight_config.enable_debug_mode;
 	
 	// load flight_core settings
 	if(load_core_config(flight_config)){
@@ -114,9 +95,9 @@ int initialize_flight_program(flyMS_threads_t *flyMS_threads,
 			printf("Warning, can't write default flight_config file\n");
 		}
 	}
-	flight_config->enable_debug_mode = (debug_mode || flight_config->enable_debug_mode);
+	control->flight_config.enable_debug_mode = (debug_mode || control->flight_config.enable_debug_mode);
 
-	if(flight_config->enable_logging)
+	if(control->flight_config.enable_logging)
 	{
 		// start a core_log and logging thread
 		if(start_core_log(logger)<0){
@@ -131,105 +112,24 @@ int initialize_flight_program(flyMS_threads_t *flyMS_threads,
 	pthread_create(&flyMS_threads->setpoint_manager_thread, NULL, setpoint_manager, (void*)NULL );
 	
 	/* --------- Start the EKF for position estimates ----*/
-//	pthread_create(&flyMS_threads->ekf_thread, NULL, run_ekf, ekf_filter );
+//	pthread_create(&flyMS_threads->ekf_thread, NULL, run_ekf, control->ekf_filter );
 
-	init_rotation_matrix(transform, flight_config); //Initialize the rotation matrix from IMU to drone
-	initialize_filters(filters, flight_config);
-sleep(2);
-	init_fusion(fusion, filters, imu_data);
+	init_rotation_matrix(transform, &control->flight_config); //Initialize the rotation matrix from IMU to drone
+	initialize_filters(filters, &control->flight_config);
+
 
 	//Start the GPS thread, flash the LED's if GPS has a fix
-	if(flight_config->enable_gps)
+	if(control->flight_config.enable_gps)
 	{
 		GPS_data->GPS_init_check=GPS_init(GPS_data);
 		
-		led_thread_t GPS_ready;
 		memset(&GPS_ready,0,sizeof(GPS_ready));
 		GPS_ready.GPS_fix_check = GPS_data->GPS_fix_check;
 		GPS_ready.GPS_init_check = GPS_data->GPS_init_check;
-		//pthread_create(&flyMS_threads->led_thread, NULL, LED_thread, (void*) &GPS_ready);
-		
 	}
 	//Should be disabled by default but we don't want to be pumping 5V into our BEC ESC output
 	rc_disable_servo_power_rail();
 	return 0;
-}
-
-
-int init_fusion_bias(FusionBias *fusionBias)
-{
-	rc_imu_data_t data; //struct to hold new data
-	// print gyro data
-	if(rc_read_gyro_data(&data)<0){
-		printf("read gyro data failed\n");
-	}
-    FusionBiasInitialise(fusionBias, 50, DT); // assumes 100 Hz sample rate
-    FusionBiasUpdate(fusionBias, data.gyro[0], data.gyro[1], data.gyro[2]); // literal values should be replaced with sensor measurements
-    return 0;
-}
-
-void init_fusion(fusion_data_t* fusion, filters_t *filters, rc_imu_data_t *imu_data)
-{
-	FusionAhrsInitialise(&fusion->fusionAhrs, .75f, 0.0f, 120.0f); // valid magnetic field defined as 20 uT to 70 uT
-//	int i;
-	
-//	FusionBias fusionBias;
-	FusionBiasInitialise(&fusion->fusionBias, 25, DT);
-
-	//Give Imu data to the fusion alg for initialization purposes
-	while (FusionAhrsIsInitialising(&fusion->fusionAhrs))
-	{
-		if(rc_read_accel_data(imu_data)<0){
-			printf("read accel data failed\n");
-		}
-		if(rc_read_mag_data(imu_data)<0){
-			printf("read mag data failed\n");
-		}
-		updateFusion(imu_data, fusion);
-		rc_usleep(DT_US);
-	}
-
-}
-
-void updateFusion(rc_imu_data_t *imu_data, fusion_data_t *fusion)
-{
-	const FusionVector3 gyroscope = 
-	{
-		.axis.x = imu_data->gyro[0],
-		.axis.y = imu_data->gyro[1],
-		.axis.z = imu_data->gyro[2],
-	}; 
-
-	const FusionVector3 accelerometer = 
-	{
-		// .axis.x = update_filter(accel_lpf[0],imu_data->raw_accel[0]/9.81f),
-		// .axis.y = update_filter(accel_lpf[1],imu_data->raw_accel[1]/9.81f),
-		// .axis.z = update_filter(accel_lpf[2],imu_data->raw_accel[2]/9.81f),
-		.axis.x = imu_data->accel[0]/9.81f,
-		.axis.y = imu_data->accel[1]/9.81f,
-		.axis.z = imu_data->accel[2]/9.81f,
-	}; 
-
-	const FusionVector3 magnetometer = 
-	{
-		.axis.x = imu_data->mag[0],
-		.axis.y = imu_data->mag[1],
-		.axis.z = imu_data->mag[2],
-	};
-	FusionBiasUpdate(&fusion->fusionBias, imu_data->raw_gyro[0] & 0xFF, imu_data->raw_gyro[1] & 0xFF, imu_data->raw_gyro[2] & 0xFF);
-	FusionAhrsUpdate(&fusion->fusionAhrs, gyroscope, accelerometer, magnetometer, DT);												
-//	FusionAhrsUpdate(&fusion->fusionAhrs, gyroscope, accelerometer, FUSION_VECTOR3_ZERO, DT);												
-	fusion->eulerAngles = FusionQuaternionToEulerAngles(fusion->fusionAhrs.quaternion);
-	
-	float mag, theta;
-	mag = powf(powf(fusion->eulerAngles.angle.pitch,2.0f)+powf(fusion->eulerAngles.angle.roll,2.0f),0.5f);
-	theta = atan2f(fusion->eulerAngles.angle.roll, fusion->eulerAngles.angle.pitch);
-	
-	fusion->eulerAngles.angle.pitch = mag * cosf(theta-fusion->eulerAngles.angle.yaw*DEG_TO_RAD);
-	fusion->eulerAngles.angle.roll = mag * sinf(theta-fusion->eulerAngles.angle.yaw*DEG_TO_RAD);
-	int i;
-	for (i = 0; i < 3; i++)
-		fusion->eulerAngles.array[i]*=-1.0f;
 }
 
 uint64_t get_usec_timespec(struct timespec *tv)
@@ -238,7 +138,7 @@ uint64_t get_usec_timespec(struct timespec *tv)
 	return tv->tv_sec*(uint64_t)1E6 + tv->tv_nsec/(uint64_t)1E3;
 }
 
-int ready_check(){
+static int ready_check(){
 	//Toggle the kill switch to get going, to ensure controlled take-off
 	//Keep kill switch down to remain operational
     int count=1, toggle = 0, reset_toggle = 0;
@@ -302,73 +202,6 @@ int ready_check(){
 	rc_set_led(GREEN,ON);
 	return 0;
 }
-
-void* LED_thread(void *ptr){
-	
-	led_thread_t *GPS_ready= (led_thread_t*)ptr;
-	
-	const char *filepath0 = "/sys/class/leds/beaglebone:green:usr0/brightness";
-	const char *filepath1 = "/sys/class/leds/beaglebone:green:usr1/brightness";
-	const char *filepath2 = "/sys/class/leds/beaglebone:green:usr2/brightness";
-	const char *filepath3 = "/sys/class/leds/beaglebone:green:usr3/brightness";
-	int i=0;
-	FILE *file0 = NULL;
-	FILE *file1 = NULL;
-	FILE *file2 = NULL;
-	FILE *file3 = NULL;
-	
-	for(i=0;i<50;i++){
-		if(rc_get_state() == EXITING) pthread_exit(NULL);
-		
-		if((file0 = fopen(filepath0, "r+")) != NULL){
-			fwrite("1", sizeof(char), 1, file0);
-			fclose(file0);
-		}
-		
-		if((file1 = fopen(filepath1, "r+")) != NULL){
-			fwrite("1", sizeof(char), 1, file1);
-			fclose(file1);
-		}
-		
-		if((file2 = fopen(filepath2, "r+")) != NULL){
-			fwrite("1", sizeof(char), 1, file2);
-			fclose(file2);
-		}
-		
-		if((file3 = fopen(filepath3, "r+")) != NULL){
-			fwrite("1", sizeof(char), 1, file3);
-			fclose(file3);
-		}
-		
-		usleep(500000-400000*GPS_ready->GPS_fix_check);
-		if(rc_get_state() == EXITING) pthread_exit(NULL);
-		
-		if(GPS_ready->GPS_init_check==-1){
-			if((file0 = fopen(filepath0, "r+")) != NULL){
-				fwrite("0", sizeof(char), 1, file0);
-				fclose(file0);
-			}
-			
-			if((file1 = fopen(filepath1, "r+")) != NULL){
-				fwrite("0", sizeof(char), 1, file1);
-				fclose(file1);
-			}			
-		
-			if((file2 = fopen(filepath2, "r+")) != NULL){
-			fwrite("0", sizeof(char), 1, file2);
-			fclose(file2);
-			}
-		
-			if((file3 = fopen(filepath3, "r+")) != NULL){
-				fwrite("0", sizeof(char), 1, file3);
-				fclose(file3);
-			}
-		}
-		usleep(500000-400000*GPS_ready->GPS_fix_check);
-	}
-	return NULL;
-  }
-
 
 
 /************************************************************************

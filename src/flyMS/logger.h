@@ -112,23 +112,29 @@ typedef struct logger_t{
 
 
 /************************************************************************
+*   print_entry()
+*   populates the logger substructure and pushes it out to the logfile
+************************************************************************/
+int log_data(control_variables_t *control, setpoint_t *setpoint);
+
+/************************************************************************
 * 	print_entry()
 *	write the contents of one entry to the console
 ************************************************************************/
-int print_entry(core_logger_t* logger, core_log_entry_t* entry);
+static int print_entry(core_logger_t* logger, core_log_entry_t* entry);
 
 
 /************************************************************************
 * 	log_core_data()
 *	called by an outside function to quickly add new data to local buffer
 ************************************************************************/
-int log_core_data(core_logger_t* log, core_log_entry_t* new_entry);
+static int log_core_data(core_logger_t* log, core_log_entry_t* new_entry);
 
 /************************************************************************
 * 	write_core_log_entry()
 *	append a single entry to the log file
 ************************************************************************/
-int write_core_log_entry(FILE* f, core_log_entry_t* entry);
+static int write_core_log_entry(FILE* f, core_log_entry_t* entry);
 
 	
 /************************************************************************
@@ -151,9 +157,6 @@ int start_core_log(logger_t *logger);
 *	finish writing remaining data to log and close it
 ************************************************************************/
 int stop_core_log(core_logger_t* log);
-
-	
-char* concat(char *s1, char *s2);
 	
 
 #endif

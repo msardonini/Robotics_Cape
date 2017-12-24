@@ -87,11 +87,12 @@ void* uart4_checkerMS(void *ptr); //background thread
 int is_new_dsm2_dataMS();
 
 typedef struct control_variables_t{
-	float	pitch, roll, yaw[2];		// Euler angles of aircraft
+	float	euler[3];					// Euler angles of aircraft (in roll, pitch, yaw)
+	float	euler_previous[3];			// 1 Timestampe previousEuler angles of aircraft (in roll, pitch, yaw)
+	float	euler_rate[3];				// First derivative of euler angles (in roll/s, pitch/s, yaw/s)
 	float	compass_heading;
-	float	d_pitch, d_roll, d_yaw; 			// First derivative of Euler Angles	
 	float	d_pitch_f, d_roll_f, d_yaw_f; 		// Filtered First derivative of Eulter Angles	
-	int		mag0, mag1, mag2;					// Magnetometer Values
+	float	mag[3];
 	float	dpitch_setpoint, droll_setpoint;	// Desired attitude
 	int		num_wraps;				// Number of spins in Yaw
 	float	unwrapped_yaw[2];					// Some Yaw Varibles
@@ -104,14 +105,19 @@ typedef struct control_variables_t{
 	float	u[4]; 								// Duty Cycle to send to each motor
 	float	time; 								// Time since execution of the program
 	float	yaw_ref_offset;
-	float 	alt_rate_ref, d_alt_filt, alt_ref;	//Height Variables for control with Lidar
-	float	height_damping;
+	// float 	alt_rate_ref, d_alt_filt, alt_ref;	//Height Variables for control with Lidar
+	// float	height_damping;
 	float	baro_alt;							// Barometer Altitude
-	double	initial_pos_lon, initial_pos_lat; 	// Lat & Long positions from GPS
-	double	lat_error, lon_error;
+	// double	initial_pos_lon, initial_pos_lat; 	// Lat & Long positions from GPS
+	// double	lat_error, lon_error;
 	float 	kill_switch[2];
  
 	float	standing_throttle, alt_error;
+	transform_matrix_t transform;
+	fusion_data_t fusion;
+	core_config_t flight_config;
+	ekf_filter_t ekf_filter;
+	logger_t logger;
 }control_variables_t;
 
 typedef struct fusion_data_t
@@ -241,16 +247,11 @@ int init_rotation_matrix(transform_matrix_t *transform, core_config_t *flight_co
 void* LED_thread(void *ptr);
 void init_esc_hardware();
 void* quietEscs(void *ptr);
-int initialize_flight_program(flyMS_threads_t *flyMS_threads,
-                                core_config_t *flight_config,
-                                logger_t *logger,
+int initialize_flight_program(	control_variables_t *control,
+								flyMS_threads_t *flyMS_threads,
                                 filters_t *filters,
                                 pru_client_data_t *pru_client_data,
-                                rc_imu_data_t *imu_data,
-                                transform_matrix_t *transform,
-                                GPS_data_t *GPS_data,
-                                ekf_filter_t *ekf_filter,
-                                fusion_data_t *fusion);
+                                GPS_data_t *GPS_data);
 
 
 int flyMS_shutdown(			logger_t *logger, 
