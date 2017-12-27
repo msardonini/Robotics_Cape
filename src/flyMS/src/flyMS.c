@@ -99,23 +99,22 @@ void* flight_core(void* ptr)
 	static uint8_t i=0, first_iteration_count=0;
 
 	//Variables to Initialize things upon startup
-	static uint8_t First_Iteration=1, First_Iteration_GPS=1;
+	static uint8_t First_Iteration=1;
 	
 	// float initial_alt = 0;
 	//Initialize some variables if it is the first iteration
-	if(First_Iteration)
-	{
-		
-		//Set the reference time to the first iteration
-		function_control.start_time_usec = get_usec_timespec(&function_control.start_time);
 
-		control.setpoint.Aux[0] = 1; control.kill_switch[0]=1;
-		function_control.dsm2_timeout=0;
-		rc_read_barometer();
-		// initial_alt = rc_bmp_get_altitude_m();
-		rc_set_state(RUNNING);
-		printf("First Iteration ");
-	}
+	
+	//Set the reference time to the first iteration
+	function_control.start_time_usec = get_usec_timespec(&function_control.start_time);
+
+	control.setpoint.Aux[0] = 1; control.kill_switch[0]=1;
+	function_control.dsm2_timeout=0;
+	rc_read_barometer();
+	// initial_alt = rc_bmp_get_altitude_m();
+	rc_set_state(RUNNING);
+
+
 
 	while(rc_get_state()!=EXITING)
 	{
@@ -141,10 +140,10 @@ void* flight_core(void* ptr)
 		}
 
 		if(First_Iteration){
-			control.setpoint.euler_ref[2][0]=control.euler[2];
+			control.setpoint.euler_ref[2]=control.euler[2];
 			First_Iteration=0;
 			control.yaw_ref_offset = control.euler[2];
-			printf("Started \n");
+			printf("First Iteration Started \n");
 		}
 
 		/************************************************************************
@@ -186,11 +185,7 @@ void* flight_core(void* ptr)
 		/************************************************************************
 		*                        	Yaw Controller                              *
 		************************************************************************/	
-		control.setpoint.euler_ref[2][1]=control.setpoint.euler_ref[2][0];
-		control.setpoint.euler_ref[2][0]=control.setpoint.euler_ref[2][1] + 
-					(control.setpoint.yaw_rate_ref[0]+control.setpoint.yaw_rate_ref[1])*DT/2;
-
-		control.u_euler[2] = update_filter(filters.yaw_rate_PD,control.setpoint.euler_ref[2][0]-control.euler[2]);
+		control.u_euler[2] = update_filter(filters.yaw_rate_PD,control.setpoint.euler_ref[2]-control.euler[2]);
 		
 		/************************************************************************
 		*                   	Apply the Integrators                           *
@@ -205,7 +200,7 @@ void* flight_core(void* ptr)
 		}
 		
 		if(function_control.integrator_reset==300){// if landed, reset integrators and Yaw error
-			control.setpoint.euler_ref[2][0]=control.euler[2];
+			control.setpoint.euler_ref[2]=control.euler[2];
 			control.droll_err_integrator=0; 
 			control.dpitch_err_integrator=0;
 			control.dyaw_err_integrator=0;

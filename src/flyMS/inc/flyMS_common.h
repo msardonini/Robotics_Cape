@@ -41,7 +41,7 @@ either expressed or implied, of the FreeBSD Project.
 
 typedef struct setpoint_t{
 	float	euler_ref[3];	// Reference (Desired) Position
-	float	euler_previous_ref[3];	// Reference (Desired) Position
+	float	euler_ref_previous[3];	// Reference (Desired) Position
 	// float	filt_pitch_ref, filt_roll_ref;		// LPF of pitch and roll (because they are a func of yaw)
 	float	yaw_rate_ref[2];
 	float	Aux[2];

@@ -163,9 +163,12 @@ void * setpoint_manager(void* ptr)
 			}
 		}
 
+		//Update the previous values of the references
+		int i;
+
 		//Finally Update the integrator on the yaw reference value
-		control->setpoint.euler_ref[2][1]=control->setpoint.euler_ref[2][0];
-		control->setpoint.euler_ref[2][0]=control->setpoint.euler_ref[2][1]+(control->setpoint.yaw_rate_ref[0]+control->setpoint.yaw_rate_ref[1])*DT/2;
+		control->setpoint.euler_ref[2]=control->setpoint.euler_ref[2] + 
+										(control->setpoint.yaw_rate_ref[0]+control->setpoint.yaw_rate_ref[1])*DT/2;
 		
 		usleep(DT_US); //Run at 200Hz
 	}	
