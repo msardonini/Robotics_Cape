@@ -72,34 +72,30 @@ void * setpoint_manager(void* ptr)
 			
 			//Set roll reference value
 			//DSM2 Receiver is inherently positive to the left
-			control->setpoint.roll_ref= -rc_get_dsm_ch_normalized(2)*MAX_ROLL_RANGE;	
+			control->setpoint.euler_ref[0]= -rc_get_dsm_ch_normalized(2)*MAX_ROLL_RANGE;	
 			
 			//Set the pitch reference value
-			control->setpoint.pitch_ref= -rc_get_dsm_ch_normalized(3)*MAX_PITCH_RANGE;
+			control->setpoint.euler_ref[1]= -rc_get_dsm_ch_normalized(3)*MAX_PITCH_RANGE;
 			
 			
 			//If Specified by the config file, convert from Drone Coordinate System to User Coordinate System
 			if (control->flight_config.static_PR_ref)
 			{				
-				//Set roll reference value
-				//DSM2 Receiver is inherently positive to the left
-				control->setpoint.roll_ref= -rc_get_dsm_ch_normalized(2)*MAX_ROLL_RANGE;	
-
 				//Set Yaw, RC Controller acts on Yaw velocity, save a history for integration
 				//Apply the integration outside of current if statement, needs to run at 200Hz
 				control->setpoint.yaw_rate_ref[1]=control->setpoint.yaw_rate_ref[0];		
 				control->setpoint.yaw_rate_ref[0]=rc_get_dsm_ch_normalized(4)*MAX_YAW_RATE;
 
-				float P_R_MAG=pow(pow(control->setpoint.roll_ref,2)+pow(control->setpoint.pitch_ref,2),0.5);
-				float Theta_Ref=atan2f(control->setpoint.pitch_ref,control->setpoint.roll_ref);
-				control->setpoint.roll_ref =P_R_MAG*cos(Theta_Ref+control->euler[2]-control->yaw_ref_offset);
-				control->setpoint.pitch_ref=P_R_MAG*sin(Theta_Ref+control->euler[2]-control->yaw_ref_offset);
+				float P_R_MAG=pow(pow(control->setpoint.euler_ref[0],2)+pow(control->setpoint.euler_ref[1],2),0.5);
+				float Theta_Ref=atan2f(control->setpoint.euler_ref[1],control->setpoint.euler_ref[0]);
+				control->setpoint.euler_ref[0] =P_R_MAG*cos(Theta_Ref+control->euler[2]-control->yaw_ref_offset);
+				control->setpoint.euler_ref[1]=P_R_MAG*sin(Theta_Ref+control->euler[2]-control->yaw_ref_offset);
 			}
 			else	//This is flying FPV mode
 			{
 				//Set roll reference value
 				//DSM2 Receiver is inherently positive to the left
-				control->setpoint.roll_ref= -rc_get_dsm_ch_normalized(2)*MAX_ROLL_RANGE;	
+				control->setpoint.euler_ref[0]= -rc_get_dsm_ch_normalized(2)*MAX_ROLL_RANGE;	
 
 				//Set Yaw, RC Controller acts on Yaw velocity, save a history for integration
 				//Apply the integration outside of current if statement, needs to run at 200Hz
@@ -168,8 +164,8 @@ void * setpoint_manager(void* ptr)
 		}
 
 		//Finally Update the integrator on the yaw reference value
-		control->setpoint.yaw_ref[1]=control->setpoint.yaw_ref[0];
-		control->setpoint.yaw_ref[0]=control->setpoint.yaw_ref[1]+(control->setpoint.yaw_rate_ref[0]+control->setpoint.yaw_rate_ref[1])*DT/2;
+		control->setpoint.euler_ref[2][1]=control->setpoint.euler_ref[2][0];
+		control->setpoint.euler_ref[2][0]=control->setpoint.euler_ref[2][1]+(control->setpoint.yaw_rate_ref[0]+control->setpoint.yaw_rate_ref[1])*DT/2;
 		
 		usleep(DT_US); //Run at 200Hz
 	}	
@@ -192,17 +188,17 @@ void * setpoint_manager(void* ptr)
 // control.lat_error=control.setpoint.lat_setpoint-GPS_data.pos_lat;
 // control.lon_error=control.setpoint.lon_setpoint-GPS_data.pos_lon;
 
-// control.setpoint.pitch_ref=0.14*update_filter(filters.Outer_Loop_TF_pitch,control.lat_error);
-// control.setpoint.roll_ref=-0.14*update_filter(filters.Outer_Loop_TF_roll,control.lon_error);
+// control.setpoint.euler_ref[1]=0.14*update_filter(filters.Outer_Loop_TF_pitch,control.lat_error);
+// control.setpoint.euler_ref[0]=-0.14*update_filter(filters.Outer_Loop_TF_roll,control.lon_error);
 
-// control.setpoint.pitch_ref=saturateFilter(control.setpoint.pitch_ref,-0.2,0.2);
-// control.setpoint.roll_ref=saturateFilter(control.setpoint.roll_ref,-0.2,0.2);
+// control.setpoint.euler_ref[1]=saturateFilter(control.setpoint.euler_ref[1],-0.2,0.2);
+// control.setpoint.euler_ref[0]=saturateFilter(control.setpoint.euler_ref[0],-0.2,0.2);
 
 // //Convert to Drone Coordinate System from User Coordinate System
-// float P_R_MAG=pow(pow(control.setpoint.roll_ref,2)+pow(control.setpoint.pitch_ref,2),0.5);
-// float Theta_Ref=atan2f(control.setpoint.pitch_ref,control.setpoint.roll_ref);
-// control.setpoint.roll_ref=P_R_MAG*cos(Theta_Ref-control.euler[2]);
-// control.setpoint.pitch_ref=P_R_MAG*sin(Theta_Ref-control.euler[2]);
+// float P_R_MAG=pow(pow(control.setpoint.euler_ref[0],2)+pow(control.setpoint.euler_ref[1],2),0.5);
+// float Theta_Ref=atan2f(control.setpoint.euler_ref[1],control.setpoint.euler_ref[0]);
+// control.setpoint.euler_ref[0]=P_R_MAG*cos(Theta_Ref-control.euler[2]);
+// control.setpoint.euler_ref[1]=P_R_MAG*sin(Theta_Ref-control.euler[2]);
 
 // control.alt_error=control.alt_ref-GPS_data.gps_altitude;
 // //control.throttle=0.12*update_filter(&filters.Throttle_controller,control.alt_error);

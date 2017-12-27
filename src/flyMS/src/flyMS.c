@@ -62,7 +62,6 @@ static void* flight_core(void * ptr);
 * 	Local Variables				
 ************************************************************************/
 control_variables_t		control;			//Structure to contain all system states
-setpoint_t 				setpoint; 			//Structure to store all Setpoints
 GPS_data_t				GPS_data;			//Structure to store data from GPS
 function_control_t 		function_control;	//Structure to store variables which control functions
 filters_t				filters;			//Struct to contain all the filters
@@ -70,31 +69,22 @@ pru_client_data_t		pru_client_data;
 flyMS_threads_t			flyMS_threads;
 uint16_t 				imu_err_count;
 
-static int check_output_range()
+static int check_output_range(float u[4])
 {
 	int i;
 	float largest_value = 1;
 	float smallest_value = 0;
 
 	for(i=0;i<4;i++){ 
-		if(control.u[i]>largest_value)largest_value=control.u[i];
+		if(u[i]>largest_value)largest_value=control.u[i];
 		
-		if(control.u[i]<smallest_value)control.u[i]=0;
+		if(u[i]<smallest_value)control.u[i]=0;
 	}
 			
 	// if upper saturation would have occurred, reduce all outputs evenly
 	if(largest_value>1){
 		float offset = largest_value - 1;
-		for(i=0;i<4;i++) control.u[i]-=offset;
-	}
-
-	if(!control.flight_config.enable_debug_mode)
-	{
-		//Send Commands to Motors
-		for(i=0;i<4;i++){
-			pru_client_data.u[i] = control.u[i];
-			pru_client_data.send_flag = 1;
-		}
+		for(i=0;i<4;i++) u[i]-=offset;
 	}
 	return 0;
 }
@@ -131,19 +121,18 @@ void* flight_core(void* ptr)
 	{
 
 		/******************************************************************
-					Grab the time for Periphal Apps and Logs 			  *
+		*			Grab the time for Periphal Apps and Logs 			  *
 		******************************************************************/
 		function_control.start_loop_usec = get_usec_timespec(&function_control.start_loop);
 		control.time = (float)(function_control.start_loop_usec - function_control.start_time_usec)/1E6f;
 		
-
 		/******************************************************************
-					Read, Parse, and Translate IMU data for Flight		  *
+		*			Read, Parse, and Translate IMU data for Flight		  *
 		******************************************************************/
 		imu_handler(&control);
 
 		/******************************************************************
-						Take Care of Some Initialization Tasks			  *
+		*				Take Care of Some Initialization Tasks			  *
 		******************************************************************/
 		if (first_iteration_count < 150)
 		{
@@ -152,7 +141,7 @@ void* flight_core(void* ptr)
 		}
 
 		if(First_Iteration){
-			control.setpoint.yaw_ref[0]=control.euler[2];
+			control.setpoint.euler_ref[2][0]=control.euler[2];
 			First_Iteration=0;
 			control.yaw_ref_offset = control.euler[2];
 			printf("Started \n");
@@ -180,22 +169,28 @@ void* flight_core(void* ptr)
 			
 		}
 		/************************************************************************
-		* 	                  Pitch and Roll Controllers                        *
+		* 	                  		Roll Controller		                        *
 		************************************************************************/
-		control.dpitch_setpoint = update_filter(filters.pitch_PD, control.setpoint.pitch_ref - control.euler[1]);
-		control.upitch = update_filter(filters.pitch_rate_PD,control.dpitch_setpoint - control.euler_rate[1]);
+		control.droll_setpoint = update_filter(filters.roll_PD, control.setpoint.euler_ref[0] - control.euler[0]);
+		control.u_euler[0] = update_filter(filters.roll_rate_PD,control.droll_setpoint - control.euler_rate[1]);				
+		control.u_euler[0] = saturateFilter(control.u_euler[0],-MAX_ROLL_COMPONENT,MAX_ROLL_COMPONENT);
 		
-		control.droll_setpoint = update_filter(filters.roll_PD, control.setpoint.roll_ref - control.euler[0]);
-		control.uroll = update_filter(filters.roll_rate_PD,control.droll_setpoint - control.euler_rate[1]);				
+
+		/************************************************************************
+		* 	                  		Pitch Controller	                        *
+		************************************************************************/
+		control.dpitch_setpoint = update_filter(filters.pitch_PD, control.setpoint.euler_ref[1] - control.euler[1]);
+		control.u_euler[1] = update_filter(filters.pitch_rate_PD,control.dpitch_setpoint - control.euler_rate[1]);
+		control.u_euler[1] = saturateFilter(control.u_euler[1],-MAX_PITCH_COMPONENT,MAX_PITCH_COMPONENT);
 		
 		/************************************************************************
 		*                        	Yaw Controller                              *
 		************************************************************************/	
-		control.setpoint.yaw_ref[1]=control.setpoint.yaw_ref[0];
-		control.setpoint.yaw_ref[0]=control.setpoint.yaw_ref[1] + 
+		control.setpoint.euler_ref[2][1]=control.setpoint.euler_ref[2][0];
+		control.setpoint.euler_ref[2][0]=control.setpoint.euler_ref[2][1] + 
 					(control.setpoint.yaw_rate_ref[0]+control.setpoint.yaw_rate_ref[1])*DT/2;
 
-		control.uyaw = update_filter(filters.yaw_rate_PD,control.setpoint.yaw_ref[0]-control.euler[2]);
+		control.u_euler[2] = update_filter(filters.yaw_rate_PD,control.setpoint.euler_ref[2][0]-control.euler[2]);
 		
 		/************************************************************************
 		*                   	Apply the Integrators                           *
@@ -210,7 +205,7 @@ void* flight_core(void* ptr)
 		}
 		
 		if(function_control.integrator_reset==300){// if landed, reset integrators and Yaw error
-			control.setpoint.yaw_ref[0]=control.euler[2];
+			control.setpoint.euler_ref[2][0]=control.euler[2];
 			control.droll_err_integrator=0; 
 			control.dpitch_err_integrator=0;
 			control.dyaw_err_integrator=0;
@@ -218,40 +213,50 @@ void* flight_core(void* ptr)
 			
 		//only use integrators if airborne (above minimum throttle for > 1.5 seconds)
 		if(function_control.integrator_start >  400){
-			control.droll_err_integrator  += control.uroll  * DT;
-			control.dpitch_err_integrator += control.upitch * DT;
-			control.dyaw_err_integrator += control.uyaw * DT;		
+			control.droll_err_integrator  += control.u_euler[0]  * DT;
+			control.dpitch_err_integrator += control.u_euler[1] * DT;
+			control.dyaw_err_integrator += control.u_euler[2] * DT;		
 			
-			control.upitch += control.flight_config.Dpitch_KI * control.dpitch_err_integrator;
-			control.uroll += control.flight_config.Droll_KI * control.droll_err_integrator;
-			control.uyaw += control.flight_config.yaw_KI * control.dyaw_err_integrator;
+			control.u_euler[1] += control.flight_config.Dpitch_KI * control.dpitch_err_integrator;
+			control.u_euler[0] += control.flight_config.Droll_KI * control.droll_err_integrator;
+			control.u_euler[2] += control.flight_config.yaw_KI * control.dyaw_err_integrator;
 		}
 		
 		//Apply a saturation filter
-		control.upitch = saturateFilter(control.upitch,-MAX_PITCH_COMPONENT,MAX_PITCH_COMPONENT);
-		control.uroll = saturateFilter(control.uroll,-MAX_ROLL_COMPONENT,MAX_ROLL_COMPONENT);
-		control.uyaw = saturateFilter(control.uyaw,-MAX_YAW_COMPONENT,MAX_YAW_COMPONENT);
+		control.u_euler[2] = saturateFilter(control.u_euler[2],-MAX_YAW_COMPONENT,MAX_YAW_COMPONENT);
 		
 		/************************************************************************
 		*  Mixing
 		*           	      black				yellow
-		*                          CCW 1	  2 CW			
+		*                          CCW 1	  2 CW		IMU Orientation:	
 		*                          	   \ /				Y
 		*	                           / \            	|_ X
 		*                         CW 3	  4 CCW
 		*                 	  yellow       	    black
 		************************************************************************/
 		
-		control.u[0]=control.throttle+control.uroll+control.upitch-control.uyaw;
-		control.u[1]=control.throttle-control.uroll+control.upitch+control.uyaw;
-		control.u[2]=control.throttle+control.uroll-control.upitch+control.uyaw;
-		control.u[3]=control.throttle-control.uroll-control.upitch-control.uyaw;		
+		control.u[0]=control.throttle+control.u_euler[0]+control.u_euler[1]-control.u_euler[2];
+		control.u[1]=control.throttle-control.u_euler[0]+control.u_euler[1]+control.u_euler[2];
+		control.u[2]=control.throttle+control.u_euler[0]-control.u_euler[1]+control.u_euler[2];
+		control.u[3]=control.throttle-control.u_euler[0]-control.u_euler[1]-control.u_euler[2];		
 
 		/************************************************************************
 		*         		Check Output Ranges, if outside, adjust                 *
 		************************************************************************/
-		check_output_range();
+		check_output_range(control.u);
 		
+		/************************************************************************
+		*         				 Send Commands to ESCs 		                    *
+		************************************************************************/
+		if(!control.flight_config.enable_debug_mode)
+		{
+			//Send Commands to Motors
+			for(i=0;i<4;i++){
+				pru_client_data.u[i] = control.u[i];
+				pru_client_data.send_flag = 1;
+			}
+		}
+
 		/************************************************************************
 		*         		Check the kill Switch and Shutdown if set               *
 		************************************************************************/

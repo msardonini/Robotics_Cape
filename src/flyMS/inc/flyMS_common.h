@@ -35,13 +35,14 @@ either expressed or implied, of the FreeBSD Project.
 #include "Fusion.h"
 #include "filter.h"
 #include "config.h"
-#include "gps.h"
+// #include "gps.h"
 
 
 
 typedef struct setpoint_t{
-	float	pitch_ref, roll_ref, yaw_ref[2];	// Reference (Desired) Position
-	float	filt_pitch_ref, filt_roll_ref;		// LPF of pitch and roll (because they are a func of yaw)
+	float	euler_ref[3];	// Reference (Desired) Position
+	float	euler_previous_ref[3];	// Reference (Desired) Position
+	// float	filt_pitch_ref, filt_roll_ref;		// LPF of pitch and roll (because they are a func of yaw)
 	float	yaw_rate_ref[2];
 	float	Aux[2];
 	double	lat_setpoint, lon_setpoint;			// Controller Variables for Autonomous Flight
@@ -110,34 +111,30 @@ typedef struct control_variables_t{
 	float	euler[3];					// Euler angles of aircraft (in roll, pitch, yaw)
 	float	euler_previous[3];			// 1 Timestampe previousEuler angles of aircraft (in roll, pitch, yaw)
 	float	euler_rate[3];				// First derivative of euler angles (in roll/s, pitch/s, yaw/s)
+	float 	u_euler[3];					// Controller output for roll, pitch, yaw
 	float	compass_heading;
-	float	d_pitch_f, d_roll_f, d_yaw_f; 		// Filtered First derivative of Eulter Angles	
 	float	mag[3];
 	float	dpitch_setpoint, droll_setpoint;	// Desired attitude
 	int		num_wraps;				// Number of spins in Yaw
-	float	unwrapped_yaw[2];					// Some Yaw Varibles
 	float	initial_yaw;
 	float 	throttle;				
 	float	droll_err_integrator;
 	float	dpitch_err_integrator;
 	float	dyaw_err_integrator;
-	float 	uyaw, upitch, uroll, uthrottle;		// Controller effort for each state variable
 	float	u[4]; 								// Duty Cycle to send to each motor
 	float	time; 								// Time since execution of the program
 	float	yaw_ref_offset;
-	// float 	alt_rate_ref, d_alt_filt, alt_ref;	//Height Variables for control with Lidar
-	// float	height_damping;
 	float	baro_alt;							// Barometer Altitude
 	// double	initial_pos_lon, initial_pos_lat; 	// Lat & Long positions from GPS
 	// double	lat_error, lon_error;
 	float 	kill_switch[2];
  
 	float	standing_throttle, alt_error;
-	transform_matrix_t transform;
-	fusion_data_t fusion;
-	core_config_t flight_config;
-	ekf_filter_t ekf_filter;
-	setpoint_t setpoint;
+	transform_matrix_t transform;		// Matrices responsible for transforming coordinates of IMU data 
+	fusion_data_t fusion;				//	Struct to handle to IMU fusion to get Euler orientation
+	core_config_t flight_config;		//	Struct to contrain all of the configuration data
+	ekf_filter_t ekf_filter;			//	Struct which passes data to be sent and received from EKF
+	setpoint_t setpoint;				//	Struct which contains all of the controller setpoint values 
 }control_variables_t;
 
 

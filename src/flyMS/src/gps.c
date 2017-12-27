@@ -47,23 +47,25 @@ either expressed or implied, of the FreeBSD Project.
 
 int GPS_handler(control_variables_t *control, GPS_data_t *GPS_data)
 {
+	static int First_Iteration_GPS = 1;
+
 	if(is_new_GPS_data())
 	{
-		log_GPS_data(&GPS_data, control.time);
+		log_GPS_data(GPS_data, control->time);
 
-		if (First_Iteration_GPS==1  && GPS_data.GPS_fix==1){
-			// control.initial_pos_lat=GPS_data.meters_lat;
-			// control.initial_pos_lon=GPS_data.meters_lon;
+		if (First_Iteration_GPS==1  && GPS_data->GPS_fix==1){
+			// control->initial_pos_lat=GPS_data.meters_lat;
+			// control->initial_pos_lon=GPS_data.meters_lon;
 			First_Iteration_GPS=0;
-			GPS_data.GPS_fix_check=1;
+			GPS_data->GPS_fix_check=1;
 			printf("First Iteration GPS\n");
 		}
-		if(GPS_data.HDOP<4 && GPS_data.GPS_fix==1){
-			// GPS_data.pos_lat=GPS_data.meters_lat-control.initial_pos_lat;
-			// GPS_data.pos_lon=GPS_data.meters_lon-control.initial_pos_lon;
+		if(GPS_data->HDOP<4 && GPS_data->GPS_fix==1){
+			// GPS_data->pos_lat=GPS_data->meters_lat-control.initial_pos_lat;
+			// GPS_data->pos_lon=GPS_data->meters_lon-control.initial_pos_lon;
 		}
 
-		update_ekf_gps(&control, &GPS_data);
+		update_ekf_gps(control, GPS_data);
 	}
 	return 0;
 }

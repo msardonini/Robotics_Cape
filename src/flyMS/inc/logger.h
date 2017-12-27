@@ -31,6 +31,7 @@ either expressed or implied, of the FreeBSD Project.
 #pragma once
 #include <stdlib.h>
 #include <stdio.h>
+#include "gps.h"
 
 #ifndef LOGGER_H
 #define LOGGER_H
