@@ -156,4 +156,6 @@ int flyMS_shutdown(	GPS_data_t *GPS_data,
 void* pru_sender(void* ptr);
 void* setpoint_manager(void* ptr);
 uint64_t get_usec_timespec(timespec *tv);
+int flyMS_console_print(control_variables_t *control);
+
 #endif

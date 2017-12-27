@@ -149,6 +149,22 @@ int imu_handler(control_variables_t *control)
 }
 
 /************************************************************************
+*					   Update the EKF with GPS Data                     *
+************************************************************************/
+int update_ekf_gps(control_variables_t *control, GPS_data_t *GPS_data)
+{
+	control->ekf_filter.input.gps_timestamp = control->time*1E6;
+	control->ekf_filter.input.gps_latlon[0] = (double)GPS_data->deg_latitude + (double)GPS_data->min_latitude / 60.0;// + control->time*1E7/20000;
+	control->ekf_filter.input.gps_latlon[1] = (double)GPS_data->deg_longitude + (double)GPS_data->min_longitude / 60.0;
+	control->ekf_filter.input.gps_latlon[2] = (double)GPS_data->gps_altitude;
+	control->ekf_filter.input.gps_fix = GPS_data->GPS_fix;
+	control->ekf_filter.input.nsats = 10; // Really need to fix this
+	control->ekf_filter.input.gps_updated = 1;
+	return 0;
+}
+
+
+/************************************************************************
 *							Initialize the IMU                          *
 ************************************************************************/
 int initialize_imu(control_variables_t *control)

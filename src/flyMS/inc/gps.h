@@ -66,6 +66,8 @@ int GPS_init(GPS_data_t * GPS_data);
 uint8_t is_new_GPS_data();
 void* GPS_data_watcher(void *ptr);
 void read_raw_gps(char *buf, GPS_data_t *GPS_data);
+int GPS_handler(control_variables_t *control, GPS_data_t *GPS_data);
+
 
 
 #endif

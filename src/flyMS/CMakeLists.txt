@@ -13,6 +13,7 @@ set(SRCS_FLYMS
 	${FLYMS_DIR}src/logger.c
 	${FLYMS_DIR}src/misc_functions.c
 	${FLYMS_DIR}src/imu_handler.c
+	${FLYMS_DIR}src/setpoint.c
 	)
 
 include_directories(flyMS ${FLYMS_DIR}inc)

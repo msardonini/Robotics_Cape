@@ -106,7 +106,7 @@ int initialize_flight_program(control_variables_t *control,
 		logger_init();
 	}
 
-	pthread_create(&flyMS_threads->setpoint_manager_thread, NULL, setpoint_manager, (void*)NULL );
+	pthread_create(&flyMS_threads->setpoint_manager_thread, NULL, setpoint_manager, (void*)control);
 	
 	/* --------- Start the EKF for position estimates ----*/
 //	pthread_create(&flyMS_threads->ekf_thread, NULL, run_ekf, control->ekf_filter );
@@ -336,7 +336,44 @@ int flyMS_shutdown(	GPS_data_t *GPS_data,
 	return 0;
 }
 
-
+int flyMS_console_print(control_variables_t *control)
+{
+	printf("\r ");
+//	printf("time %3.3f ", control->time);
+//	printf("Alt_ref %3.1f ",control->alt_ref);
+//	printf(" U1:  %2.2f ",control->u[0]);
+//	printf(" U2: %2.2f ",control->u[1]);
+//	printf(" U3:  %2.2f ",control->u[2]);
+//	printf(" U4: %2.2f ",control->u[3]);	
+//	printf(" Throt %2.2f ", control->throttle);
+//	printf("Aux %2.1f ", control->setpoint.Aux[0]);
+//	printf("function: %f",rc_get_dsm_ch_normalized(6));
+//	printf("num wraps %d ",control->num_wraps);
+	// printf(" Pitch_ref %2.2f ", control->setpoint.pitch_ref);
+	// printf(" Roll_ref %2.2f ", control->setpoint.roll_ref);
+	// printf(" Yaw_ref %2.2f ", control->setpoint.yaw_ref[0]);
+	printf(" Roll %1.2f ", control->euler[0]);
+	printf(" Pitch %1.2f ", control->euler[1]);
+	printf(" Yaw %2.3f ", control->euler[2]); 
+//	printf(" Mag X %4.2f",control->mag[0]);
+//	printf(" Mag Y %4.2f",control->mag[1]);
+//	printf(" Mag Z %4.2f",control->mag[2]);
+// 	printf(" Pos N %2.3f ", control->ekf_filter.output.ned_pos[0]); 
+//	printf(" Pos E %2.3f ", control->ekf_filter.output.ned_pos[1]); 
+//	printf(" Pos D %2.3f ", control->ekf_filter.output.ned_pos[2]); 
+//	printf(" DPitch %1.2f ", control->euler_rate[1]); 
+//	printf(" DRoll %1.2f ", control->euler_rate[1]);
+//	printf(" DYaw %2.3f ", control->euler_rate[2]); 	
+//	printf(" uyaw %2.3f ", control->upitch); 		
+//	printf(" uyaw %2.3f ", control->uroll); 		
+//	printf(" uyaw %2.3f ", control->uyaw);
+//	printf(" GPS pos lat: %2.2f", control->GPS_data.pos_lat);
+//	printf(" GPS pos lon: %2.2f", control->GPS_data.pos_lon);
+//	printf(" HDOP: %f", control->GPS_data.HDOP);
+//	printf("Baro Alt: %f ",control->baro_alt);
+	fflush(stdout);
+	return 0;
+}
 
 
 #ifdef __cplusplus

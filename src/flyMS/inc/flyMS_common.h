@@ -137,6 +137,7 @@ typedef struct control_variables_t{
 	fusion_data_t fusion;
 	core_config_t flight_config;
 	ekf_filter_t ekf_filter;
+	setpoint_t setpoint;
 }control_variables_t;
 
 

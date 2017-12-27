@@ -60,6 +60,9 @@ int imu_handler(control_variables_t *control);
 int initialize_imu(control_variables_t *control);
 
 
-
+/************************************************************************
+*					   Update the EKF with GPS Data                     *
+************************************************************************/
+int update_ekf_gps(control_variables_t *control, GPS_data_t *GPS_data);
 
 #endif
