@@ -129,6 +129,7 @@ void* flight_core(void* ptr)
 		*			Read, Parse, and Translate IMU data for Flight		  *
 		******************************************************************/
 		imu_handler(&control);
+		imu_err_count = 0;
 
 		/******************************************************************
 		*				Take Care of Some Initialization Tasks			  *
@@ -342,15 +343,15 @@ int main(int argc, char *argv[]){
 	rc_set_state(RUNNING);
 	while (rc_get_state() != EXITING) 
 	{
-		usleep(5000);
+		usleep(DT_US);
 		imu_err_count++;
 		if (imu_err_count == 5 || imu_err_count % 50 == 0)
 		{
 			char errMsg[100];
 			sprintf(errMsg,"Error! IMU read failed for more than\
-											5 consecutive timesteps. time: = %f\
-											number of missed reads: %u \n",
-											control.time,imu_err_count);
+								5 consecutive timesteps. time: = %f\
+								number of missed reads: %u \n",
+								control.time,imu_err_count);
 			flyMS_Error_Log(errMsg);
 		}
 	}

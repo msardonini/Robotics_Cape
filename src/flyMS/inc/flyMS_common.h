@@ -37,6 +37,21 @@ either expressed or implied, of the FreeBSD Project.
 #include "config.h"
 // #include "gps.h"
 
+#define SAMPLE_RATE	100
+#define DT 0.01f
+#define DT_US 10000
+#define MICROTESLA_TO_GAUSS 0.01f
+#define Integrator_TH 0.55
+#define MAX_PITCH_RANGE 0.666 // in radians
+#define MAX_ROLL_RANGE 0.666 // in radians
+#define MAX_YAW_RATE 2.0 //in Radians per second
+#define MIN_THROTTLE 0.3
+#define MAX_THROTTLE 0.75
+#define MAX_PITCH_COMPONENT 0.25
+#define MAX_ROLL_COMPONENT 0.25
+#define MAX_YAW_COMPONENT 0.25
+#define DEG_TO_RAD 0.01745
+#define MAX_ALT_SPEED 0.2 //in meters/second
 
 
 typedef struct setpoint_t{

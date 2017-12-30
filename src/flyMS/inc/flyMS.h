@@ -46,26 +46,6 @@ either expressed or implied, of the FreeBSD Project.
 #define INTERNAL_FILTER	BMP_FILTER_8
 #define BMP_CHECK_HZ	1
 
-#define SAMPLE_RATE	100
-#define DT 0.01f
-#define DT_US 10000
-#define MICROTESLA_TO_GAUSS 0.01f
-#define Integrator_TH 0.55
-#define MAX_PITCH_RANGE 0.666 // in radians
-#define MAX_ROLL_RANGE 0.666 // in radians
-#define MAX_YAW_RATE 2.0 //in Radians per second
-#define MIN_THROTTLE 0.3
-#define MAX_THROTTLE 0.75
-#define MAX_PITCH_COMPONENT 0.25
-#define MAX_ROLL_COMPONENT 0.25
-#define MAX_YAW_COMPONENT 0.25
-#define DEG_TO_RAD 0.01745
-#define MAX_ALT_SPEED 0.2 //in meters/second
-
-
-#define LAT_ACCEL_BIAS 0.02798
-#define LON_ACCEL_BIAS -0.1173
-#define ALT_ACCEL_BIAS 0.0
 
 
 /************************** Orientation Matrix Constants *****************************/	
@@ -138,23 +118,17 @@ typedef struct flyMS_threads_t{
 }flyMS_threads_t;
 
 
-void zero_escs();
-void* barometer_monitor();
+
+
 int initialize_filters(filters_t *filters, core_config_t *flight_config);
 int init_rotation_matrix(transform_matrix_t *transform, core_config_t *flight_config);
-void init_esc_hardware();
-void* quietEscs(void *ptr);
 int initialize_flight_program(	control_variables_t *control,
 								flyMS_threads_t *flyMS_threads,
                                 filters_t *filters,
                                 pru_client_data_t *pru_client_data,
                                 GPS_data_t *GPS_data);
-
-
 int flyMS_shutdown(	GPS_data_t *GPS_data, 
 					flyMS_threads_t *flyMS_threads);
-void* pru_sender(void* ptr);
-void* setpoint_manager(void* ptr);
 uint64_t get_usec_timespec(timespec *tv);
 int flyMS_console_print(control_variables_t *control);
 
