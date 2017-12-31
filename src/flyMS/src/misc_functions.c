@@ -58,7 +58,6 @@ static int ready_check();
 
 
 int initialize_flight_program(control_variables_t *control,
-				flyMS_threads_t *flyMS_threads,
 				filters_t *filters,
 				pru_client_data_t *pru_client_data,
 				GPS_data_t *GPS_data)
@@ -66,30 +65,20 @@ int initialize_flight_program(control_variables_t *control,
 	//Starts the pru_client which will send commands to ESCs
 	start_pru_client(pru_client_data);
 
-	if(control->flight_config.enable_barometer)
-	{
-		if(rc_initialize_barometer(OVERSAMPLE, INTERNAL_FILTER)<0){
-			printf("initialize_barometer failed\n");
-			return -1;
-		}
-	}
-	
-	
-	initialize_imu(control);
-
 	//Initialize the remote controller
 	rc_initialize_dsm();
+
+	//Pause the program until the user toggles the kill switch
 	if(!control->flight_config.enable_debug_mode)
 	{	
 		if(ready_check()){
 			printf("Exiting Program \n");
 			return -1;
-		} //Toggle the kill switch a few times to signal it's ready
+		}
 	}
 
-	int debug_mode = control->flight_config.enable_debug_mode;
-	
 	// load flight_core settings
+	int force_debug_mode = control->flight_config.enable_debug_mode;
 	if(load_core_config(&control->flight_config)){
 		printf("WARNING: no configuration file found\n");
 		printf("loading default settings\n");
@@ -97,14 +86,20 @@ int initialize_flight_program(control_variables_t *control,
 			printf("Warning, can't write default flight_config file\n");
 		}
 	}
-	control->flight_config.enable_debug_mode = (debug_mode || control->flight_config.enable_debug_mode);
+	control->flight_config.enable_debug_mode = (force_debug_mode || control->flight_config.enable_debug_mode);
 
+	//Initialize the IMU and Barometer
+	initialize_imu(control);
+
+	//Enable the data logger
 	if(control->flight_config.enable_logging)
 	{
 		logger_init();
 	}
 
-	pthread_create(&flyMS_threads->setpoint_manager_thread, NULL, setpoint_manager, (void*)control);
+	//Enable the data logger
+	initialize_setpoint_manager(control);
+
 	
 	/* --------- Start the EKF for position estimates ----*/
 //	pthread_create(&flyMS_threads->ekf_thread, NULL, run_ekf, control->ekf_filter );
@@ -112,8 +107,7 @@ int initialize_flight_program(control_variables_t *control,
 	init_rotation_matrix(&control->transform, &control->flight_config); //Initialize the rotation matrix from IMU to drone
 	initialize_filters(filters, &control->flight_config);
 
-
-	//Start the GPS thread, flash the LED's if GPS has a fix
+	/* 			Start the GPS 				*/
 	if(control->flight_config.enable_gps)
 	{
 		GPS_data->GPS_init_check=GPS_init(GPS_data);
@@ -314,8 +308,7 @@ int init_rotation_matrix(transform_matrix_t *transform, core_config_t *flight_co
 }
 
 
-int flyMS_shutdown(	GPS_data_t *GPS_data, 
-					flyMS_threads_t *flyMS_threads) 
+int flyMS_shutdown(	GPS_data_t *GPS_data) 
 {
 	//Join the threads for a safe process shutdown
 	if(GPS_data->GPS_init_check == 0)
@@ -329,6 +322,8 @@ int flyMS_shutdown(	GPS_data_t *GPS_data,
 	close(GPS_data->GPS_file);
 	join_pru_client();
 	
+	shutdown_setpoint_manager();
+
 	rc_set_led(GREEN,OFF);
 	rc_set_led(RED,OFF);
 	return 0;

@@ -163,7 +163,8 @@ int create_default_core_config_file(core_config_t* config)
 	f = create_empty_core_config_file("default");
 	
 	// if we couldn't open file for writing, return error -1
-	if(f == NULL){
+	if(f == NULL)
+	{
 		return -1;
 	}
 

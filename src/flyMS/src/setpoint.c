@@ -50,9 +50,34 @@ extern "C" {
 uint8_t new_dsm_data = 0;
 float dsm2_data[MAX_DSM2_CHANNELS];
 int dsm2_timeout = 0;
+pthread_t setpoint_thread;
+
+
+//Local Functions
 static int copy_dsm2_data();
 static int handle_rc_data_direct(control_variables_t *control);
 static int rc_err_handler(reference_mode_t setpoint_type);
+static void * setpoint_manager(void* ptr);
+
+
+
+/*
+	Init and Deinit Functions
+	Called elsewhere to start and stop the setpoint manager
+*/
+
+int initialize_setpoint_manager(control_variables_t *control)
+{
+	pthread_create(&setpoint_thread, NULL, setpoint_manager, (void*)control);
+	return 0;
+}
+
+int shutdown_setpoint_manager()
+{
+	pthread_join(setpoint_thread, NULL);
+	return 0;
+}
+
 
 /*
 	setpoint_manager()
@@ -63,7 +88,7 @@ static int rc_err_handler(reference_mode_t setpoint_type);
 			2. Calculated values from GPS navigation for autonomous flight
 */
 
-void * setpoint_manager(void* ptr)
+static void * setpoint_manager(void* ptr)
 {
 	control_variables_t *control = (control_variables_t*) ptr;
 	enum reference_mode_t setpoint_type = RC_DIRECT;
@@ -106,7 +131,7 @@ void * setpoint_manager(void* ptr)
 	}
 	return NULL;
 }
-	
+
 	
 static int handle_rc_data_direct(control_variables_t *control)
 {		

@@ -121,12 +121,10 @@ typedef struct flyMS_threads_t{
 int initialize_filters(filters_t *filters, core_config_t *flight_config);
 int init_rotation_matrix(transform_matrix_t *transform, core_config_t *flight_config);
 int initialize_flight_program(	control_variables_t *control,
-								flyMS_threads_t *flyMS_threads,
                                 filters_t *filters,
                                 pru_client_data_t *pru_client_data,
                                 GPS_data_t *GPS_data);
-int flyMS_shutdown(	GPS_data_t *GPS_data, 
-					flyMS_threads_t *flyMS_threads);
+int flyMS_shutdown(	GPS_data_t *GPS_data);
 uint64_t get_usec_timespec(timespec *tv);
 int flyMS_console_print(control_variables_t *control);
 

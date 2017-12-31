@@ -48,7 +48,8 @@ typedef enum reference_mode_t
 *      	Thread to Manage the pitch/roll/yaw reference	  *
 *		values to be fed into the inner loop contoller    *
 **********************************************************/
-void* setpoint_manager(void* ptr);
+int initialize_setpoint_manager(control_variables_t *control);
+int shutdown_setpoint_manager();
 
 
 

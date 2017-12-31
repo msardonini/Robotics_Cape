@@ -46,6 +46,7 @@ static void updateFusion(fusion_data_t *fusion);
 
 //Local Structure to interpret imu_data
 rc_imu_data_t imu_data;
+int imu_orientation_id = 1;
 
 /*
 	imu_handler()
@@ -169,9 +170,19 @@ int update_ekf_gps(control_variables_t *control, GPS_data_t *GPS_data)
 ************************************************************************/
 int initialize_imu(control_variables_t *control)
 {
+	
+	//Start the barometer
+	if(control->flight_config.enable_barometer)
+	{
+		if(rc_initialize_barometer(OVERSAMPLE, INTERNAL_FILTER)<0){
+			printf("initialize_barometer failed\n");
+			return -1;
+		}
+	}
+
 	// set up IMU configuration
 	rc_imu_config_t imu_config = rc_default_imu_config();
-	imu_config.orientation = get_orientation_config(control->flight_config.imu_orientation);
+	imu_orientation_id = control->flight_config.imu_orientation;
 	imu_config.accel_fsr = A_FSR_2G;
 	imu_config.enable_magnetometer=1;
 //	imu_config.accel_dlpf = ACCEL_DLPF_5;
@@ -241,20 +252,43 @@ static void updateFusion(fusion_data_t *fusion)
 		.axis.y = imu_data.gyro[1],
 		.axis.z = imu_data.gyro[2],
 	}; 
-
-	const FusionVector3 accelerometer = 
+	switch (imu_orientation_id)
 	{
-		.axis.x = imu_data.accel[0]/9.81f,
-		.axis.y = imu_data.accel[1]/9.81f,
-		.axis.z = imu_data.accel[2]/9.81f,
-	}; 
+		case 1:
+			const FusionVector3 accelerometer = 
+			{
+				.axis.x = imu_data.accel[0]/9.81f,
+				.axis.y = imu_data.accel[1]/9.81f,
+				.axis.z = imu_data.accel[2]/9.81f,
+			}; 
 
-	const FusionVector3 magnetometer = 
-	{
-		.axis.x = imu_data.mag[0],
-		.axis.y = imu_data.mag[1],
-		.axis.z = imu_data.mag[2],
-	};
+			const FusionVector3 magnetometer = 
+			{
+				.axis.x = imu_data.mag[0],
+				.axis.y = imu_data.mag[1],
+				.axis.z = imu_data.mag[2],
+			};
+			break;
+		case 2:
+			const FusionVector3 accelerometer = 
+			{
+				.axis.x = -imu_data.accel[0]/9.81f,
+				.axis.y = imu_data.accel[1]/9.81f,
+				.axis.z = -imu_data.accel[2]/9.81f,
+			}; 
+
+			const FusionVector3 magnetometer = 
+			{
+				.axis.x = -imu_data.mag[0],
+				.axis.y = imu_data.mag[1],
+				.axis.z = -imu_data.mag[2],
+			};
+			break
+		default:
+			printf("Error Unrecognized IMU orientation\n");
+			break;
+	}
+	
 	FusionBiasUpdate(&fusion->fusionBias, imu_data.raw_gyro[0] & 0xFF, imu_data.raw_gyro[1] & 0xFF, imu_data.raw_gyro[2] & 0xFF);
 	FusionAhrsUpdate(&fusion->fusionAhrs, gyroscope, accelerometer, magnetometer, DT);												
 //	FusionAhrsUpdate(&fusion->fusionAhrs, gyroscope, accelerometer, FUSION_VECTOR3_ZERO, DT);												

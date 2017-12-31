@@ -60,7 +60,6 @@ GPS_data_t				GPS_data;			//Structure to store data from GPS
 function_control_t 		function_control;	//Structure to store variables which control functions
 filters_t				filters;			//Struct to contain all the filters
 pru_client_data_t		pru_client_data;
-flyMS_threads_t			flyMS_threads;
 uint16_t 				imu_err_count;
 
 static int check_output_range(float u[4])
@@ -319,19 +318,18 @@ int main(int argc, char *argv[]){
 	*                    Initialize the Flight Program                      *
 	************************************************************************/	
 	if(initialize_flight_program(	&control,
-									&flyMS_threads,
 									&filters,
 									&pru_client_data,
 									&GPS_data))
 	{
-		flyMS_shutdown(	&GPS_data, 
-						&flyMS_threads); 
+		flyMS_shutdown(	&GPS_data); 
 		rc_cleanup();
 		return -1;
 	}
 	
 	//Start the control program
-	pthread_create(&flyMS_threads.flight_core, NULL, flight_core, (void*)NULL);
+	pthread_t flight_core_thread;
+	pthread_create(&flight_core_thread, NULL, flight_core, (void*)NULL);
 
 	printf("Starting \n");
 	rc_set_state(RUNNING);
@@ -350,8 +348,7 @@ int main(int argc, char *argv[]){
 		}
 	}
 
-	flyMS_shutdown(	&GPS_data, 
-					&flyMS_threads); 
+	flyMS_shutdown(	&GPS_data); 
 	rc_cleanup();
 	return 0;
 }
