@@ -251,45 +251,36 @@ static void updateFusion(fusion_data_t *fusion)
 		.axis.x = imu_data.gyro[0],
 		.axis.y = imu_data.gyro[1],
 		.axis.z = imu_data.gyro[2],
-	}; 
+	};
+
+	FusionVector3 accelerometer; 
+	FusionVector3 magnetometer;
+
 	switch (imu_orientation_id)
 	{
 		case 1:
-			const FusionVector3 accelerometer = 
-			{
-				.axis.x = imu_data.accel[0]/9.81f,
-				.axis.y = imu_data.accel[1]/9.81f,
-				.axis.z = imu_data.accel[2]/9.81f,
-			}; 
+			accelerometer.axis.x = imu_data.accel[0]/9.81f;
+			accelerometer.axis.y = imu_data.accel[1]/9.81f;
+			accelerometer.axis.z = imu_data.accel[2]/9.81f;
 
-			const FusionVector3 magnetometer = 
-			{
-				.axis.x = imu_data.mag[0],
-				.axis.y = imu_data.mag[1],
-				.axis.z = imu_data.mag[2],
-			};
+			magnetometer.axis.x = imu_data.mag[0];
+			magnetometer.axis.y = imu_data.mag[1];
+			magnetometer.axis.z = imu_data.mag[2];
 			break;
 		case 2:
-			const FusionVector3 accelerometer = 
-			{
-				.axis.x = -imu_data.accel[0]/9.81f,
-				.axis.y = imu_data.accel[1]/9.81f,
-				.axis.z = -imu_data.accel[2]/9.81f,
-			}; 
+			accelerometer.axis.x = -imu_data.accel[0]/9.81f;
+			accelerometer.axis.y = imu_data.accel[1]/9.81f;
+			accelerometer.axis.z = -imu_data.accel[2]/9.81f;
 
-			const FusionVector3 magnetometer = 
-			{
-				.axis.x = -imu_data.mag[0],
-				.axis.y = imu_data.mag[1],
-				.axis.z = -imu_data.mag[2],
-			};
-			break
+			magnetometer.axis.x = -imu_data.mag[0];
+			magnetometer.axis.y = imu_data.mag[1];
+			magnetometer.axis.z = -imu_data.mag[2];
+			break;
 		default:
 			printf("Error Unrecognized IMU orientation\n");
 			break;
 	}
-	
-	FusionBiasUpdate(&fusion->fusionBias, imu_data.raw_gyro[0] & 0xFF, imu_data.raw_gyro[1] & 0xFF, imu_data.raw_gyro[2] & 0xFF);
+
 	FusionAhrsUpdate(&fusion->fusionAhrs, gyroscope, accelerometer, magnetometer, DT);												
 //	FusionAhrsUpdate(&fusion->fusionAhrs, gyroscope, accelerometer, FUSION_VECTOR3_ZERO, DT);												
 	fusion->eulerAngles = FusionQuaternionToEulerAngles(fusion->fusionAhrs.quaternion);
