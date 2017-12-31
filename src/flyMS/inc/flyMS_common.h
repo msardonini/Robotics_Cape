@@ -30,12 +30,8 @@ either expressed or implied, of the FreeBSD Project.
 #define FLYMS_COMMON_H
 
 #pragma once
-#include "roboticscape.h"
-#include "pru_handler_client.h"
 #include "Fusion.h"
-#include "filter.h"
 #include "config.h"
-// #include "gps.h"
 
 #define SAMPLE_RATE	100
 #define DT 0.01f
@@ -57,7 +53,6 @@ either expressed or implied, of the FreeBSD Project.
 typedef struct setpoint_t{
 	float	euler_ref[3];	// Reference (Desired) Position
 	float	euler_ref_previous[3];	// Reference (Desired) Position
-	// float	filt_pitch_ref, filt_roll_ref;		// LPF of pitch and roll (because they are a func of yaw)
 	float	yaw_rate_ref[2];
 	float	Aux[2];
 	double	lat_setpoint, lon_setpoint;			// Controller Variables for Autonomous Flight

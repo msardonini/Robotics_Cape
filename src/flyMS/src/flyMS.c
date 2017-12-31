@@ -35,17 +35,11 @@ either expressed or implied, of the FreeBSD Project.
 extern "C" {
 #endif
 
-
-#include <errno.h>
 #include <string.h>
 #include <stdio.h>
-#include <stdlib.h>
 #include <unistd.h>
 #include <sys/stat.h>
-#include <termios.h>
-#include <fcntl.h>
 #include <pthread.h>
-#include <math.h>
 #include <time.h>
 
 #include <flyMS_common.h>

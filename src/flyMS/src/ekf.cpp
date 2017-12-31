@@ -59,7 +59,7 @@
 extern "C"{
 #include "flyMS_common.h"
 #include "ekf2.h"
-#include "flyMS.h"
+// #include "flyMS.h"
 }
 
 Ekf _ekf;

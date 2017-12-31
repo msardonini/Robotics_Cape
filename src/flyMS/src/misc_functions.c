@@ -45,10 +45,8 @@ extern "C" {
 	
 #include "flyMS_common.h"
 #include "flyMS.h"
+#include "setpoint.h"
 #include "logger.h"
-#include "gps.h"
-#include "ekf2.h"
-#include "pru_handler_client.h"
 #include "imu_handler.h"
 //Coordinate system transformations matrices
 

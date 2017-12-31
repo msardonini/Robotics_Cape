@@ -33,17 +33,14 @@ either expressed or implied, of the FreeBSD Project.
 
 
 #include <stdio.h>
-#include <stdlib.h>
 #include <string.h>
 #include <termios.h>
 #include <pthread.h>
-#include <math.h>
 #include <unistd.h>
 #include <fcntl.h>
-#include "roboticscape.h"
+	
 #include "flyMS_common.h"
 #include "gps.h"
-#include "flyMS.h"
 #include "imu_handler.h"
 
 int GPS_handler(control_variables_t *control, GPS_data_t *GPS_data)

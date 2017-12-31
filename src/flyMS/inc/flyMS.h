@@ -27,16 +27,14 @@ of the authors and should not be interpreted as representing official policies,
 either expressed or implied, of the FreeBSD Project.
 */
 
-#pragma once
-#include "roboticscape.h"
-#include "pru_handler_client.h"
-#include "filter.h"
-#include "config.h"
-#include "logger.h"
-#include "gps.h"
-
 #ifndef FLYMS_H
 #define FLYMS_H
+
+#pragma once
+#include "pru_handler_client.h"
+#include "filter.h"
+#include "logger.h"
+#include "gps.h"
 
 // choice of 1,2,4,8,16 oversampling. Here we use 16 and sample at 25hz which
 // is close to the update rate specified in robotics_cape.h for that oversample.

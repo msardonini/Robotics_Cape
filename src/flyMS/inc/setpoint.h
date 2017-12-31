@@ -37,8 +37,8 @@ either expressed or implied, of the FreeBSD Project.
 
 typedef enum reference_mode_t
 {
-	RC_DIRECT;
-	RC_NAVIGATION;
+	RC_DIRECT,
+	RC_NAVIGATION
 
 }reference_mode_t;
 

@@ -35,7 +35,6 @@ either expressed or implied, of the FreeBSD Project.
 extern "C" {
 #endif
 
-#include <errno.h>
 #include <string.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -43,17 +42,26 @@ extern "C" {
 #include <pthread.h>
 #include <math.h>
 #include <time.h>
+
 #include <flyMS_common.h>
+#include <setpoint.h>
 #include <flyMS.h>
-#include <imu_handler.h>
 
 uint8_t new_dsm_data = 0;
-float dsm2_data[MAX_DSM2_CHANNELS]
+float dsm2_data[MAX_DSM2_CHANNELS];
 int dsm2_timeout = 0;
 static int copy_dsm2_data();
 static int handle_rc_data_direct(control_variables_t *control);
 static int rc_err_handler(reference_mode_t setpoint_type);
 
+/*
+	setpoint_manager()
+		Handles the setpoint values for roll/pitch/yaw to be fed into the flight controller
+		
+		2 Main sources of retreiving values
+			1. Direct from remote control
+			2. Calculated values from GPS navigation for autonomous flight
+*/
 
 void * setpoint_manager(void* ptr)
 {
@@ -94,16 +102,14 @@ void * setpoint_manager(void* ptr)
 				printf("Error, invalid reference mode! \n");
 		}
 		
-		usleep(DT_US); //Run at 200Hz
+		usleep(DT_US); //Run at the control frequency
 	}
 	return NULL;
 }
 	
 	
-handle_rc_data_direct(control_variables_t *control)
-{
-
-		
+static int handle_rc_data_direct(control_variables_t *control)
+{		
 		/**********************************************************
 		*           Read the RC Controller for Commands           *
 		**********************************************************/
@@ -163,13 +169,10 @@ static int copy_dsm2_data()
 		dsm2_data[i] = rc_get_dsm_ch_normalized(i+1);
 	}
 	return 0;
-
 }
-
 
 static int rc_err_handler(reference_mode_t setpoint_type)
 {
-
 	dsm2_timeout++;
 	if(dsm2_timeout>1.5/DT) //If packet hasn't been received for 1.5 seconds
 	{ 
@@ -179,9 +182,7 @@ static int rc_err_handler(reference_mode_t setpoint_type)
 		flyMS_Error_Log(errMsg);
 		rc_set_state(EXITING);
 	}
-
-
-
+	return 0;
 }
 
 //Super old code for autonomount flight
