@@ -124,6 +124,7 @@ typedef struct control_variables_t{
 	float 	u_euler[3];					// Controller output for roll, pitch, yaw
 	float	compass_heading;
 	float	mag[3];
+	float	accel[3];
 	float	dpitch_setpoint, droll_setpoint;	// Desired attitude
 	int		num_wraps;				// Number of spins in Yaw
 	float	initial_yaw;

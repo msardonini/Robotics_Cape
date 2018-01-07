@@ -127,7 +127,7 @@ int logger_deinit();
 *   log_data()
 *   populates the logger substructure and pushes it out to the logfile
 ************************************************************************/
-int log_data(control_variables_t *control, setpoint_t *setpoint);
+int log_data(control_variables_t *control);
 
 /************************************************************************
 *   log_GPS_data()

@@ -79,6 +79,7 @@ int imu_handler(control_variables_t *control)
 	/**********************************************************
 	*		Perform the Coordinate System Transformation	  *
 	**********************************************************/
+
 	for (i=0;i<3;i++) 
 	{	
 		control->transform.dmp_imu.d[i] = control->fusion.eulerAngles.array[i] * DEG_TO_RAD;
@@ -90,13 +91,19 @@ int imu_handler(control_variables_t *control)
 	rc_matrix_times_col_vec(control->transform.IMU_to_drone_gyro, control->transform.gyro_imu, &control->transform.gyro_drone);
 	rc_matrix_times_col_vec(control->transform.IMU_to_drone_accel, control->transform.accel_imu, &control->transform.accel_drone);
 	
+	float sign[3] = {1, 1, 1};
+	if (imu_orientation_id == 2)
+	{
+		sign[1] = -1; ;sign[2] = -1;
+	}
 	//Save newly calculated data into our control variable structure
 	for (i = 0; i < 3; i++)
 	{
 		control->euler_previous[i] 		= control->euler[i];	
 		control->euler[i] 				= control->transform.dmp_drone.d[i];
-		control->euler_rate[i]			= control->transform.gyro_drone.d[i];
-		control->mag[i]					= imu_data.mag[i];
+		control->euler_rate[i]			= sign[i]*control->transform.gyro_drone.d[i];
+		control->mag[i]					= sign[i]*imu_data.mag[i];
+		control->accel[i]				= sign[i]*imu_data.accel[i];
 	}
 	control->compass_heading = imu_data.compass_heading_raw;	
 
@@ -246,19 +253,18 @@ static void init_fusion(fusion_data_t* fusion)
 ************************************************************************/
 static void updateFusion(fusion_data_t *fusion)
 {
-	const FusionVector3 gyroscope = 
-	{
-		.axis.x = imu_data.gyro[0],
-		.axis.y = imu_data.gyro[1],
-		.axis.z = imu_data.gyro[2],
-	};
 
+	FusionVector3 gyroscope;
 	FusionVector3 accelerometer; 
 	FusionVector3 magnetometer;
 
 	switch (imu_orientation_id)
 	{
 		case 1:
+			gyroscope.axis.x = imu_data.accel[0]/9.81f;
+			gyroscope.axis.y = imu_data.accel[1]/9.81f;
+			gyroscope.axis.z = imu_data.accel[2]/9.81f;
+
 			accelerometer.axis.x = imu_data.accel[0]/9.81f;
 			accelerometer.axis.y = imu_data.accel[1]/9.81f;
 			accelerometer.axis.z = imu_data.accel[2]/9.81f;
@@ -268,12 +274,16 @@ static void updateFusion(fusion_data_t *fusion)
 			magnetometer.axis.z = imu_data.mag[2];
 			break;
 		case 2:
-			accelerometer.axis.x = -imu_data.accel[0]/9.81f;
-			accelerometer.axis.y = imu_data.accel[1]/9.81f;
+			gyroscope.axis.x = imu_data.accel[0]/9.81f;
+			gyroscope.axis.y = -imu_data.accel[1]/9.81f;
+			gyroscope.axis.z = -imu_data.accel[2]/9.81f;
+
+			accelerometer.axis.x = imu_data.accel[0]/9.81f;
+			accelerometer.axis.y = -imu_data.accel[1]/9.81f;
 			accelerometer.axis.z = -imu_data.accel[2]/9.81f;
 
-			magnetometer.axis.x = -imu_data.mag[0];
-			magnetometer.axis.y = imu_data.mag[1];
+			magnetometer.axis.x = imu_data.mag[0];
+			magnetometer.axis.y = -imu_data.mag[1];
 			magnetometer.axis.z = -imu_data.mag[2];
 			break;
 		default:

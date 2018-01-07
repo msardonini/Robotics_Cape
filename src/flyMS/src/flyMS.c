@@ -267,6 +267,10 @@ void* flight_core(void* ptr)
 		************************************************************************/
 		GPS_handler(&control, &GPS_data);
 		
+		/************************************************************************
+		*         			Log Important Flight Data For Analysis              *
+		************************************************************************/
+		log_data(&control);
 
 		function_control.end_loop_usec = get_usec_timespec(&function_control.end_loop);
 		
@@ -289,14 +293,14 @@ int main(int argc, char *argv[]){
 		return -1;
 	}
 
-	// load flight_core settings
-	if(load_core_config(&control.flight_config)){
-		printf("WARNING: no configuration file found\n");
-		printf("loading default settings\n");
-		if(create_default_core_config_file(&control.flight_config)){
-			printf("Warning, can't write default flight_config file\n");
-		}
-	}
+	// // load flight_core settings
+	// if(load_core_config(&control.flight_config)){
+	// 	printf("WARNING: no configuration file found\n");
+	// 	printf("loading default settings\n");
+	// 	if(create_default_core_config_file(&control.flight_config)){
+	// 		printf("Warning, can't write default flight_config file\n");
+	// 	}
+	// }
 	
 	int in;
 	while ((in = getopt(argc, argv, "d")) != -1)

@@ -292,17 +292,17 @@ int init_rotation_matrix(transform_matrix_t *transform, core_config_t *flight_co
 	}
 
 
-	if (flight_config->imu_orientation == 2)
-	{
-		roll_offset += 180.0f; 		
-		float ROTATION_MAT1[][3] = ROTATION_MATRIX1;
-		for(i=0; i<3; i++){
-			for(j=0; j<3; j++){
-				transform->IMU_to_drone_gyro.d[i][j]=ROTATION_MAT1[i][j];
-				transform->IMU_to_drone_accel.d[i][j]=ROTATION_MAT1[i][j];
-			}
-		}
-	}
+	// if (flight_config->imu_orientation == 2)
+	// {
+	// 	pitch_offset += 180.0f; 		
+	// 	float ROTATION_MAT1[][3] = ROTATION_MATRIX1;
+	// 	for(i=0; i<3; i++){
+	// 		for(j=0; j<3; j++){
+	// 			transform->IMU_to_drone_gyro.d[i][j]=ROTATION_MAT1[i][j];
+	// 			transform->IMU_to_drone_accel.d[i][j]=ROTATION_MAT1[i][j];
+	// 		}
+	// 	}
+	// }
 	printf("Rotation Vectors and Matrices Initialiazed \n");
 	return 0;
 }

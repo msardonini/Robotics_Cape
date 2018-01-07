@@ -141,7 +141,7 @@ int logger_deinit()
 * 	print_entry()
 *	populates the logger substructure and pushes it out to the logfile
 ************************************************************************/
-int log_data(control_variables_t *control, setpoint_t *setpoint)
+int log_data(control_variables_t *control)
 {
 		logger.new_entry.time			= control->time;	
 		logger.new_entry.pitch			= control->euler[1];	
@@ -158,16 +158,16 @@ int log_data(control_variables_t *control, setpoint_t *setpoint)
 		logger.new_entry.upitch			= control->u_euler[1];	
 		logger.new_entry.uroll			= control->u_euler[0];
 		logger.new_entry.uyaw			= control->u_euler[2];
-		logger.new_entry.pitch_ref		= setpoint->euler_ref[1];
-		logger.new_entry.roll_ref		= setpoint->euler_ref[0];
-		logger.new_entry.yaw_ref		= setpoint->euler_ref[2];
-		logger.new_entry.yaw_rate_ref	= setpoint->yaw_rate_ref[0];
-		logger.new_entry.Aux			= setpoint->Aux[0];
+		logger.new_entry.pitch_ref		= control->setpoint.euler_ref[1];
+		logger.new_entry.roll_ref		= control->setpoint.euler_ref[0];
+		logger.new_entry.yaw_ref		= control->setpoint.euler_ref[2];
+		logger.new_entry.yaw_rate_ref	= control->setpoint.yaw_rate_ref[0];
+		logger.new_entry.Aux			= control->setpoint.Aux[0];
 		// control->logger.new_entry.lat_error		= control->lat_error;
 		// control->logger.new_entry.lon_error		= control->lon_error;
-		logger.new_entry.accel_x		= control->transform.accel_drone.d[0];
-		logger.new_entry.accel_y		= control->transform.accel_drone.d[1];
-		logger.new_entry.accel_z		= control->transform.accel_drone.d[2];
+		logger.new_entry.accel_x		= control->accel[0];
+		logger.new_entry.accel_y		= control->accel[1];
+		logger.new_entry.accel_z		= control->accel[2];
 		logger.new_entry.baro_alt		= control->baro_alt;
 		logger.new_entry.v_batt			= 0;
 		logger.new_entry.ned_pos_x		= control->ekf_filter.output.ned_pos[0];
