@@ -41,8 +41,8 @@ extern "C" {
 
 //Local Functions
 // static int init_fusion_bias(FusionBias *fusionBias);
-static void init_fusion(fusion_data_t* fusion);
-static void updateFusion(fusion_data_t *fusion);
+static void init_fusion(fusion_data_t* fusion, transform_matrix_t *transform);
+static void updateFusion(fusion_data_t *fusion, transform_matrix_t *transform);
 
 //Local Structure to interpret imu_data
 rc_imu_data_t imu_data;
@@ -73,50 +73,43 @@ int imu_handler(control_variables_t *control)
 		printf("read mag data failed\n");
 	}
 
-	//Perform the data fusion to calculate pitch, roll, and yaw angles
-	updateFusion(&control->fusion);
-
 	/**********************************************************
 	*		Perform the Coordinate System Transformation	  *
 	**********************************************************/
-
 	for (i=0;i<3;i++) 
 	{	
-		control->transform.dmp_imu.d[i] = control->fusion.eulerAngles.array[i] * DEG_TO_RAD;
+		control->transform.mag_imu.d[i] = imu_data.mag[i];
 		control->transform.gyro_imu.d[i] = imu_data.gyro[i] * DEG_TO_RAD;
 		control->transform.accel_imu.d[i] = imu_data.accel[i];
 	}
 	//Convert from IMU coordinate system to drone's
-	rc_matrix_times_col_vec(control->transform.IMU_to_drone_dmp, control->transform.dmp_imu, &control->transform.dmp_drone);
-	rc_matrix_times_col_vec(control->transform.IMU_to_drone_gyro, control->transform.gyro_imu, &control->transform.gyro_drone);
-	rc_matrix_times_col_vec(control->transform.IMU_to_drone_accel, control->transform.accel_imu, &control->transform.accel_drone);
-	
-	float sign[3] = {1, 1, 1};
-	if (imu_orientation_id == 2)
-	{
-		sign[1] = -1; ;sign[2] = -1;
-	}
-	//Save newly calculated data into our control variable structure
+	rc_matrix_times_col_vec(control->transform.IMU_to_drone, control->transform.mag_imu, &control->transform.mag_drone);
+	rc_matrix_times_col_vec(control->transform.IMU_to_drone, control->transform.gyro_imu, &control->transform.gyro_drone);
+	rc_matrix_times_col_vec(control->transform.IMU_to_drone, control->transform.accel_imu, &control->transform.accel_drone);
+
+	//Perform the data fusion to calculate pitch, roll, and yaw angles
+	updateFusion(&control->fusion, &control->transform);
+
+	//Place the tranformed data into our control struct
 	for (i = 0; i < 3; i++)
 	{
 		control->euler_previous[i] 		= control->euler[i];	
-		control->euler[i] 				= control->transform.dmp_drone.d[i];
-		control->euler_rate[i]			= sign[i]*control->transform.gyro_drone.d[i];
-		control->mag[i]					= sign[i]*imu_data.mag[i];
-		control->accel[i]				= sign[i]*imu_data.accel[i];
+		control->euler[i] 				= control->fusion.eulerAngles.array[i] * DEG_TO_RAD;
+		control->euler_rate[i]			= control->transform.gyro_drone.d[i];
+		control->mag[i]					= control->transform.mag_drone.d[i];
+		control->accel[i]				= control->transform.gyro_drone.d[i];
 	}
 	control->compass_heading = imu_data.compass_heading_raw;	
 
 	/**********************************************************
 	*					Unwrap the Yaw value				  *
 	**********************************************************/
-	control->euler[2] 			= control->transform.dmp_drone.d[2] + control->num_wraps*2*M_PI;
 	if(fabs(control->euler[2] - control->euler_previous[2])  > 5)
 	{
 		if(control->euler[2] > control->euler_previous[2]) control->num_wraps--;
 		if(control->euler[2] < control->euler_previous[2]) control->num_wraps++;
 	}
-	control->euler[2]= control->transform.dmp_drone.d[2] + control->num_wraps*2*M_PI;
+	control->euler[2]= control->euler[2] + control->num_wraps*2*M_PI;
 
 
 	/**********************************************************
@@ -203,7 +196,7 @@ int initialize_imu(control_variables_t *control)
 	}
 	
 	//Initialize the fusion library which converts raw IMU data to Euler angles
-	init_fusion(&control->fusion);
+	init_fusion(&control->fusion, &control->transform);
 
 	return 0;
 }
@@ -225,7 +218,7 @@ int initialize_imu(control_variables_t *control)
 /************************************************************************
 *              		Initialize the IMU Fusion Algorithm					*
 ************************************************************************/
-static void init_fusion(fusion_data_t* fusion)
+static void init_fusion(fusion_data_t* fusion, transform_matrix_t *transform)
 {
 	FusionAhrsInitialise(&fusion->fusionAhrs, .75f, 0.0f, 120.0f); // valid magnetic field defined as 20 uT to 70 uT
 //	int i;
@@ -242,7 +235,7 @@ static void init_fusion(fusion_data_t* fusion)
 		if(rc_read_mag_data(&imu_data)<0){
 			printf("read mag data failed\n");
 		}
-		updateFusion(fusion);
+		updateFusion(fusion, transform);
 		rc_usleep(DT_US);
 	}
 
@@ -251,48 +244,22 @@ static void init_fusion(fusion_data_t* fusion)
 /************************************************************************
 *         Update the Fusion Algorithm, Called once per IMU Update       *
 ************************************************************************/
-static void updateFusion(fusion_data_t *fusion)
+static void updateFusion(fusion_data_t *fusion, transform_matrix_t *transform)
 {
 
 	FusionVector3 gyroscope;
 	FusionVector3 accelerometer; 
 	FusionVector3 magnetometer;
 
-	switch (imu_orientation_id)
+	int i;
+	for (i = 0; i < 3; i++)
 	{
-		case 1:
-			gyroscope.axis.x = imu_data.accel[0]/9.81f;
-			gyroscope.axis.y = imu_data.accel[1]/9.81f;
-			gyroscope.axis.z = imu_data.accel[2]/9.81f;
-
-			accelerometer.axis.x = imu_data.accel[0]/9.81f;
-			accelerometer.axis.y = imu_data.accel[1]/9.81f;
-			accelerometer.axis.z = imu_data.accel[2]/9.81f;
-
-			magnetometer.axis.x = imu_data.mag[0];
-			magnetometer.axis.y = imu_data.mag[1];
-			magnetometer.axis.z = imu_data.mag[2];
-			break;
-		case 2:
-			gyroscope.axis.x = imu_data.accel[0]/9.81f;
-			gyroscope.axis.y = -imu_data.accel[1]/9.81f;
-			gyroscope.axis.z = -imu_data.accel[2]/9.81f;
-
-			accelerometer.axis.x = imu_data.accel[0]/9.81f;
-			accelerometer.axis.y = -imu_data.accel[1]/9.81f;
-			accelerometer.axis.z = -imu_data.accel[2]/9.81f;
-
-			magnetometer.axis.x = imu_data.mag[0];
-			magnetometer.axis.y = -imu_data.mag[1];
-			magnetometer.axis.z = -imu_data.mag[2];
-			break;
-		default:
-			printf("Error Unrecognized IMU orientation\n");
-			break;
+		gyroscope.array[i] = transform->gyro_drone.d[i];
+		accelerometer.array[i] = transform->accel_drone.d[i];
+		magnetometer.array[i] = transform->mag_drone.d[i];
 	}
 
-	FusionAhrsUpdate(&fusion->fusionAhrs, gyroscope, accelerometer, magnetometer, DT);												
-//	FusionAhrsUpdate(&fusion->fusionAhrs, gyroscope, accelerometer, FUSION_VECTOR3_ZERO, DT);												
+	FusionAhrsUpdate(&fusion->fusionAhrs, gyroscope, accelerometer, magnetometer, DT);																								
 	fusion->eulerAngles = FusionQuaternionToEulerAngles(fusion->fusionAhrs.quaternion);
 	
 	//We want pitch and roll to be relative to the Drone's Local Coordinate Frame, not the NED Frame
@@ -303,7 +270,7 @@ static void updateFusion(fusion_data_t *fusion)
 	
 	fusion->eulerAngles.angle.roll = mag * cosf(theta-fusion->eulerAngles.angle.yaw*DEG_TO_RAD);
 	fusion->eulerAngles.angle.pitch = mag * sinf(theta-fusion->eulerAngles.angle.yaw*DEG_TO_RAD);
-	int i;
+
 	for (i = 0; i < 3; i++)
 		fusion->eulerAngles.array[i]*=-1.0f;
 }

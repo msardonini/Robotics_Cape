@@ -110,9 +110,15 @@ typedef struct fusion_data_t
 }fusion_data_t;
 
 typedef struct transform_matrix_t{
-	rc_matrix_t 	IMU_to_drone_dmp, IMU_to_drone_gyro, IMU_to_drone_accel;
-	rc_vector_t 	dmp_imu, gyro_imu, accel_imu;
-	rc_vector_t 	dmp_drone, gyro_drone, accel_drone;
+	rc_matrix_t 	IMU_to_drone; 
+	// rc_matrix_t		IMU_to_drone_gyro;
+	// rc_matrix_t 	IMU_to_drone_accel;
+	rc_vector_t 	mag_imu;
+	rc_vector_t 	gyro_imu;
+	rc_vector_t 	accel_imu;
+	rc_vector_t 	mag_drone;
+	rc_vector_t		gyro_drone;
+	rc_vector_t 	accel_drone;
 }transform_matrix_t;
 
 

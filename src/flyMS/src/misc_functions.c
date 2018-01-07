@@ -266,16 +266,14 @@ int init_rotation_matrix(transform_matrix_t *transform, core_config_t *flight_co
 	float pitch_offset, roll_offset, yaw_offset;
 	int i,j;
 	
-	rc_alloc_matrix(&transform->IMU_to_drone_dmp,3,3);
-	rc_alloc_matrix(&transform->IMU_to_drone_gyro,3,3);
-	rc_alloc_matrix(&transform->IMU_to_drone_accel,3,3);
+	rc_alloc_matrix(&transform->IMU_to_drone,3,3);
 	
-	rc_alloc_vector(&transform->dmp_imu,3);
 	rc_alloc_vector(&transform->gyro_imu,3);
 	rc_alloc_vector(&transform->accel_imu,3);
-	rc_alloc_vector(&transform->dmp_drone,3);
+	rc_alloc_vector(&transform->mag_imu,3);
 	rc_alloc_vector(&transform->gyro_drone,3);
 	rc_alloc_vector(&transform->accel_drone,3);
+	rc_alloc_vector(&transform->mag_drone,3);
 
 	//pitch_offset = 0; roll_offset = M_PI; yaw_offset = - M_PI;
 	pitch_offset = flight_config->pitch_offset_deg*DEG_TO_RAD; 
@@ -285,24 +283,10 @@ int init_rotation_matrix(transform_matrix_t *transform, core_config_t *flight_co
 	float ROTATION_MAT1[][3] = ROTATION_MATRIX1;
 	for(i=0; i<3; i++){
 		for(j=0; j<3; j++){
-			transform->IMU_to_drone_dmp.d[i][j]=ROTATION_MAT1[i][j];
-			transform->IMU_to_drone_gyro.d[i][j]=ROTATION_MAT1[i][j];
-			transform->IMU_to_drone_accel.d[i][j]=ROTATION_MAT1[i][j];
+			transform->IMU_to_drone.d[i][j]=ROTATION_MAT1[i][j];
 		}
 	}
 
-
-	// if (flight_config->imu_orientation == 2)
-	// {
-	// 	pitch_offset += 180.0f; 		
-	// 	float ROTATION_MAT1[][3] = ROTATION_MATRIX1;
-	// 	for(i=0; i<3; i++){
-	// 		for(j=0; j<3; j++){
-	// 			transform->IMU_to_drone_gyro.d[i][j]=ROTATION_MAT1[i][j];
-	// 			transform->IMU_to_drone_accel.d[i][j]=ROTATION_MAT1[i][j];
-	// 		}
-	// 	}
-	// }
 	printf("Rotation Vectors and Matrices Initialiazed \n");
 	return 0;
 }
