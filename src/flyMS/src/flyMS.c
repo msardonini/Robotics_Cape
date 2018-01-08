@@ -121,7 +121,7 @@ void* flight_core(void* ptr)
 		/******************************************************************
 		*			Read, Parse, and Translate IMU data for Flight		  *
 		******************************************************************/
-		imu_handler(&control);
+		imu_handler(&control, &filters);
 		imu_err_count = 0;
 
 		/******************************************************************

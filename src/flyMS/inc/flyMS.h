@@ -119,7 +119,6 @@ typedef struct flyMS_threads_t{
 
 
 int initialize_filters(filters_t *filters, core_config_t *flight_config);
-int init_rotation_matrix(transform_matrix_t *transform, core_config_t *flight_config);
 int initialize_flight_program(	control_variables_t *control,
                                 filters_t *filters,
                                 pru_client_data_t *pru_client_data,

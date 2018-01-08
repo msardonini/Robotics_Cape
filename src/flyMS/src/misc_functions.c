@@ -87,7 +87,7 @@ int initialize_flight_program(control_variables_t *control,
 		}
 	}
 	control->flight_config.enable_debug_mode = (force_debug_mode || control->flight_config.enable_debug_mode);
-
+	
 	//Initialize the IMU and Barometer
 	initialize_imu(control);
 
@@ -104,7 +104,6 @@ int initialize_flight_program(control_variables_t *control,
 	/* --------- Start the EKF for position estimates ----*/
 //	pthread_create(&flyMS_threads->ekf_thread, NULL, run_ekf, control->ekf_filter );
 
-	init_rotation_matrix(&control->transform, &control->flight_config); //Initialize the rotation matrix from IMU to drone
 	initialize_filters(filters, &control->flight_config);
 
 	/* 			Start the GPS 				*/
@@ -262,36 +261,6 @@ int initialize_filters(filters_t *filters, core_config_t *flight_config){
 	return 0;
 }
 
-int init_rotation_matrix(transform_matrix_t *transform, core_config_t *flight_config){
-	float pitch_offset, roll_offset, yaw_offset;
-	int i,j;
-	
-	rc_alloc_matrix(&transform->IMU_to_drone,3,3);
-	
-	rc_alloc_vector(&transform->gyro_imu,3);
-	rc_alloc_vector(&transform->accel_imu,3);
-	rc_alloc_vector(&transform->mag_imu,3);
-	rc_alloc_vector(&transform->gyro_drone,3);
-	rc_alloc_vector(&transform->accel_drone,3);
-	rc_alloc_vector(&transform->mag_drone,3);
-
-	//pitch_offset = 0; roll_offset = M_PI; yaw_offset = - M_PI;
-	pitch_offset = flight_config->pitch_offset_deg*DEG_TO_RAD; 
-	roll_offset = flight_config->roll_offset_deg*DEG_TO_RAD;
-	yaw_offset = flight_config->yaw_offset_deg*DEG_TO_RAD;
-	
-	float ROTATION_MAT1[][3] = ROTATION_MATRIX1;
-	for(i=0; i<3; i++){
-		for(j=0; j<3; j++){
-			transform->IMU_to_drone.d[i][j]=ROTATION_MAT1[i][j];
-		}
-	}
-
-	printf("Rotation Vectors and Matrices Initialiazed \n");
-	return 0;
-}
-
-
 int flyMS_shutdown(	GPS_data_t *GPS_data) 
 {
 	//Join the threads for a safe process shutdown
@@ -335,6 +304,9 @@ int flyMS_console_print(control_variables_t *control)
 //	printf(" Mag X %4.2f",control->mag[0]);
 //	printf(" Mag Y %4.2f",control->mag[1]);
 //	printf(" Mag Z %4.2f",control->mag[2]);
+	printf(" Accel X %4.2f",control->accel[0]);
+	printf(" Accel Y %4.2f",control->accel[1]);
+	printf(" Accel Z %4.2f",control->accel[2]);
 // 	printf(" Pos N %2.3f ", control->ekf_filter.output.ned_pos[0]); 
 //	printf(" Pos E %2.3f ", control->ekf_filter.output.ned_pos[1]); 
 //	printf(" Pos D %2.3f ", control->ekf_filter.output.ned_pos[2]); 

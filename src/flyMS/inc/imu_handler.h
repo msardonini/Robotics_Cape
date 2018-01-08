@@ -31,6 +31,7 @@ either expressed or implied, of the FreeBSD Project.
 #include "roboticscape.h"
 #include "pru_handler_client.h"
 #include "Fusion.h"
+#include "flyMS.h"
 #include "filter.h"
 #include "config.h"
 #include "logger.h"
@@ -50,7 +51,7 @@ either expressed or implied, of the FreeBSD Project.
 			5. Sends data to the EKF for position control
 
 ************************************************************************/
-int imu_handler(control_variables_t *control);
+int imu_handler(control_variables_t *control, filters_t *filters);
 
 
 

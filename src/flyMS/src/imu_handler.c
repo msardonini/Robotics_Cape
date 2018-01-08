@@ -43,10 +43,11 @@ extern "C" {
 // static int init_fusion_bias(FusionBias *fusionBias);
 static void init_fusion(fusion_data_t* fusion, transform_matrix_t *transform);
 static void updateFusion(fusion_data_t *fusion, transform_matrix_t *transform);
+static void read_transform_imu(transform_matrix_t *transform);
+static void init_rotation_matrix(transform_matrix_t *transform, core_config_t *flight_config);
 
 //Local Structure to interpret imu_data
 rc_imu_data_t imu_data;
-int imu_orientation_id = 1;
 
 /*
 	imu_handler()
@@ -59,62 +60,52 @@ int imu_orientation_id = 1;
 			5. Sends data to the EKF for position control
 */
 
-int imu_handler(control_variables_t *control)
+int imu_handler(control_variables_t *control, filters_t *filters)
 {
-	int i = 0, i1 = 0;
+	int i = 0;
 	/**********************************************************
-	*    				Read the Raw IMU Data     			  *
+	*    		Read and Translate the Raw IMU Data     			  
 	**********************************************************/
-	if(rc_read_accel_data(&imu_data)<0){
-		printf("read accel data failed\n");
-	}
-
-	if(rc_read_mag_data(&imu_data)<0){
-		printf("read mag data failed\n");
-	}
-
-	/**********************************************************
-	*		Perform the Coordinate System Transformation	  *
-	**********************************************************/
-	for (i=0;i<3;i++) 
-	{	
-		control->transform.mag_imu.d[i] = imu_data.mag[i];
-		control->transform.gyro_imu.d[i] = imu_data.gyro[i] * DEG_TO_RAD;
-		control->transform.accel_imu.d[i] = imu_data.accel[i];
-	}
-	//Convert from IMU coordinate system to drone's
-	rc_matrix_times_col_vec(control->transform.IMU_to_drone, control->transform.mag_imu, &control->transform.mag_drone);
-	rc_matrix_times_col_vec(control->transform.IMU_to_drone, control->transform.gyro_imu, &control->transform.gyro_drone);
-	rc_matrix_times_col_vec(control->transform.IMU_to_drone, control->transform.accel_imu, &control->transform.accel_drone);
+	read_transform_imu(&control->transform);
 
 	//Perform the data fusion to calculate pitch, roll, and yaw angles
 	updateFusion(&control->fusion, &control->transform);
+
+
 
 	//Place the tranformed data into our control struct
 	for (i = 0; i < 3; i++)
 	{
 		control->euler_previous[i] 		= control->euler[i];	
 		control->euler[i] 				= control->fusion.eulerAngles.array[i] * DEG_TO_RAD;
-		control->euler_rate[i]			= control->transform.gyro_drone.d[i];
+		control->euler_rate[i]			= update_filter(filters->gyro_lpf[i],control->transform.gyro_drone.d[i]);
 		control->mag[i]					= control->transform.mag_drone.d[i];
-		control->accel[i]				= control->transform.gyro_drone.d[i];
+		control->accel[i]				= control->transform.accel_drone.d[i];
 	}
-	control->compass_heading = imu_data.compass_heading_raw;	
+	control->compass_heading = imu_data.compass_heading_raw;
 
 	/**********************************************************
 	*					Unwrap the Yaw value				  *
 	**********************************************************/
+	control->euler[2] += control->num_wraps*2*M_PI;
 	if(fabs(control->euler[2] - control->euler_previous[2])  > 5)
 	{
-		if(control->euler[2] > control->euler_previous[2]) control->num_wraps--;
-		if(control->euler[2] < control->euler_previous[2]) control->num_wraps++;
+		if(control->euler[2] > control->euler_previous[2]) 
+		{
+			control->num_wraps--;
+			control->euler[2] -= 2*M_PI;
+		}
+		else
+		{
+			control->num_wraps++;
+			control->euler[2] += 2*M_PI;	
+		}
 	}
-	control->euler[2]= control->euler[2] + control->num_wraps*2*M_PI;
-
 
 	/**********************************************************
 	*           Read the Barometer for Altitude				  *
 	**********************************************************/	
+	static int i1;
 	if (control->flight_config.enable_barometer)
 	{		
 		i1++;
@@ -141,7 +132,7 @@ int imu_handler(control_variables_t *control)
 		control->ekf_filter.input.accel[i] = control->transform.accel_drone.d[i];
 		control->ekf_filter.input.mag[i] = imu_data.mag[i] * MICROTESLA_TO_GAUSS;
 	}
-	control->ekf_filter.input.gyro[0] = control->euler_rate[1];
+	control->ekf_filter.input.gyro[0] = control->euler_rate[0];
 	control->ekf_filter.input.gyro[1] = control->euler_rate[1];
 	control->ekf_filter.input.gyro[2] = control->euler_rate[2];
 	control->ekf_filter.input.IMU_timestamp = control->time;
@@ -170,7 +161,9 @@ int update_ekf_gps(control_variables_t *control, GPS_data_t *GPS_data)
 ************************************************************************/
 int initialize_imu(control_variables_t *control)
 {
-	
+	//Allocate memory for the tranformation matrices and vectors
+	init_rotation_matrix(&control->transform, &control->flight_config);
+
 	//Start the barometer
 	if(control->flight_config.enable_barometer)
 	{
@@ -182,7 +175,6 @@ int initialize_imu(control_variables_t *control)
 
 	// set up IMU configuration
 	rc_imu_config_t imu_config = rc_default_imu_config();
-	imu_orientation_id = control->flight_config.imu_orientation;
 	imu_config.accel_fsr = A_FSR_2G;
 	imu_config.enable_magnetometer=1;
 //	imu_config.accel_dlpf = ACCEL_DLPF_5;
@@ -216,29 +208,80 @@ int initialize_imu(control_variables_t *control)
 // }
 
 /************************************************************************
+*				Transform coordinate system IMU Data 
+************************************************************************/
+static void read_transform_imu(transform_matrix_t *transform)
+{
+	if(rc_read_accel_data(&imu_data)<0){
+		printf("read accel data failed\n");
+	}
+	if(rc_read_mag_data(&imu_data)<0){
+		printf("read mag data failed\n");
+	}
+
+	/**********************************************************
+	*		Perform the Coordinate System Transformation	  *
+	**********************************************************/
+	int i;
+	for (i=0;i<3;i++) 
+	{	
+		transform->mag_imu.d[i] = imu_data.mag[i];
+		transform->gyro_imu.d[i] = imu_data.gyro[i];
+		transform->accel_imu.d[i] = imu_data.accel[i];
+	}
+	//Convert from IMU coordinate system to drone's
+	rc_matrix_times_col_vec(transform->IMU_to_drone, transform->mag_imu, &transform->mag_drone);
+	rc_matrix_times_col_vec(transform->IMU_to_drone, transform->gyro_imu, &transform->gyro_drone);
+	rc_matrix_times_col_vec(transform->IMU_to_drone, transform->accel_imu, &transform->accel_drone);
+}
+
+
+/************************************************************************
 *              		Initialize the IMU Fusion Algorithm					*
 ************************************************************************/
 static void init_fusion(fusion_data_t* fusion, transform_matrix_t *transform)
 {
-	FusionAhrsInitialise(&fusion->fusionAhrs, .75f, 0.0f, 120.0f); // valid magnetic field defined as 20 uT to 70 uT
-//	int i;
-	
-//	FusionBias fusionBias;
+	FusionAhrsInitialise(&fusion->fusionAhrs, 0.75f, 0.0f, 120.0f); // valid magnetic field defined as 20 uT to 70 uT
+
 	FusionBiasInitialise(&fusion->fusionBias, 25, DT);
 
 	//Give Imu data to the fusion alg for initialization purposes
 	while (FusionAhrsIsInitialising(&fusion->fusionAhrs))
 	{
-		if(rc_read_accel_data(&imu_data)<0){
-			printf("read accel data failed\n");
-		}
-		if(rc_read_mag_data(&imu_data)<0){
-			printf("read mag data failed\n");
-		}
+		read_transform_imu(transform);
+		
 		updateFusion(fusion, transform);
 		rc_usleep(DT_US);
 	}
+}
+/************************************************************************
+*			Allocatate memeory for the Tranformation Matrices
+************************************************************************/
+static void init_rotation_matrix(transform_matrix_t *transform, core_config_t *flight_config)
+{
+	float pitch_offset, roll_offset, yaw_offset;
+	int i,j;
+	
+	rc_alloc_matrix(&transform->IMU_to_drone,3,3);
+	
+	rc_alloc_vector(&transform->gyro_imu,3);
+	rc_alloc_vector(&transform->accel_imu,3);
+	rc_alloc_vector(&transform->mag_imu,3);
+	rc_alloc_vector(&transform->gyro_drone,3);
+	rc_alloc_vector(&transform->accel_drone,3);
+	rc_alloc_vector(&transform->mag_drone,3);
 
+	//pitch_offset = 0; roll_offset = M_PI; yaw_offset = - M_PI;
+	pitch_offset = flight_config->pitch_offset_deg*DEG_TO_RAD; 
+	roll_offset = flight_config->roll_offset_deg*DEG_TO_RAD;
+	yaw_offset = flight_config->yaw_offset_deg*DEG_TO_RAD;
+	
+	float ROTATION_MAT1[][3] = ROTATION_MATRIX1;
+	for(i=0; i<3; i++){
+		for(j=0; j<3; j++){
+			transform->IMU_to_drone.d[i][j]=ROTATION_MAT1[i][j];
+		}
+	}
 }
 
 /************************************************************************

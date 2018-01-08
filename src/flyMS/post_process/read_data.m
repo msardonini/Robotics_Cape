@@ -1,10 +1,12 @@
- close all; clear all; clc;
+%  close all;
+clear all; 
+clc;
  
 filename = uigetdir('../../../flight_logs/','pick a run for plotting');
 
-nohup=dlmread([filename '/logger.csv'],',',1,0);
+nohup=csvread([filename '/logger.csv'],1,0);
 
-nohup(1,:) = []; % discard first log
+% nohup(1,:) = []; % discard first log
 
 time=nohup(:,1);
 
@@ -106,7 +108,6 @@ legend('Pitch','Roll','Yaw','Compass Heading')
 
 figure
 hold on
-
 plot(time,wing1,'y')
 plot(time,wing2,'k')
 plot(time,wing3,'r')
@@ -164,9 +165,17 @@ figure
 hold on
 plot(time,accel(:,1))
 plot(time,accel(:,2))
+plot(time,accel(:,3))
 title('Acceleration')
-legend('x','y')
+legend('x','y','z')
 
+figure
+hold on
+plot(time,mag(:,1))
+plot(time,mag(:,2))
+plot(time,mag(:,3))
+legend('Mag1','Mag2','Mag3')
+title('Raw Magnetometer Data')
 
 if plot_gps
 
