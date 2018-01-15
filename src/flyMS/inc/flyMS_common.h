@@ -33,9 +33,9 @@ either expressed or implied, of the FreeBSD Project.
 #include "Fusion.h"
 #include "config.h"
 
-#define SAMPLE_RATE	100
-#define DT 0.01f
-#define DT_US 10000
+#define SAMPLE_RATE	200
+#define DT 0.005f
+#define DT_US 5000
 #define MICROTESLA_TO_GAUSS 0.01f
 #define Integrator_TH 0.55
 #define MAX_PITCH_RANGE 0.666 // in radians

@@ -180,6 +180,8 @@ int log_data(control_variables_t *control)
 		logger.new_entry.mag_y			= control->mag[1];
 		logger.new_entry.mag_z			= control->mag[2];
 		logger.new_entry.compass_heading= control->compass_heading;
+		logger.new_entry.droll_setpoint	= control->droll_setpoint;
+		logger.new_entry.dpitch_setpoint= control->dpitch_setpoint;
 		//control->logger.new_entry.v_batt			= rc_dc_jack_voltage();
 		log_core_data(&logger.core_logger, &logger.new_entry);
 	return 0;

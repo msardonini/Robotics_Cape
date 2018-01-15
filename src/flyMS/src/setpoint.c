@@ -177,7 +177,7 @@ static int handle_rc_data_direct(control_variables_t *control)
 			control->throttle=(dsm2_data[0]+1)* 0.5f *
 					(control->flight_config.max_throttle-control->flight_config.min_throttle)+control->flight_config.min_throttle;
 			//Keep the aircraft at a constant height while making manuevers 
-			control->throttle *= 1/(cos(control->euler[1])*cos(control->euler[0]));
+			// control->throttle *= 1/(cos(control->euler[1])*cos(control->euler[0]));
 		}
 
 		//Finally Update the integrator on the yaw reference value

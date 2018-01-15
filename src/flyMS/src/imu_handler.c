@@ -78,7 +78,8 @@ int imu_handler(control_variables_t *control, filters_t *filters)
 	{
 		control->euler_previous[i] 		= control->euler[i];	
 		control->euler[i] 				= control->fusion.eulerAngles.array[i] * DEG_TO_RAD;
-		control->euler_rate[i]			= update_filter(filters->gyro_lpf[i],control->transform.gyro_drone.d[i]);
+		control->euler_rate[i]			= update_filter(filters->gyro_lpf[i],control->transform.gyro_drone.d[i] * DEG_TO_RAD);
+		// control->euler_rate[i]			= control->transform.gyro_drone.d[i] * DEG_TO_RAD;
 		control->mag[i]					= control->transform.mag_drone.d[i];
 		control->accel[i]				= control->transform.accel_drone.d[i];
 	}
@@ -252,6 +253,16 @@ static void init_fusion(fusion_data_t* fusion, transform_matrix_t *transform)
 		
 		updateFusion(fusion, transform);
 		rc_usleep(DT_US);
+	}
+
+	int sample_count = 0;
+	while(sample_count < 300) //Continue for another 300 samples to let yaw reach equilibrium
+	{
+		read_transform_imu(transform);
+		
+		updateFusion(fusion, transform);
+		rc_usleep(DT_US);
+		sample_count++;
 	}
 }
 /************************************************************************

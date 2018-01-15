@@ -216,6 +216,12 @@ int initialize_filters(filters_t *filters, core_config_t *flight_config){
 	float den[11] = {   1.000000000000000,  -4.302142513532524,  10.963685193359051, -18.990960386921738,  24.544342262847074,
 						-24.210021253402012,  18.411553079753368, -10.622846105856944,   4.472385466696109,  -1.251943621469692,
 						0.182152641224648};
+	// //elliptic filter 10th order 0.25 dB passband ripple 80 dB min Cutoff 0.6 cutoff frq
+	// float num[11] = { 0.023792922662875,   0.151523053373501,   0.495553602871844,   1.063210609947080,   1.639113075615841,   1.886547098616703,
+ //   1.639113075615842,   1.063210609947081,   0.495553602871845,   0.151523053373501,   0.023792922662875};
+
+	// float den[11] = {   1.000000000000000,   0.544484847365498,   2.895360255549562,   0.489615425795540, 2.975281490673694,  -0.421418409759652,
+ //   1.538888484471334,  -0.543674720330332,   0.478293024001255,  -0.150382077044017,   0.078571519995348};
 	int i;
 	for (i = 0; i < 3; i++)
 	{
@@ -304,9 +310,9 @@ int flyMS_console_print(control_variables_t *control)
 //	printf(" Mag X %4.2f",control->mag[0]);
 //	printf(" Mag Y %4.2f",control->mag[1]);
 //	printf(" Mag Z %4.2f",control->mag[2]);
-	printf(" Accel X %4.2f",control->accel[0]);
-	printf(" Accel Y %4.2f",control->accel[1]);
-	printf(" Accel Z %4.2f",control->accel[2]);
+	// printf(" Accel X %4.2f",control->accel[0]);
+	// printf(" Accel Y %4.2f",control->accel[1]);
+	// printf(" Accel Z %4.2f",control->accel[2]);
 // 	printf(" Pos N %2.3f ", control->ekf_filter.output.ned_pos[0]); 
 //	printf(" Pos E %2.3f ", control->ekf_filter.output.ned_pos[1]); 
 //	printf(" Pos D %2.3f ", control->ekf_filter.output.ned_pos[2]); 
