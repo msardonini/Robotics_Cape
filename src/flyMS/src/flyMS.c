@@ -202,8 +202,8 @@ void* flight_core(void* ptr)
 			
 		//only use integrators if airborne (above minimum throttle for > 1.5 seconds)
 		if(function_control.integrator_start >  400){
-			control.droll_err_integrator  += control.u_euler[0]  * DT;
-			control.dpitch_err_integrator += control.u_euler[1] * DT;
+			control.dpitch_err_integrator += control.u_euler[0] * DT;
+			control.droll_err_integrator  += control.u_euler[1]  * DT;
 			control.dyaw_err_integrator += control.u_euler[2] * DT;		
 			
 			control.u_euler[0] += control.flight_config.Dpitch_KI * control.dpitch_err_integrator;
