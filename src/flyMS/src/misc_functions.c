@@ -304,8 +304,8 @@ int flyMS_console_print(control_variables_t *control)
 	// printf(" Pitch_ref %2.2f ", control->setpoint.pitch_ref);
 	// printf(" Roll_ref %2.2f ", control->setpoint.roll_ref);
 	// printf(" Yaw_ref %2.2f ", control->setpoint.yaw_ref[0]);
-	printf(" Roll %1.2f ", control->euler[0]);
-	printf(" Pitch %1.2f ", control->euler[1]);
+	printf(" Pitch %1.2f ", control->euler[0]);
+	printf(" Roll %1.2f ", control->euler[1]);
 	printf(" Yaw %2.3f ", control->euler[2]); 
 //	printf(" Mag X %4.2f",control->mag[0]);
 //	printf(" Mag Y %4.2f",control->mag[1]);
@@ -316,9 +316,9 @@ int flyMS_console_print(control_variables_t *control)
 // 	printf(" Pos N %2.3f ", control->ekf_filter.output.ned_pos[0]); 
 //	printf(" Pos E %2.3f ", control->ekf_filter.output.ned_pos[1]); 
 //	printf(" Pos D %2.3f ", control->ekf_filter.output.ned_pos[2]); 
-//	printf(" DPitch %1.2f ", control->euler_rate[1]); 
-//	printf(" DRoll %1.2f ", control->euler_rate[1]);
-//	printf(" DYaw %2.3f ", control->euler_rate[2]); 	
+	// printf(" DPitch %1.2f ", control->euler_rate[0]); 
+	// printf(" DRoll %1.2f ", control->euler_rate[1]);
+	// printf(" DYaw %2.3f ", control->euler_rate[2]); 	
 //	printf(" uyaw %2.3f ", control->upitch); 		
 //	printf(" uyaw %2.3f ", control->uroll); 		
 //	printf(" uyaw %2.3f ", control->uyaw);

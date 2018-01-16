@@ -194,19 +194,6 @@ int initialize_imu(control_variables_t *control)
 	return 0;
 }
 
-// /************************************************************************
-// *              Set the Bias value in the Fuction Algorithm              *
-// ************************************************************************/
-// static int init_fusion_bias(FusionBias *fusionBias)
-// {
-// 	// print gyro data
-// 	if(rc_read_gyro_data(&imu_data)<0){
-// 		printf("read gyro data failed\n");
-// 	}
-//     FusionBiasInitialise(fusionBias, 50, DT); // assumes 100 Hz sample rate
-//     FusionBiasUpdate(fusionBias, imu_data.gyro[0], imu_data.gyro[1], imu_data.gyro[2]); // literal values should be replaced with sensor measurements
-//     return 0;
-// }
 
 /************************************************************************
 *				Transform coordinate system IMU Data 
@@ -230,6 +217,8 @@ static void read_transform_imu(transform_matrix_t *transform)
 		transform->gyro_imu.d[i] = imu_data.gyro[i];
 		transform->accel_imu.d[i] = imu_data.accel[i];
 	}
+
+
 	//Convert from IMU coordinate system to drone's
 	rc_matrix_times_col_vec(transform->IMU_to_drone, transform->mag_imu, &transform->mag_drone);
 	rc_matrix_times_col_vec(transform->IMU_to_drone, transform->gyro_imu, &transform->gyro_drone);
@@ -309,10 +298,10 @@ static void updateFusion(fusion_data_t *fusion, transform_matrix_t *transform)
 	for (i = 0; i < 3; i++)
 	{
 		gyroscope.array[i] = transform->gyro_drone.d[i];
-		accelerometer.array[i] = transform->accel_drone.d[i];
+		accelerometer.array[i] = transform->accel_drone.d[i] / 9.81f;
 		magnetometer.array[i] = transform->mag_drone.d[i];
 	}
-
+	FusionBiasUpdate(&fusion->fusionBias, imu_data.raw_gyro[0] & 0xFF, imu_data.raw_gyro[1] & 0xFF, imu_data.raw_gyro[2] & 0xFF);
 	FusionAhrsUpdate(&fusion->fusionAhrs, gyroscope, accelerometer, magnetometer, DT);																								
 	fusion->eulerAngles = FusionQuaternionToEulerAngles(fusion->fusionAhrs.quaternion);
 	
@@ -322,8 +311,8 @@ static void updateFusion(fusion_data_t *fusion, transform_matrix_t *transform)
 	mag = powf(powf(fusion->eulerAngles.angle.pitch,2.0f)+powf(fusion->eulerAngles.angle.roll,2.0f),0.5f);
 	theta = atan2f(fusion->eulerAngles.angle.roll, fusion->eulerAngles.angle.pitch);
 	
-	fusion->eulerAngles.angle.roll = mag * cosf(theta-fusion->eulerAngles.angle.yaw*DEG_TO_RAD);
-	fusion->eulerAngles.angle.pitch = mag * sinf(theta-fusion->eulerAngles.angle.yaw*DEG_TO_RAD);
+	fusion->eulerAngles.angle.roll = mag * sinf(theta-fusion->eulerAngles.angle.yaw*DEG_TO_RAD);
+	fusion->eulerAngles.angle.pitch = mag * cosf(theta-fusion->eulerAngles.angle.yaw*DEG_TO_RAD);
 
 	for (i = 0; i < 3; i++)
 		fusion->eulerAngles.array[i]*=-1.0f;

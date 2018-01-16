@@ -144,8 +144,8 @@ int logger_deinit()
 int log_data(control_variables_t *control)
 {
 		logger.new_entry.time			= control->time;	
-		logger.new_entry.pitch			= control->euler[1];	
-		logger.new_entry.roll			= control->euler[0];
+		logger.new_entry.pitch			= control->euler[0];	
+		logger.new_entry.roll			= control->euler[1];
 		logger.new_entry.yaw			= control->euler[2];
 		logger.new_entry.d_pitch		= control->euler_rate[0];	
 		logger.new_entry.d_roll			= control->euler_rate[1];
@@ -155,11 +155,11 @@ int log_data(control_variables_t *control)
 		logger.new_entry.u_3			= control->u[2];
 		logger.new_entry.u_4			= control->u[3];
 		logger.new_entry.throttle		= control->throttle;
-		logger.new_entry.upitch			= control->u_euler[1];	
-		logger.new_entry.uroll			= control->u_euler[0];
+		logger.new_entry.upitch			= control->u_euler[0];	
+		logger.new_entry.uroll			= control->u_euler[1];
 		logger.new_entry.uyaw			= control->u_euler[2];
-		logger.new_entry.pitch_ref		= control->setpoint.euler_ref[1];
-		logger.new_entry.roll_ref		= control->setpoint.euler_ref[0];
+		logger.new_entry.pitch_ref		= control->setpoint.euler_ref[0];
+		logger.new_entry.roll_ref		= control->setpoint.euler_ref[1];
 		logger.new_entry.yaw_ref		= control->setpoint.euler_ref[2];
 		logger.new_entry.yaw_rate_ref	= control->setpoint.yaw_rate_ref[0];
 		logger.new_entry.Aux			= control->setpoint.Aux[0];

@@ -159,22 +159,22 @@ void* flight_core(void* ptr)
 
 			//control.uthrottle = update_filter(filters.altitudeHoldPID, control.setpoint.altitudeSetpoint - control.baro_alt);
 			//control.throttle = control.uthrottle + control.standing_throttle;
-			
 		}
-		/************************************************************************
-		* 	                  		Roll Controller		                        *
-		************************************************************************/
-		control.droll_setpoint = update_filter(filters.roll_PD, control.setpoint.euler_ref[0] - control.euler[0]);
-		control.u_euler[0] = update_filter(filters.roll_rate_PD,control.droll_setpoint - control.euler_rate[1]);				
-		control.u_euler[0] = saturateFilter(control.u_euler[0],-MAX_ROLL_COMPONENT,MAX_ROLL_COMPONENT);
-		
-
+			
 		/************************************************************************
 		* 	                  		Pitch Controller	                        *
 		************************************************************************/
-		control.dpitch_setpoint = update_filter(filters.pitch_PD, control.setpoint.euler_ref[1] - control.euler[1]);
-		control.u_euler[1] = update_filter(filters.pitch_rate_PD,control.dpitch_setpoint - control.euler_rate[1]);
-		control.u_euler[1] = saturateFilter(control.u_euler[1],-MAX_PITCH_COMPONENT,MAX_PITCH_COMPONENT);
+		control.dpitch_setpoint = update_filter(filters.pitch_PD, control.setpoint.euler_ref[0] - control.euler[0]);
+		control.u_euler[0] = update_filter(filters.pitch_rate_PD,control.dpitch_setpoint - control.euler_rate[0]);
+		control.u_euler[0] = saturateFilter(control.u_euler[0],-MAX_PITCH_COMPONENT,MAX_PITCH_COMPONENT);
+		/************************************************************************
+		* 	                  		Roll Controller		                        *
+		************************************************************************/
+		control.droll_setpoint = update_filter(filters.roll_PD, control.setpoint.euler_ref[1] - control.euler[1]);
+		control.u_euler[1] = update_filter(filters.roll_rate_PD,control.droll_setpoint - control.euler_rate[1]);				
+		control.u_euler[1] = saturateFilter(control.u_euler[1],-MAX_ROLL_COMPONENT,MAX_ROLL_COMPONENT);
+		
+
 		
 		/************************************************************************
 		*                        	Yaw Controller                              *
@@ -206,8 +206,8 @@ void* flight_core(void* ptr)
 			control.dpitch_err_integrator += control.u_euler[1] * DT;
 			control.dyaw_err_integrator += control.u_euler[2] * DT;		
 			
-			control.u_euler[1] += control.flight_config.Dpitch_KI * control.dpitch_err_integrator;
-			control.u_euler[0] += control.flight_config.Droll_KI * control.droll_err_integrator;
+			control.u_euler[0] += control.flight_config.Dpitch_KI * control.dpitch_err_integrator;
+			control.u_euler[1] += control.flight_config.Droll_KI * control.droll_err_integrator;
 			control.u_euler[2] += control.flight_config.yaw_KI * control.dyaw_err_integrator;
 		}
 		
@@ -224,10 +224,10 @@ void* flight_core(void* ptr)
 		*                 	  yellow       	    black
 		************************************************************************/
 		
-		control.u[0]=control.throttle+control.u_euler[0]+control.u_euler[1]-control.u_euler[2];
-		control.u[1]=control.throttle-control.u_euler[0]+control.u_euler[1]+control.u_euler[2];
-		control.u[2]=control.throttle+control.u_euler[0]-control.u_euler[1]+control.u_euler[2];
-		control.u[3]=control.throttle-control.u_euler[0]-control.u_euler[1]-control.u_euler[2];		
+		control.u[0]=control.throttle+control.u_euler[1]+control.u_euler[0]-control.u_euler[2];
+		control.u[1]=control.throttle-control.u_euler[1]+control.u_euler[0]+control.u_euler[2];
+		control.u[2]=control.throttle+control.u_euler[1]-control.u_euler[0]+control.u_euler[2];
+		control.u[3]=control.throttle-control.u_euler[1]-control.u_euler[0]-control.u_euler[2];		
 
 		/************************************************************************
 		*         		Check Output Ranges, if outside, adjust                 *

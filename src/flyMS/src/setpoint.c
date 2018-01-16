@@ -142,10 +142,10 @@ static int handle_rc_data_direct(control_variables_t *control)
 		{
 			//Set roll reference value
 			//DSM2 Receiver is inherently positive to the left
-			control->setpoint.euler_ref[0]= -dsm2_data[1]*MAX_ROLL_RANGE;	
+			control->setpoint.euler_ref[1]= -dsm2_data[1]*MAX_ROLL_RANGE;	
 			
 			//DSM2 Receiver is inherently positive upwards
-			control->setpoint.euler_ref[1]= -dsm2_data[2]*MAX_PITCH_RANGE;
+			control->setpoint.euler_ref[0]= -dsm2_data[2]*MAX_PITCH_RANGE;
 			
 			//Set Yaw, RC Controller acts on Yaw velocity, save a history for integration
 			//Apply the integration outside of current if statement, needs to run at 200Hz
@@ -156,9 +156,9 @@ static int handle_rc_data_direct(control_variables_t *control)
 			if (control->flight_config.static_PR_ref)
 			{				
 				float P_R_MAG=pow(pow(control->setpoint.euler_ref[0],2)+pow(control->setpoint.euler_ref[1],2),0.5);
-				float Theta_Ref=atan2f(control->setpoint.euler_ref[1],control->setpoint.euler_ref[0]);
-				control->setpoint.euler_ref[0] =P_R_MAG*cos(Theta_Ref+control->euler[2]-control->yaw_ref_offset);
-				control->setpoint.euler_ref[1]=P_R_MAG*sin(Theta_Ref+control->euler[2]-control->yaw_ref_offset);
+				float Theta_Ref=atan2f(control->setpoint.euler_ref[0],control->setpoint.euler_ref[1]);
+				control->setpoint.euler_ref[1] =P_R_MAG*cos(Theta_Ref+control->euler[2]-control->yaw_ref_offset);
+				control->setpoint.euler_ref[0]=P_R_MAG*sin(Theta_Ref+control->euler[2]-control->yaw_ref_offset);
 			}
 			
 			//Apply a deadzone to keep integrator from wandering
