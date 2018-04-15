@@ -1,0 +1,13 @@
+[Unit]
+Description=start_flyMS
+Requires=systemd-modules-load.service
+
+[Service]
+User=root
+PIDFile=/var/run/start_flyMS.pid
+ExecStartPre=/usr/bin/rc_startup_routine
+ExecStart=/root/Robotics_Cape/run_flight_program.sh
+ExecStop=/usr/bin/rc_kill
+
+[Install]
+WantedBy=multi-user.target

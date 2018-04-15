@@ -1,9 +1,9 @@
 #!/bin/sh
 
 
-cp start_pru_handler /etc/init.d/
+cp start_flyMS.service /lib/systemd/system/
 
-cd /etc/init.d/
-sudo update-rc.d start_pru_handler defaults
+systemctl daemon-reload
+systemctl enable start_flyMS
 
 

@@ -155,6 +155,8 @@ int init_pru_handler()
 	#ifdef DEBUG
 	printf("Process ID: %d\n", (int)current_pid); 
  	#endif
+
+	restart_pru();
 	
 	return 0;
 }
