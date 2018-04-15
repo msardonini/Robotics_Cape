@@ -179,7 +179,8 @@ void* flight_core(void* ptr)
 		/************************************************************************
 		*                        	Yaw Controller                              *
 		************************************************************************/	
-		control.u_euler[2] = update_filter(filters.yaw_rate_PD,control.setpoint.euler_ref[2]-control.euler[2]);
+		// control.u_euler[2] = update_filter(filters.yaw_rate_PD,control.setpoint.euler_ref[2]-control.euler[2]);
+		control.u_euler[2] = update_filter(filters.yaw_rate_PD,control.setpoint.yaw_rate_ref[0]-control.euler_rate[2]);
 		
 		/************************************************************************
 		*                   	Apply the Integrators                           *
