@@ -55,7 +55,7 @@ pthread_t setpoint_thread;
 
 //Local Functions
 static int copy_dsm2_data();
-static int handle_rc_data_direct(control_variables_t *control);
+static int handle_rc_data_direct(control_variables_t *flyMSData);
 static int rc_err_handler(reference_mode_t setpoint_type);
 static void * setpoint_manager(void* ptr);
 
@@ -66,9 +66,9 @@ static void * setpoint_manager(void* ptr);
 	Called elsewhere to start and stop the setpoint manager
 */
 
-int initialize_setpoint_manager(control_variables_t *control)
+int initialize_setpoint_manager(control_variables_t *flyMSData)
 {
-	pthread_create(&setpoint_thread, NULL, setpoint_manager, (void*)control);
+	pthread_create(&setpoint_thread, NULL, setpoint_manager, (void*)flyMSData);
 	return 0;
 }
 
@@ -84,13 +84,13 @@ int shutdown_setpoint_manager()
 		Handles the setpoint values for roll/pitch/yaw to be fed into the flight controller
 		
 		2 Main sources of retreiving values
-			1. Direct from remote control
+			1. Direct from remote flyMSData
 			2. Calculated values from GPS navigation for autonomous flight
 */
 
 static void * setpoint_manager(void* ptr)
 {
-	control_variables_t *control = (control_variables_t*) ptr;
+	control_variables_t *flyMSData = (control_variables_t*) ptr;
 	enum reference_mode_t setpoint_type = RC_DIRECT;
 
 	while (rc_get_state()!= EXITING)
@@ -107,7 +107,7 @@ static void * setpoint_manager(void* ptr)
 		}
 		else
 		{
-			if(!control->flight_config.enable_debug_mode)
+			if(!flyMSData->flight_config.enable_debug_mode)
 			{
 				//check to make sure too much time hasn't gone by since hearing the RC
 				rc_err_handler(setpoint_type);
@@ -118,7 +118,7 @@ static void * setpoint_manager(void* ptr)
 		switch (setpoint_type)
 		{
 			case RC_DIRECT:
-				handle_rc_data_direct(control);
+				handle_rc_data_direct(flyMSData);
 			break;
 			case RC_NAVIGATION:
 
@@ -133,7 +133,7 @@ static void * setpoint_manager(void* ptr)
 }
 
 	
-static int handle_rc_data_direct(control_variables_t *control)
+static int handle_rc_data_direct(control_variables_t *flyMSData)
 {		
 		/**********************************************************
 		*           Read the RC Controller for Commands           *
@@ -142,47 +142,47 @@ static int handle_rc_data_direct(control_variables_t *control)
 		{
 			//Set roll reference value
 			//DSM2 Receiver is inherently positive to the left
-			control->setpoint.euler_ref[1]= -dsm2_data[1]*MAX_ROLL_RANGE;	
+			flyMSData->setpoint.euler_ref[1]= -dsm2_data[1]*MAX_ROLL_RANGE;	
 			
 			//DSM2 Receiver is inherently positive upwards
-			control->setpoint.euler_ref[0]= -dsm2_data[2]*MAX_PITCH_RANGE;
+			flyMSData->setpoint.euler_ref[0]= -dsm2_data[2]*MAX_PITCH_RANGE;
 			
 			//Set Yaw, RC Controller acts on Yaw velocity, save a history for integration
 			//Apply the integration outside of current if statement, needs to run at 200Hz
-			control->setpoint.yaw_rate_ref[1]=control->setpoint.yaw_rate_ref[0];		
-			control->setpoint.yaw_rate_ref[0]=dsm2_data[3]*MAX_YAW_RATE;
+			flyMSData->setpoint.yaw_rate_ref[1]=flyMSData->setpoint.yaw_rate_ref[0];		
+			flyMSData->setpoint.yaw_rate_ref[0]=dsm2_data[3]*MAX_YAW_RATE;
 
 			//If Specified by the config file, convert from Drone Coordinate System to User Coordinate System
-			if (control->flight_config.static_PR_ref)
+			if (flyMSData->flight_config.static_PR_ref)
 			{				
-				float P_R_MAG=pow(pow(control->setpoint.euler_ref[0],2)+pow(control->setpoint.euler_ref[1],2),0.5);
-				float Theta_Ref=atan2f(control->setpoint.euler_ref[0],control->setpoint.euler_ref[1]);
-				control->setpoint.euler_ref[1] =P_R_MAG*cos(Theta_Ref+control->euler[2]-control->yaw_ref_offset);
-				control->setpoint.euler_ref[0]=P_R_MAG*sin(Theta_Ref+control->euler[2]-control->yaw_ref_offset);
+				float P_R_MAG=pow(pow(flyMSData->setpoint.euler_ref[0],2)+pow(flyMSData->setpoint.euler_ref[1],2),0.5);
+				float Theta_Ref=atan2f(flyMSData->setpoint.euler_ref[0],flyMSData->setpoint.euler_ref[1]);
+				flyMSData->setpoint.euler_ref[1] =P_R_MAG*cos(Theta_Ref+flyMSData->state.euler[2]-flyMSData->setpoint.yaw_ref_offset);
+				flyMSData->setpoint.euler_ref[0]=P_R_MAG*sin(Theta_Ref+flyMSData->state.euler[2]-flyMSData->setpoint.yaw_ref_offset);
 			}
 			
 			//Apply a deadzone to keep integrator from wandering
-			if(fabs(control->setpoint.yaw_rate_ref[0])<0.05) {
-				control->setpoint.yaw_rate_ref[0]=0;
+			if(fabs(flyMSData->setpoint.yaw_rate_ref[0])<0.05) {
+				flyMSData->setpoint.yaw_rate_ref[0]=0;
 			}
 
 			//Kill Switch
-			control->kill_switch[0]=dsm2_data[4]/2;
+			flyMSData->setpoint.kill_switch[0]=dsm2_data[4]/2;
 			
 			//Auxillary Switch
-			control->setpoint.Aux[1] = control->setpoint.Aux[0];
-			control->setpoint.Aux[0] = dsm2_data[5]; 
+			flyMSData->setpoint.Aux[1] = flyMSData->setpoint.Aux[0];
+			flyMSData->setpoint.Aux[0] = dsm2_data[5]; 
 			
 			//Set the throttle
-			control->throttle=(dsm2_data[0]+1)* 0.5f *
-					(control->flight_config.max_throttle-control->flight_config.min_throttle)+control->flight_config.min_throttle;
+			flyMSData->setpoint.throttle=(dsm2_data[0]+1)* 0.5f *
+					(flyMSData->flight_config.max_throttle-flyMSData->flight_config.min_throttle)+flyMSData->flight_config.min_throttle;
 			//Keep the aircraft at a constant height while making manuevers 
-			// control->throttle *= 1/(cos(control->euler[1])*cos(control->euler[0]));
+			// flyMSData->setpoint.throttle *= 1/(cos(flyMSData->state.euler[1])*cos(flyMSData->state.euler[0]));
 		}
 
 		//Finally Update the integrator on the yaw reference value
-		control->setpoint.euler_ref[2]=control->setpoint.euler_ref[2] + 
-										(control->setpoint.yaw_rate_ref[0]+control->setpoint.yaw_rate_ref[1])*DT/2;
+		flyMSData->setpoint.euler_ref[2]=flyMSData->setpoint.euler_ref[2] + 
+										(flyMSData->setpoint.yaw_rate_ref[0]+flyMSData->setpoint.yaw_rate_ref[1])*DT/2;
 	return 0;
 }
 
@@ -212,31 +212,31 @@ static int rc_err_handler(reference_mode_t setpoint_type)
 
 //Super old code for autonomount flight
 
-// //Using GPS Control
+// //Using GPS flyMSData
 // if(function_control.gps_pos_mode==0){
 // 	printf("gps position mode\n");
-// 	control.setpoint.lat_setpoint=GPS_data.pos_lat;
-// 	control.setpoint.lon_setpoint=GPS_data.pos_lon;
+// 	flyMSData.setpoint.lat_setpoint=GPS_data.pos_lat;
+// 	flyMSData.setpoint.lon_setpoint=GPS_data.pos_lon;
 // 	function_control.gps_pos_mode=1;
-// 	control.standing_throttle=control.throttle;
-// 	control.alt_ref=GPS_data.gps_altitude+1;
+// 	flyMSData.standing_throttle=flyMSData.throttle;
+// 	flyMSData.alt_ref=GPS_data.gps_altitude+1;
 // }
-// control.lat_error=control.setpoint.lat_setpoint-GPS_data.pos_lat;
-// control.lon_error=control.setpoint.lon_setpoint-GPS_data.pos_lon;
+// flyMSData.lat_error=flyMSData.setpoint.lat_setpoint-GPS_data.pos_lat;
+// flyMSData.lon_error=flyMSData.setpoint.lon_setpoint-GPS_data.pos_lon;
 
-// control.setpoint.euler_ref[1]=0.14*update_filter(filters.Outer_Loop_TF_pitch,control.lat_error);
-// control.setpoint.euler_ref[0]=-0.14*update_filter(filters.Outer_Loop_TF_roll,control.lon_error);
+// flyMSData.setpoint.euler_ref[1]=0.14*update_filter(filters.Outer_Loop_TF_pitch,flyMSData.lat_error);
+// flyMSData.setpoint.euler_ref[0]=-0.14*update_filter(filters.Outer_Loop_TF_roll,flyMSData.lon_error);
 
-// control.setpoint.euler_ref[1]=saturateFilter(control.setpoint.euler_ref[1],-0.2,0.2);
-// control.setpoint.euler_ref[0]=saturateFilter(control.setpoint.euler_ref[0],-0.2,0.2);
+// flyMSData.setpoint.euler_ref[1]=saturateFilter(flyMSData.setpoint.euler_ref[1],-0.2,0.2);
+// flyMSData.setpoint.euler_ref[0]=saturateFilter(flyMSData.setpoint.euler_ref[0],-0.2,0.2);
 
 // //Convert to Drone Coordinate System from User Coordinate System
-// float P_R_MAG=pow(pow(control.setpoint.euler_ref[0],2)+pow(control.setpoint.euler_ref[1],2),0.5);
-// float Theta_Ref=atan2f(control.setpoint.euler_ref[1],control.setpoint.euler_ref[0]);
-// control.setpoint.euler_ref[0]=P_R_MAG*cos(Theta_Ref-control.euler[2]);
-// control.setpoint.euler_ref[1]=P_R_MAG*sin(Theta_Ref-control.euler[2]);
+// float P_R_MAG=pow(pow(flyMSData.setpoint.euler_ref[0],2)+pow(flyMSData.setpoint.euler_ref[1],2),0.5);
+// float Theta_Ref=atan2f(flyMSData.setpoint.euler_ref[1],flyMSData.setpoint.euler_ref[0]);
+// flyMSData.setpoint.euler_ref[0]=P_R_MAG*cos(Theta_Ref-flyMSData.euler[2]);
+// flyMSData.setpoint.euler_ref[1]=P_R_MAG*sin(Theta_Ref-flyMSData.euler[2]);
 
-// control.alt_error=control.alt_ref-GPS_data.gps_altitude;
-// //control.throttle=0.12*update_filter(&filters.Throttle_controller,control.alt_error);
+// flyMSData.alt_error=flyMSData.alt_ref-GPS_data.gps_altitude;
+// //flyMSData.throttle=0.12*update_filter(&filters.Throttle_controller,flyMSData.alt_error);
 
-// //control.throttle=saturateFilter(control.throttle,-0.15,0.15)+control.standing_throttle;
+// //flyMSData.throttle=saturateFilter(flyMSData.throttle,-0.15,0.15)+flyMSData.standing_throttle;

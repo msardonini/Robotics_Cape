@@ -216,12 +216,6 @@ int initialize_filters(filters_t *filters, core_config_t *flight_config){
 	float den[11] = {   1.000000000000000,  -4.302142513532524,  10.963685193359051, -18.990960386921738,  24.544342262847074,
 						-24.210021253402012,  18.411553079753368, -10.622846105856944,   4.472385466696109,  -1.251943621469692,
 						0.182152641224648};
-	// //elliptic filter 10th order 0.25 dB passband ripple 80 dB min Cutoff 0.6 cutoff frq
-	// float num[11] = { 0.023792922662875,   0.151523053373501,   0.495553602871844,   1.063210609947080,   1.639113075615841,   1.886547098616703,
- //   1.639113075615842,   1.063210609947081,   0.495553602871845,   0.151523053373501,   0.023792922662875};
-
-	// float den[11] = {   1.000000000000000,   0.544484847365498,   2.895360255549562,   0.489615425795540, 2.975281490673694,  -0.421418409759652,
- //   1.538888484471334,  -0.543674720330332,   0.478293024001255,  -0.150382077044017,   0.078571519995348};
 	int i;
 	for (i = 0; i < 3; i++)
 	{
@@ -233,26 +227,7 @@ int initialize_filters(filters_t *filters, core_config_t *flight_config){
 	float num2[4] = {  0.0317,    0.0951,    0.0951,    0.0317};
 	float den2[4] = { 1.0000,   -1.4590,    0.9104,   -0.1978};					
 	filters->LPF_Yaw_Ref_P = initialize_filter(3, num2, den2);							
-	filters->LPF_Yaw_Ref_R = initialize_filter(3, num2, den2);	
-	
-/*
-	float num3[3] = {  0.0055 ,   0.0111 ,   0.0055};
-	float den3[3] = {   1.0000 ,  -1.7786  ,  0.8008};					
-	LPF_Height_Damping = initialize_filter(2, DT, num3, den3);				
-*/
-
-//	float num4[2] = { 2/(2+DT*DECAY_CONST),  -2/(2+DT*DECAY_CONST)+0.001};
-//	float den4[2] = {   1.0000 , (DT*DECAY_CONST-2)/(DT*DECAY_CONST+2)};	
-//	filters->Outer_Loop_TF_pitch = initialize_filter(1, DT, num4, den4);		
-//	filters->Outer_Loop_TF_roll = initialize_filter(1, DT, num4, den4);
-	//Throttle_controller = initialize_filter(1, DT, num4, den4);
-
-	//4th order ellip .1 dp PB 60 dB SB 0.2 wn
-	float num5[5] = {0.0088,    0.0144,    0.0197,    0.0144,    0.0088};
-	float den5[5] = {1.0000,   -2.6537,    2.9740,   -1.5989,    0.3455};	
-	filters->LPF_pitch = initialize_filter(4, num5, den5);		
-	filters->LPF_roll = initialize_filter(4, num5, den5);	
-
+	filters->LPF_Yaw_Ref_R = initialize_filter(3, num2, den2);		
 
 	//ellip filter, 5th order .5 pass 70 stop .05 cutoff
 	float baro_num[6] = {0.000618553374672,  -0.001685890697737,   0.001077182625629,   0.001077182625629,  -0.001685890697737,   0.000618553374672};
@@ -304,9 +279,9 @@ int flyMS_console_print(control_variables_t *control)
 	// printf(" Pitch_ref %2.2f ", control->setpoint.pitch_ref);
 	// printf(" Roll_ref %2.2f ", control->setpoint.roll_ref);
 	// printf(" Yaw_ref %2.2f ", control->setpoint.yaw_ref[0]);
-	printf(" Pitch %1.2f ", control->euler[0]);
-	printf(" Roll %1.2f ", control->euler[1]);
-	printf(" Yaw %2.3f ", control->euler[2]); 
+	printf(" Pitch %1.2f ", control->state.euler[0]);
+	printf(" Roll %1.2f ", control->state.euler[1]);
+	printf(" Yaw %2.3f ", control->state.euler[2]); 
 //	printf(" Mag X %4.2f",control->mag[0]);
 //	printf(" Mag Y %4.2f",control->mag[1]);
 //	printf(" Mag Z %4.2f",control->mag[2]);

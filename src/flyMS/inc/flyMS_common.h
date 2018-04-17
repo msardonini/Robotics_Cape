@@ -50,16 +50,6 @@ either expressed or implied, of the FreeBSD Project.
 #define MAX_ALT_SPEED 0.2 //in meters/second
 
 
-typedef struct setpoint_t{
-	float	euler_ref[3];	// Reference (Desired) Position
-	float	euler_ref_previous[3];	// Reference (Desired) Position
-	float	yaw_rate_ref[2];
-	float	Aux[2];
-	double	lat_setpoint, lon_setpoint;			// Controller Variables for Autonomous Flight
-	float	altitudeSetpointRate;
-	float	altitudeSetpoint;
-}setpoint_t;
-
 
 typedef struct ekf_filter_input_t{
 	uint64_t IMU_timestamp;
@@ -111,8 +101,6 @@ typedef struct fusion_data_t
 
 typedef struct transform_matrix_t{
 	rc_matrix_t 	IMU_to_drone; 
-	// rc_matrix_t		IMU_to_drone_gyro;
-	// rc_matrix_t 	IMU_to_drone_accel;
 	rc_vector_t 	mag_imu;
 	rc_vector_t 	gyro_imu;
 	rc_vector_t 	accel_imu;
@@ -121,32 +109,56 @@ typedef struct transform_matrix_t{
 	rc_vector_t 	accel_drone;
 }transform_matrix_t;
 
+typedef struct setpoint_t{
+	float	euler_ref[3];	// Reference (Desired) Position
+	float	euler_ref_previous[3];	// Reference (Desired) Position
+	float	yaw_rate_ref[2];
+	float	Aux[2];
+	double	lat_setpoint;
+	double 	lon_setpoint;			// Controller Variables for Autonomous Flight
+	float	altitudeSetpointRate;
+	float	altitudeSetpoint;
+	float	dpitch_setpoint; // Desired attitude
+	float	droll_setpoint;	// Desired attitude
+	float 	throttle;				
+	float	yaw_ref_offset;
+	float 	kill_switch[2];
+}setpoint_t;
 
 
-typedef struct control_variables_t{
-	float	euler[3];					// Euler angles of aircraft (in roll, pitch, yaw)
-	float	euler_previous[3];			// 1 Timestampe previousEuler angles of aircraft (in roll, pitch, yaw)
-	float	euler_rate[3];				// First derivative of euler angles (in roll/s, pitch/s, yaw/s)
-	float 	u_euler[3];					// Controller output for roll, pitch, yaw
+typedef struct imu_t{
 	float	compass_heading;
 	float	mag[3];
+	float	gyro[3];
 	float	accel[3];
-	float	dpitch_setpoint, droll_setpoint;	// Desired attitude
-	int		num_wraps;				// Number of spins in Yaw
-	float	initial_yaw;
-	float 	throttle;				
+	float	baro_alt;							// Barometer Altitude
+}imu_t;
+
+typedef struct controller_t{
 	float	droll_err_integrator;
 	float	dpitch_err_integrator;
 	float	dyaw_err_integrator;
+	float 	u_euler[3];					// Controller output for roll, pitch, yaw
 	float	u[4]; 								// Duty Cycle to send to each motor
-	float	time; 								// Time since execution of the program
-	float	yaw_ref_offset;
-	float	baro_alt;							// Barometer Altitude
-	// double	initial_pos_lon, initial_pos_lat; 	// Lat & Long positions from GPS
-	// double	lat_error, lon_error;
-	float 	kill_switch[2];
- 
 	float	standing_throttle, alt_error;
+}controller_t;
+
+typedef struct state_t{
+	float	euler[3];					// Euler angles of aircraft (in roll, pitch, yaw)
+	float	euler_previous[3];			// 1 Timestampe previousEuler angles of aircraft (in roll, pitch, yaw)
+	float	euler_rate[3];				// First derivative of euler angles (in roll/s, pitch/s, yaw/s)
+	
+	int		num_wraps;				// Number of spins in Yaw
+	float	initial_yaw;
+}state_t;
+
+typedef struct control_variables_t{
+	uint64_t	time_us; 								// Time since execution of the program
+ 
+	state_t state;						//	System state information
+	imu_t imu;							//	Data measured directly by IMU
+	controller_t control;			//	Data contained within the PID controller
+
 	transform_matrix_t transform;		// Matrices responsible for transforming coordinates of IMU data 
 	fusion_data_t fusion;				//	Struct to handle to IMU fusion to get Euler orientation
 	core_config_t flight_config;		//	Struct to contrain all of the configuration data

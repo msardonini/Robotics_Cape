@@ -60,46 +60,47 @@ rc_imu_data_t imu_data;
 			5. Sends data to the EKF for position control
 */
 
-int imu_handler(control_variables_t *control, filters_t *filters)
+int imu_handler(control_variables_t *flyMSData, filters_t *filters)
 {
 	int i = 0;
 	/**********************************************************
 	*    		Read and Translate the Raw IMU Data     			  
 	**********************************************************/
-	read_transform_imu(&control->transform);
+	read_transform_imu(&flyMSData->transform);
 
 	//Perform the data fusion to calculate pitch, roll, and yaw angles
-	updateFusion(&control->fusion, &control->transform);
+	updateFusion(&flyMSData->fusion, &flyMSData->transform);
 
 
 
 	//Place the tranformed data into our control struct
 	for (i = 0; i < 3; i++)
 	{
-		control->euler_previous[i] 		= control->euler[i];	
-		control->euler[i] 				= control->fusion.eulerAngles.array[i] * DEG_TO_RAD;
-		control->euler_rate[i]			= update_filter(filters->gyro_lpf[i],control->transform.gyro_drone.d[i] * DEG_TO_RAD);
-		// control->euler_rate[i]			= control->transform.gyro_drone.d[i] * DEG_TO_RAD;
-		control->mag[i]					= control->transform.mag_drone.d[i];
-		control->accel[i]				= control->transform.accel_drone.d[i];
+		flyMSData->state.euler_previous[i] 		= flyMSData->state.euler[i];	
+		flyMSData->state.euler[i] 				= flyMSData->fusion.eulerAngles.array[i] * DEG_TO_RAD;
+		flyMSData->state.euler_rate[i]			= update_filter(filters->gyro_lpf[i],flyMSData->transform.gyro_drone.d[i] * DEG_TO_RAD);
+		// flyMSData->state.euler_rate[i]			= flyMSData->transform.gyro_drone.d[i] * DEG_TO_RAD;
+		flyMSData->imu.mag[i]					= flyMSData->transform.mag_drone.d[i];
+		flyMSData->imu.accel[i]				= flyMSData->transform.accel_drone.d[i];
+		flyMSData->imu.gyro[i]				= flyMSData->state.euler_rate[i];
 	}
-	control->compass_heading = imu_data.compass_heading_raw;
+	flyMSData->imu.compass_heading = imu_data.compass_heading_raw;
 
 	/**********************************************************
 	*					Unwrap the Yaw value				  *
 	**********************************************************/
-	control->euler[2] += control->num_wraps*2*M_PI;
-	if(fabs(control->euler[2] - control->euler_previous[2])  > 5)
+	flyMSData->state.euler[2] += flyMSData->state.num_wraps*2*M_PI;
+	if(fabs(flyMSData->state.euler[2] - flyMSData->state.euler_previous[2])  > 5)
 	{
-		if(control->euler[2] > control->euler_previous[2]) 
+		if(flyMSData->state.euler[2] > flyMSData->state.euler_previous[2]) 
 		{
-			control->num_wraps--;
-			control->euler[2] -= 2*M_PI;
+			flyMSData->state.num_wraps--;
+			flyMSData->state.euler[2] -= 2*M_PI;
 		}
 		else
 		{
-			control->num_wraps++;
-			control->euler[2] += 2*M_PI;	
+			flyMSData->state.num_wraps++;
+			flyMSData->state.euler[2] += 2*M_PI;	
 		}
 	}
 
@@ -107,7 +108,7 @@ int imu_handler(control_variables_t *control, filters_t *filters)
 	*           Read the Barometer for Altitude				  *
 	**********************************************************/	
 	static int i1;
-	if (control->flight_config.enable_barometer)
+	if (flyMSData->flight_config.enable_barometer)
 	{		
 		i1++;
 		if (i1 == 1) // Only read the barometer at 25Hz
@@ -119,10 +120,10 @@ int imu_handler(control_variables_t *control, filters_t *filters)
 			}
 			i1=0;
 		}
-		// control->baro_alt = update_filter(filters.LPF_baro_alt,rc_bmp_get_altitude_m() - initial_alt);
-		control->baro_alt = rc_bmp_get_altitude_m();
-		control->ekf_filter.input.barometer_updated = 1;
-		control->ekf_filter.input.barometer_alt = control->baro_alt;
+		// flyMSData->baro_alt = update_filter(filters.LPF_baro_alt,rc_bmp_get_altitude_m() - initial_alt);
+		flyMSData->imu.baro_alt = rc_bmp_get_altitude_m();
+		flyMSData->ekf_filter.input.barometer_updated = 1;
+		flyMSData->ekf_filter.input.barometer_alt = flyMSData->imu.baro_alt;
 	}
 
 	/************************************************************************
@@ -130,13 +131,13 @@ int imu_handler(control_variables_t *control, filters_t *filters)
 	************************************************************************/
 	for (i = 0; i < 3; i++)
 	{
-		control->ekf_filter.input.accel[i] = control->transform.accel_drone.d[i];
-		control->ekf_filter.input.mag[i] = imu_data.mag[i] * MICROTESLA_TO_GAUSS;
+		flyMSData->ekf_filter.input.accel[i] = flyMSData->transform.accel_drone.d[i];
+		flyMSData->ekf_filter.input.mag[i] = imu_data.mag[i] * MICROTESLA_TO_GAUSS;
 	}
-	control->ekf_filter.input.gyro[0] = control->euler_rate[0];
-	control->ekf_filter.input.gyro[1] = control->euler_rate[1];
-	control->ekf_filter.input.gyro[2] = control->euler_rate[2];
-	control->ekf_filter.input.IMU_timestamp = control->time;
+	flyMSData->ekf_filter.input.gyro[0] = flyMSData->state.euler_rate[0];
+	flyMSData->ekf_filter.input.gyro[1] = flyMSData->state.euler_rate[1];
+	flyMSData->ekf_filter.input.gyro[2] = flyMSData->state.euler_rate[2];
+	flyMSData->ekf_filter.input.IMU_timestamp = flyMSData->time_us;
 
 	return 0;
 }
@@ -144,15 +145,15 @@ int imu_handler(control_variables_t *control, filters_t *filters)
 /************************************************************************
 *					   Update the EKF with GPS Data                     *
 ************************************************************************/
-int update_ekf_gps(control_variables_t *control, GPS_data_t *GPS_data)
+int update_ekf_gps(control_variables_t *flyMSData, GPS_data_t *GPS_data)
 {
-	control->ekf_filter.input.gps_timestamp = control->time*1E6;
-	control->ekf_filter.input.gps_latlon[0] = (double)GPS_data->deg_latitude + (double)GPS_data->min_latitude / 60.0;// + control->time*1E7/20000;
-	control->ekf_filter.input.gps_latlon[1] = (double)GPS_data->deg_longitude + (double)GPS_data->min_longitude / 60.0;
-	control->ekf_filter.input.gps_latlon[2] = (double)GPS_data->gps_altitude;
-	control->ekf_filter.input.gps_fix = GPS_data->GPS_fix;
-	control->ekf_filter.input.nsats = 10; // Really need to fix this
-	control->ekf_filter.input.gps_updated = 1;
+	flyMSData->ekf_filter.input.gps_timestamp = flyMSData->time_us;
+	flyMSData->ekf_filter.input.gps_latlon[0] = (double)GPS_data->deg_latitude + (double)GPS_data->min_latitude / 60.0;// + flyMSData->state.time_us*1E7/20000;
+	flyMSData->ekf_filter.input.gps_latlon[1] = (double)GPS_data->deg_longitude + (double)GPS_data->min_longitude / 60.0;
+	flyMSData->ekf_filter.input.gps_latlon[2] = (double)GPS_data->gps_altitude;
+	flyMSData->ekf_filter.input.gps_fix = GPS_data->GPS_fix;
+	flyMSData->ekf_filter.input.nsats = 10; // Really need to fix this
+	flyMSData->ekf_filter.input.gps_updated = 1;
 	return 0;
 }
 
@@ -160,13 +161,13 @@ int update_ekf_gps(control_variables_t *control, GPS_data_t *GPS_data)
 /************************************************************************
 *							Initialize the IMU                          *
 ************************************************************************/
-int initialize_imu(control_variables_t *control)
+int initialize_imu(control_variables_t *flyMSData)
 {
 	//Allocate memory for the tranformation matrices and vectors
-	init_rotation_matrix(&control->transform, &control->flight_config);
+	init_rotation_matrix(&flyMSData->transform, &flyMSData->flight_config);
 
 	//Start the barometer
-	if(control->flight_config.enable_barometer)
+	if(flyMSData->flight_config.enable_barometer)
 	{
 		if(rc_initialize_barometer(OVERSAMPLE, INTERNAL_FILTER)<0){
 			printf("initialize_barometer failed\n");
@@ -189,7 +190,7 @@ int initialize_imu(control_variables_t *control)
 	}
 	
 	//Initialize the fusion library which converts raw IMU data to Euler angles
-	init_fusion(&control->fusion, &control->transform);
+	init_fusion(&flyMSData->fusion, &flyMSData->transform);
 
 	return 0;
 }

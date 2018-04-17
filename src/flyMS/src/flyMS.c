@@ -55,7 +55,7 @@ static void* flight_core(void * ptr);
 /************************************************************************
 * 	Local Variables				
 ************************************************************************/
-control_variables_t		control;			//Structure to contain all system states
+control_variables_t		flyMSData;			//Structure to contain all system states
 GPS_data_t				GPS_data;			//Structure to store data from GPS
 function_control_t 		function_control;	//Structure to store variables which control functions
 filters_t				filters;			//Struct to contain all the filters
@@ -69,9 +69,9 @@ static int check_output_range(float u[4])
 	float smallest_value = 0;
 
 	for(i=0;i<4;i++){ 
-		if(u[i]>largest_value)largest_value=control.u[i];
+		if(u[i]>largest_value)largest_value=flyMSData.control.u[i];
 		
-		if(u[i]<smallest_value)control.u[i]=0;
+		if(u[i]<smallest_value)flyMSData.control.u[i]=0;
 	}
 			
 	// if upper saturation would have occurred, reduce all outputs evenly
@@ -101,13 +101,11 @@ void* flight_core(void* ptr)
 	//Set the reference time to the first iteration
 	function_control.start_time_usec = get_usec_timespec(&function_control.start_time);
 
-	control.setpoint.Aux[0] = 1; control.kill_switch[0]=1;
+	flyMSData.setpoint.Aux[0] = 1; flyMSData.setpoint.kill_switch[0]=1;
 	function_control.dsm2_timeout=0;
 	rc_read_barometer();
 	// initial_alt = rc_bmp_get_altitude_m();
 	rc_set_state(RUNNING);
-
-
 
 	while(rc_get_state()!=EXITING)
 	{
@@ -116,12 +114,12 @@ void* flight_core(void* ptr)
 		*			Grab the time for Periphal Apps and Logs 			  *
 		******************************************************************/
 		function_control.start_loop_usec = get_usec_timespec(&function_control.start_loop);
-		control.time = (float)(function_control.start_loop_usec - function_control.start_time_usec)/1E6f;
+		flyMSData.time_us = function_control.start_loop_usec - function_control.start_time_usec;
 		
 		/******************************************************************
 		*			Read, Parse, and Translate IMU data for Flight		  *
 		******************************************************************/
-		imu_handler(&control, &filters);
+		imu_handler(&flyMSData, &filters);
 		imu_err_count = 0;
 
 		/******************************************************************
@@ -134,9 +132,9 @@ void* flight_core(void* ptr)
 		}
 
 		if(First_Iteration){
-			control.setpoint.euler_ref[2]=control.euler[2];
+			flyMSData.setpoint.euler_ref[2]=flyMSData.state.euler[2];
 			First_Iteration=0;
-			control.yaw_ref_offset = control.euler[2];
+			flyMSData.setpoint.yaw_ref_offset = flyMSData.state.euler[2];
 			printf("First Iteration Started \n");
 		}
 
@@ -144,49 +142,49 @@ void* flight_core(void* ptr)
 		*                   	Throttle Controller                             *
 		************************************************************************/
 
-		//	float throttle_compensation = 1 / cos(control.euler[0]);
-		//	throttle_compensation *= 1 / cos(control.euler[1]);		
+		//	float throttle_compensation = 1 / cos(flyMSData.state.euler[0]);
+		//	throttle_compensation *= 1 / cos(flyMSData.state.euler[1]);		
 
 		if(function_control.altitudeHold)
 		{
 			if(function_control.altitudeHoldFirstIteration)
 			{
-				control.standing_throttle = control.throttle;
-				control.setpoint.altitudeSetpoint = control.baro_alt;
+				flyMSData.control.standing_throttle = flyMSData.setpoint.throttle;
+				flyMSData.setpoint.altitudeSetpoint = flyMSData.imu.baro_alt;
 				function_control.altitudeHoldFirstIteration = 0;
 			}
-	       // control.setpoint.altitudeSetpoint=control.setpoint.altitudeSetpoint+(control.setpoint.altitudeSetpointRate)*DT;
+	       // flyMSData.setpoint.altitudeSetpoint=flyMSData.setpoint.altitudeSetpoint+(flyMSData.setpoint.altitudeSetpointRate)*DT;
 
-			//control.uthrottle = update_filter(filters.altitudeHoldPID, control.setpoint.altitudeSetpoint - control.baro_alt);
-			//control.throttle = control.uthrottle + control.standing_throttle;
+			//flyMSData.control.uthrottle = update_filter(filters.altitudeHoldPID, flyMSData.setpoint.altitudeSetpoint - flyMSData.baro_alt);
+			//flyMSData.setpoint.throttle = flyMSData.control.uthrottle + flyMSData.standing_throttle;
 		}
 			
 		/************************************************************************
 		* 	                  		Pitch Controller	                        *
 		************************************************************************/
-		control.dpitch_setpoint = update_filter(filters.pitch_PD, control.setpoint.euler_ref[0] - control.euler[0]);
-		control.u_euler[0] = update_filter(filters.pitch_rate_PD,control.dpitch_setpoint - control.euler_rate[0]);
-		control.u_euler[0] = saturateFilter(control.u_euler[0],-MAX_PITCH_COMPONENT,MAX_PITCH_COMPONENT);
+		flyMSData.setpoint.dpitch_setpoint = update_filter(filters.pitch_PD, flyMSData.setpoint.euler_ref[0] - flyMSData.state.euler[0]);
+		flyMSData.control.u_euler[0] = update_filter(filters.pitch_rate_PD,flyMSData.setpoint.dpitch_setpoint - flyMSData.state.euler_rate[0]);
+		flyMSData.control.u_euler[0] = saturateFilter(flyMSData.control.u_euler[0],-MAX_PITCH_COMPONENT,MAX_PITCH_COMPONENT);
 		/************************************************************************
 		* 	                  		Roll Controller		                        *
 		************************************************************************/
-		control.droll_setpoint = update_filter(filters.roll_PD, control.setpoint.euler_ref[1] - control.euler[1]);
-		control.u_euler[1] = update_filter(filters.roll_rate_PD,control.droll_setpoint - control.euler_rate[1]);				
-		control.u_euler[1] = saturateFilter(control.u_euler[1],-MAX_ROLL_COMPONENT,MAX_ROLL_COMPONENT);
+		flyMSData.setpoint.droll_setpoint = update_filter(filters.roll_PD, flyMSData.setpoint.euler_ref[1] - flyMSData.state.euler[1]);
+		flyMSData.control.u_euler[1] = update_filter(filters.roll_rate_PD,flyMSData.setpoint.droll_setpoint - flyMSData.state.euler_rate[1]);				
+		flyMSData.control.u_euler[1] = saturateFilter(flyMSData.control.u_euler[1],-MAX_ROLL_COMPONENT,MAX_ROLL_COMPONENT);
 		
 
 		
 		/************************************************************************
 		*                        	Yaw Controller                              *
 		************************************************************************/	
-		// control.u_euler[2] = update_filter(filters.yaw_rate_PD,control.setpoint.euler_ref[2]-control.euler[2]);
-		control.u_euler[2] = update_filter(filters.yaw_rate_PD,control.setpoint.yaw_rate_ref[0]-control.euler_rate[2]);
+		// flyMSData.control.u_euler[2] = update_filter(filters.yaw_rate_PD,flyMSData.setpoint.euler_ref[2]-flyMSData.state.euler[2]);
+		flyMSData.control.u_euler[2] = update_filter(filters.yaw_rate_PD,flyMSData.setpoint.yaw_rate_ref[0]-flyMSData.state.euler_rate[2]);
 		
 		/************************************************************************
 		*                   	Apply the Integrators                           *
 		************************************************************************/	
 			
-		if(control.throttle<MIN_THROTTLE+.01){	
+		if(flyMSData.setpoint.throttle<MIN_THROTTLE+.01){	
 			function_control.integrator_reset++;
 			function_control.integrator_start=0;
 		}else{
@@ -195,25 +193,25 @@ void* flight_core(void* ptr)
 		}
 		
 		if(function_control.integrator_reset==300){// if landed, reset integrators and Yaw error
-			control.setpoint.euler_ref[2]=control.euler[2];
-			control.droll_err_integrator=0; 
-			control.dpitch_err_integrator=0;
-			control.dyaw_err_integrator=0;
+			flyMSData.setpoint.euler_ref[2]=flyMSData.state.euler[2];
+			flyMSData.control.droll_err_integrator=0; 
+			flyMSData.control.dpitch_err_integrator=0;
+			flyMSData.control.dyaw_err_integrator=0;
 		}
 			
 		//only use integrators if airborne (above minimum throttle for > 1.5 seconds)
 		if(function_control.integrator_start >  400){
-			control.dpitch_err_integrator += control.u_euler[0] * DT;
-			control.droll_err_integrator  += control.u_euler[1]  * DT;
-			control.dyaw_err_integrator += control.u_euler[2] * DT;		
+			flyMSData.control.dpitch_err_integrator += flyMSData.control.u_euler[0] * DT;
+			flyMSData.control.droll_err_integrator  += flyMSData.control.u_euler[1]  * DT;
+			flyMSData.control.dyaw_err_integrator += flyMSData.control.u_euler[2] * DT;		
 			
-			control.u_euler[0] += control.flight_config.Dpitch_KI * control.dpitch_err_integrator;
-			control.u_euler[1] += control.flight_config.Droll_KI * control.droll_err_integrator;
-			control.u_euler[2] += control.flight_config.yaw_KI * control.dyaw_err_integrator;
+			flyMSData.control.u_euler[0] += flyMSData.flight_config.Dpitch_KI * flyMSData.control.dpitch_err_integrator;
+			flyMSData.control.u_euler[1] += flyMSData.flight_config.Droll_KI * flyMSData.control.droll_err_integrator;
+			flyMSData.control.u_euler[2] += flyMSData.flight_config.yaw_KI * flyMSData.control.dyaw_err_integrator;
 		}
 		
 		//Apply a saturation filter
-		control.u_euler[2] = saturateFilter(control.u_euler[2],-MAX_YAW_COMPONENT,MAX_YAW_COMPONENT);
+		flyMSData.control.u_euler[2] = saturateFilter(flyMSData.control.u_euler[2],-MAX_YAW_COMPONENT,MAX_YAW_COMPONENT);
 		
 		/************************************************************************
 		*  Mixing
@@ -225,24 +223,24 @@ void* flight_core(void* ptr)
 		*                 	  yellow       	    black
 		************************************************************************/
 		
-		control.u[0]=control.throttle+control.u_euler[1]+control.u_euler[0]-control.u_euler[2];
-		control.u[1]=control.throttle-control.u_euler[1]+control.u_euler[0]+control.u_euler[2];
-		control.u[2]=control.throttle+control.u_euler[1]-control.u_euler[0]+control.u_euler[2];
-		control.u[3]=control.throttle-control.u_euler[1]-control.u_euler[0]-control.u_euler[2];		
+		flyMSData.control.u[0]=flyMSData.setpoint.throttle+flyMSData.control.u_euler[1]+flyMSData.control.u_euler[0]-flyMSData.control.u_euler[2];
+		flyMSData.control.u[1]=flyMSData.setpoint.throttle-flyMSData.control.u_euler[1]+flyMSData.control.u_euler[0]+flyMSData.control.u_euler[2];
+		flyMSData.control.u[2]=flyMSData.setpoint.throttle+flyMSData.control.u_euler[1]-flyMSData.control.u_euler[0]+flyMSData.control.u_euler[2];
+		flyMSData.control.u[3]=flyMSData.setpoint.throttle-flyMSData.control.u_euler[1]-flyMSData.control.u_euler[0]-flyMSData.control.u_euler[2];		
 
 		/************************************************************************
 		*         		Check Output Ranges, if outside, adjust                 *
 		************************************************************************/
-		check_output_range(control.u);
+		check_output_range(flyMSData.control.u);
 		
 		/************************************************************************
 		*         				 Send Commands to ESCs 		                    *
 		************************************************************************/
-		if(!control.flight_config.enable_debug_mode)
+		if(!flyMSData.flight_config.enable_debug_mode)
 		{
 			//Send Commands to Motors
 			for(i=0;i<4;i++){
-				pru_client_data.u[i] = control.u[i];
+				pru_client_data.u[i] = flyMSData.control.u[i];
 				pru_client_data.send_flag = 1;
 			}
 		}
@@ -250,7 +248,7 @@ void* flight_core(void* ptr)
 		/************************************************************************
 		*         		Check the kill Switch and Shutdown if set               *
 		************************************************************************/
-		if(control.kill_switch[0] < .5) {
+		if(flyMSData.setpoint.kill_switch[0] < .5) {
 			char errMsg[50];
 			sprintf(errMsg, "\nKill Switch Hit! Shutting Down\n");
 			printf("%s",errMsg);
@@ -259,19 +257,19 @@ void* flight_core(void* ptr)
 		}
 
 		//Print some stuff to the console in debug mode
-		if(control.flight_config.enable_debug_mode)
+		if(flyMSData.flight_config.enable_debug_mode)
 		{	
-			flyMS_console_print(&control);
+			flyMS_console_print(&flyMSData);
 		}
 		/************************************************************************
 		*         		Check for GPS Data and Handle Accordingly               *
 		************************************************************************/
-		GPS_handler(&control, &GPS_data);
+		GPS_handler(&flyMSData, &GPS_data);
 		
 		/************************************************************************
 		*         			Log Important Flight Data For Analysis              *
 		************************************************************************/
-		log_data(&control);
+		log_data(&flyMSData);
 
 		function_control.end_loop_usec = get_usec_timespec(&function_control.end_loop);
 		
@@ -295,10 +293,10 @@ int main(int argc, char *argv[]){
 	}
 
 	// // load flight_core settings
-	// if(load_core_config(&control.flight_config)){
+	// if(load_core_config(&flyMSData.flight_config)){
 	// 	printf("WARNING: no configuration file found\n");
 	// 	printf("loading default settings\n");
-	// 	if(create_default_core_config_file(&control.flight_config)){
+	// 	if(create_default_core_config_file(&flyMSData.flight_config)){
 	// 		printf("Warning, can't write default flight_config file\n");
 	// 	}
 	// }
@@ -309,7 +307,7 @@ int main(int argc, char *argv[]){
 		switch (in)
 		{
 			case 'd': 
-				control.flight_config.enable_debug_mode = 1;
+				flyMSData.flight_config.enable_debug_mode = 1;
 				printf("Running in Debug mode \n");
 				break;	
 			default:
@@ -322,7 +320,7 @@ int main(int argc, char *argv[]){
  	/************************************************************************
 	*                    Initialize the Flight Program                      *
 	************************************************************************/	
-	if(initialize_flight_program(	&control,
+	if(initialize_flight_program(	&flyMSData,
 									&filters,
 									&pru_client_data,
 									&GPS_data))
@@ -346,9 +344,9 @@ int main(int argc, char *argv[]){
 		{
 			char errMsg[100];
 			sprintf(errMsg,"Error! IMU read failed for more than\
-								5 consecutive timesteps. time: = %f\
+								5 consecutive timesteps. time: = %llu\
 								number of missed reads: %u \n",
-								control.time,imu_err_count);
+								flyMSData.time_us,imu_err_count);
 			flyMS_Error_Log(errMsg);
 		}
 	}

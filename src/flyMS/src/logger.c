@@ -143,21 +143,21 @@ int logger_deinit()
 ************************************************************************/
 int log_data(control_variables_t *control)
 {
-		logger.new_entry.time			= control->time;	
-		logger.new_entry.pitch			= control->euler[0];	
-		logger.new_entry.roll			= control->euler[1];
-		logger.new_entry.yaw			= control->euler[2];
-		logger.new_entry.d_pitch		= control->euler_rate[0];	
-		logger.new_entry.d_roll			= control->euler_rate[1];
-		logger.new_entry.d_yaw			= control->euler_rate[2];
-		logger.new_entry.u_1			= control->u[0];
-		logger.new_entry.u_2			= control->u[1];
-		logger.new_entry.u_3			= control->u[2];
-		logger.new_entry.u_4			= control->u[3];
-		logger.new_entry.throttle		= control->throttle;
-		logger.new_entry.upitch			= control->u_euler[0];	
-		logger.new_entry.uroll			= control->u_euler[1];
-		logger.new_entry.uyaw			= control->u_euler[2];
+		logger.new_entry.time			= control->time_us;	
+		logger.new_entry.pitch			= control->state.euler[0];	
+		logger.new_entry.roll			= control->state.euler[1];
+		logger.new_entry.yaw			= control->state.euler[2];
+		logger.new_entry.d_pitch		= control->state.euler_rate[0];	
+		logger.new_entry.d_roll			= control->state.euler_rate[1];
+		logger.new_entry.d_yaw			= control->state.euler_rate[2];
+		logger.new_entry.u_1			= control->control.u[0];
+		logger.new_entry.u_2			= control->control.u[1];
+		logger.new_entry.u_3			= control->control.u[2];
+		logger.new_entry.u_4			= control->control.u[3];
+		logger.new_entry.throttle		= control->setpoint.throttle;
+		logger.new_entry.upitch			= control->control.u_euler[0];	
+		logger.new_entry.uroll			= control->control.u_euler[1];
+		logger.new_entry.uyaw			= control->control.u_euler[2];
 		logger.new_entry.pitch_ref		= control->setpoint.euler_ref[0];
 		logger.new_entry.roll_ref		= control->setpoint.euler_ref[1];
 		logger.new_entry.yaw_ref		= control->setpoint.euler_ref[2];
@@ -165,10 +165,10 @@ int log_data(control_variables_t *control)
 		logger.new_entry.Aux			= control->setpoint.Aux[0];
 		// control->logger.new_entry.lat_error		= control->lat_error;
 		// control->logger.new_entry.lon_error		= control->lon_error;
-		logger.new_entry.accel_x		= control->accel[0];
-		logger.new_entry.accel_y		= control->accel[1];
-		logger.new_entry.accel_z		= control->accel[2];
-		logger.new_entry.baro_alt		= control->baro_alt;
+		logger.new_entry.accel_x		= control->imu.accel[0];
+		logger.new_entry.accel_y		= control->imu.accel[1];
+		logger.new_entry.accel_z		= control->imu.accel[2];
+		logger.new_entry.baro_alt		= control->imu.baro_alt;
 		logger.new_entry.v_batt			= 0;
 		logger.new_entry.ned_pos_x		= control->ekf_filter.output.ned_pos[0];
 		logger.new_entry.ned_pos_y		= control->ekf_filter.output.ned_pos[1];
@@ -176,12 +176,12 @@ int log_data(control_variables_t *control)
 		logger.new_entry.ned_vel_x		= control->ekf_filter.output.ned_vel[0];
 		logger.new_entry.ned_vel_y		= control->ekf_filter.output.ned_vel[1];
 		logger.new_entry.ned_vel_z		= control->ekf_filter.output.ned_vel[2];
-		logger.new_entry.mag_x			= control->mag[0];
-		logger.new_entry.mag_y			= control->mag[1];
-		logger.new_entry.mag_z			= control->mag[2];
-		logger.new_entry.compass_heading= control->compass_heading;
-		logger.new_entry.droll_setpoint	= control->droll_setpoint;
-		logger.new_entry.dpitch_setpoint= control->dpitch_setpoint;
+		logger.new_entry.mag_x			= control->imu.mag[0];
+		logger.new_entry.mag_y			= control->imu.mag[1];
+		logger.new_entry.mag_z			= control->imu.mag[2];
+		logger.new_entry.compass_heading= control->imu.compass_heading;
+		logger.new_entry.droll_setpoint	= control->setpoint.droll_setpoint;
+		logger.new_entry.dpitch_setpoint= control->setpoint.dpitch_setpoint;
 		//control->logger.new_entry.v_batt			= rc_dc_jack_voltage();
 		log_core_data(&logger.core_logger, &logger.new_entry);
 	return 0;
@@ -192,9 +192,9 @@ int log_data(control_variables_t *control)
 *	populates the logger substructure and pushes it out to the logfile
 *	GPS data is only logged once per second so efficiency is less important
 ************************************************************************/
-int log_GPS_data(GPS_data_t *GPS_data, float timestamp_sec)
+int log_GPS_data(GPS_data_t *GPS_data, uint64_t timestamp_sec)
 {
-	fprintf(logger.GPS_logger,"%4.5f,",timestamp_sec);
+	fprintf(logger.GPS_logger,"%llu,",timestamp_sec);
 	fprintf(logger.GPS_logger,"%3.0f,%f,",GPS_data->deg_longitude,GPS_data->min_longitude);
 	fprintf(logger.GPS_logger,"%3.0f,%f,",GPS_data->deg_latitude,GPS_data->min_latitude);
 	fprintf(logger.GPS_logger,"%f,%f,",GPS_data->speed,GPS_data->direction);
