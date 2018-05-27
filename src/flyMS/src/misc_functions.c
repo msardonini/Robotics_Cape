@@ -206,8 +206,7 @@ int initialize_filters(filters_t *filters, core_config_t *flight_config){
 	//Gains on Low Pass Filter for raw gyroscope output
 	
 	filters->altitudeHoldPID  = generatePID(.05,		  .005,  .002,	    0.15, DT);
-	
-	
+
 	//elliptic filter 10th order 0.25 dB passband ripple 80 dB min Cutoff 0.4 cutoff frq
 	float num[11] = {   0.003316345545497,   0.006003204398448,   0.015890122416480,   0.022341342884745,   0.031426841006402,
 						0.032682319166147,   0.031426841006402,  0.022341342884745,   0.015890122416480,   0.006003204398448,
@@ -216,12 +215,24 @@ int initialize_filters(filters_t *filters, core_config_t *flight_config){
 	float den[11] = {   1.000000000000000,  -4.302142513532524,  10.963685193359051, -18.990960386921738,  24.544342262847074,
 						-24.210021253402012,  18.411553079753368, -10.622846105856944,   4.472385466696109,  -1.251943621469692,
 						0.182152641224648};
+	
+	//elliptic filter 10th order 0.25 dB passband ripple 80 dB min Cutoff 0.05 cutoff frq
+	float yaw_num[11] = {0.000001090469646, -0.000010036913986,   0.000042278262961,  -0.000107444668654,
+						0.000182603489186,  -0.000216981275081,   0.000182603489186,  -0.000107444668654,
+						0.000042278262961,  -0.000010036913986,   0.000001090469646};
+	float yaw_den[11] = {0.010000000000000  -0.097151340189155   0.425460449333826  -1.106030841744647
+						1.890075610540937  -2.218517291162452   1.811369753642331  -1.015811392136740
+						0.374457753346683  -0.081933192906509   0.008080491279042};
+
 	int i;
-	for (i = 0; i < 3; i++)
+	for (i = 0; i < 2; i++)
 	{
 		filters->gyro_lpf[i] = initialize_filter(10, num, den);		
 		filters->accel_lpf[i] = initialize_filter(10, num, den);	
 	}
+
+	filters->gyro_lpf[2] = initialize_filter(10, yaw_num, yaw_num);		
+	filters->accel_lpf[2] = initialize_filter(10, num, den);	
 	
 	//Gains on Low Pass Filter for Yaw Reference		
 	float num2[4] = {  0.0317,    0.0951,    0.0951,    0.0317};
