@@ -231,7 +231,7 @@ int initialize_filters(filters_t *filters, core_config_t *flight_config){
 		filters->accel_lpf[i] = initialize_filter(10, num, den);	
 	}
 
-	filters->gyro_lpf[2] = initialize_filter(10, yaw_num, yaw_num);		
+	filters->gyro_lpf[2] = initialize_filter(10, yaw_num, yaw_den);		
 	filters->accel_lpf[2] = initialize_filter(10, num, den);	
 	
 	//Gains on Low Pass Filter for Yaw Reference		
