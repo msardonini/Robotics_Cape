@@ -231,14 +231,14 @@ int initialize_filters(filters_t *filters, core_config_t *flight_config){
 	filters->accel_lpf[2] = initialize_filter(10, num, den);	
 	
 	//Gains on Low Pass Filter for Yaw Reference		
-	float num2[4] = {  0.0317,    0.0951,    0.0951,    0.0317};
-	float den2[4] = { 1.0000,   -1.4590,    0.9104,   -0.1978};					
+	double num2[4] = {  0.0317,    0.0951,    0.0951,    0.0317};
+	double den2[4] = { 1.0000,   -1.4590,    0.9104,   -0.1978};					
 	filters->LPF_Yaw_Ref_P = initialize_filter(3, num2, den2);							
 	filters->LPF_Yaw_Ref_R = initialize_filter(3, num2, den2);		
 
 	//ellip filter, 5th order .5 pass 70 stop .05 cutoff
-	float baro_num[6] = {0.000618553374672,  -0.001685890697737,   0.001077182625629,   0.001077182625629,  -0.001685890697737,   0.000618553374672};
-	float baro_den[6] =	{1.000000000000000,  -4.785739467762915,   9.195509273069447,  -8.866262182166356,   4.289470039368545,  -0.832957971903594};
+	double baro_num[6] = {0.000618553374672,  -0.001685890697737,   0.001077182625629,   0.001077182625629,  -0.001685890697737,   0.000618553374672};
+	double baro_den[6] =	{1.000000000000000,  -4.785739467762915,   9.195509273069447,  -8.866262182166356,   4.289470039368545,  -0.832957971903594};
 	filters->LPF_baro_alt = initialize_filter(5, baro_num, baro_den);
 	for (i = 0; i< 3; i++)
 	{
