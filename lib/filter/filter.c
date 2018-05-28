@@ -34,12 +34,12 @@ extern "C" {
 #include <stdio.h>
 
 
-digital_filter_t* initialize_filter(uint8_t order, float num[], float den[]){
+digital_filter_t* initialize_filter(uint8_t order, double num[], double den[]){
 
 	uint8_t i;
 
 	digital_filter_t *filter;
-	filter = (digital_filter_t *)malloc(sizeof(digital_filter_t) +4*(order+1)*sizeof(float));
+	filter = (digital_filter_t *)malloc(sizeof(digital_filter_t) +4*(order+1)*sizeof(double));
 
 	filter->order=order;	
 	filter->filter_len=order+1;
@@ -73,7 +73,7 @@ digital_filter_t* initialize_filter(uint8_t order, float num[], float den[]){
 	return filter;
 }
 
-float update_filter(digital_filter_t *filter, float new_val){
+double update_filter(digital_filter_t *filter, double new_val){
 	//Check if the given filter has been initialiazed
 	uint8_t temp = filter->initialized;
 	if (temp == FALSE){
@@ -88,7 +88,7 @@ float update_filter(digital_filter_t *filter, float new_val){
 	uint8_t i, k = 0;
 
 	//Apply the difference Equation
-	float new_filt_val = 0;
+	double new_filt_val = 0;
 	for (i=filter->current_index_f; i < (filter->order + filter->current_index_f + 1); i++)
 	{
 		new_filt_val  += filter->data[k] * filter->data[(i % (filter->order + 1))+2*filter->filter_len];
@@ -111,7 +111,7 @@ float update_filter(digital_filter_t *filter, float new_val){
 
 
  
-float saturateFilter(float filter, float min, float max){
+double saturateFilter(double filter, double min, double max){
 	if(filter > max){
 		filter = max;
 		return filter;
@@ -133,7 +133,7 @@ int zeroFilter(digital_filter_t* filter){
 	return 0;
 }
 
-int prefill_filter(digital_filter_t *filter, float value)
+int prefill_filter(digital_filter_t *filter, double value)
 {
 
         if (filter->initialized == FALSE){
@@ -150,46 +150,46 @@ int prefill_filter(digital_filter_t *filter, float value)
 	return 0;
 }
 
-digital_filter_t* generateFirstOrderLowPass(float dt, float time_constant){
-	const float lp_const = dt/time_constant;
-	float numerator[]   = {lp_const, 0};
-	float denominator[] = {1, lp_const-1};
+digital_filter_t* generateFirstOrderLowPass(double dt, double time_constant){
+	const double lp_const = dt/time_constant;
+	double numerator[]   = {lp_const, 0};
+	double denominator[] = {1, lp_const-1};
 	return initialize_filter(1,numerator,denominator);
 }
 
-digital_filter_t* generateFirstOrderHighPass(float dt, float time_constant){
-	float hp_const = dt/time_constant;
-	float numerator[] = {1-hp_const, hp_const-1};
-	float denominator[] = {1,hp_const-1};
+digital_filter_t* generateFirstOrderHighPass(double dt, double time_constant){
+	double hp_const = dt/time_constant;
+	double numerator[] = {1-hp_const, hp_const-1};
+	double denominator[] = {1,hp_const-1};
 	return initialize_filter(1,numerator,denominator);
 }
 
 
-digital_filter_t* generateIntegrator(float dt){
-	float numerator[]   = {0, dt};
-	float denominator[] = {1, -1};
+digital_filter_t* generateIntegrator(double dt){
+	double numerator[]   = {0, dt};
+	double denominator[] = {1, -1};
 	return initialize_filter(1,numerator,denominator);
 }
 
-digital_filter_t* generatePID(float kp, float ki, float kd, float Tf, float dt){
+digital_filter_t* generatePID(double kp, double ki, double kd, double Tf, double dt){
 	if(Tf <= 2*dt){
 		printf("Tf must be > 2kd for stability\n");
 		return initialize_filter(0,0,0);
 	}
 	// if ki==0, return a PD filter with rolloff
 	if(ki==0){
-		float numerator[] = {(kp*Tf+kd)/Tf, 
+		double numerator[] = {(kp*Tf+kd)/Tf, 
 							-(((ki*dt-kp)*(dt-Tf))+kd)/Tf};
-		float denominator[] = 	{1, 
+		double denominator[] = 	{1, 
 								-(Tf-dt)/Tf};
 		return initialize_filter(1,numerator,denominator);
 	}
 	//otherwise PID with roll off
 	else{
-		float numerator[] = {(kp*Tf+kd)/Tf, 
+		double numerator[] = {(kp*Tf+kd)/Tf, 
 							(ki*dt*Tf + kp*(dt-Tf) - kp*Tf - 2.0*kd)/Tf,
 							(((ki*dt-kp)*(dt-Tf))+kd)/Tf};
-		float denominator[] = 	{1, 
+		double denominator[] = 	{1, 
 								(dt-(2.0*Tf))/Tf, 
 								(Tf-dt)/Tf};
 		return initialize_filter(2,numerator,denominator);

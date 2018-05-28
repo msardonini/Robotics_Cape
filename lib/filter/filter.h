@@ -51,7 +51,7 @@ typedef struct digital_filter_t{
 	uint8_t filter_len; 							/**< Specified order of the filter*/
 	uint8_t current_index_f;				/**< Index showing where in the vector current and past data is */
 	uint8_t initialized;					/**< Boolean saying if filter has been initialized*/
-	float data[];							/**< Denominator Coefficients*/
+	double data[];							/**< Denominator Coefficients*/
 
 } digital_filter_t;
 
@@ -65,7 +65,7 @@ typedef struct digital_filter_t{
 march the filter forward in time one step with new input data
 returns new output which could also be accessed with filter.current_output
 */
-float update_filter(digital_filter_t *filter, float new_val);
+double update_filter(digital_filter_t *filter, double new_val);
 
 
 /* 
@@ -74,7 +74,7 @@ limit the output of filter to be between min&max
 returns 1 if saturation was hit 
 returns 0 if output was within bounds
 */
-float saturateFilter(float filter, float min, float max);
+double saturateFilter(double filter, double min, double max);
 
 
 /*
@@ -88,7 +88,7 @@ int zeroFilter(digital_filter_t* filter);
 fill the past inputs with the curent input
 use before marchFilter when starting to avoid ugly step input
 */
-int prefill_filter(digital_filter_t *filter, float value);
+int prefill_filter(digital_filter_t *filter, double value);
 
 
 /*
@@ -99,14 +99,14 @@ and set transfer function constants.
 Note: A normalized transfer function should have a leading 1 
 in the denominator but can be !=1 in this library
 */
-digital_filter_t* initialize_filter(uint8_t order, float num[], float den[]);
+digital_filter_t* initialize_filter(uint8_t order, double num[], double den[]);
 
 // discrete-time implementation of a parallel PID controller with derivative filter
 // similar to Matlab pid command
 //
 // N is the pole location for derivative filter. Must be greater than 2*DT
 // smaller N gives faster filter decay
-digital_filter_t* generatePID(float kp, float ki, float kd, float Tf, float dt);
+digital_filter_t* generatePID(double kp, double ki, double kd, double Tf, double dt);
 
 // print order, numerator, and denominator constants
 void print_filter(digital_filter_t *filter);
