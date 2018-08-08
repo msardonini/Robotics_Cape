@@ -49,7 +49,7 @@ int GPS_handler(control_variables_t *control, GPS_data_t *GPS_data)
 
 	if(is_new_GPS_data())
 	{
-		log_GPS_data(GPS_data, control->time);
+		log_GPS_data(GPS_data, control->time_us);
 
 		if (First_Iteration_GPS==1  && GPS_data->GPS_fix==1){
 			// control->initial_pos_lat=GPS_data.meters_lat;

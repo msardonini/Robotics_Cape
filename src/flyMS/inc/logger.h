@@ -136,7 +136,7 @@ int log_data(control_variables_t *control);
 *   populates the logger substructure and pushes it out to the logfile
 *   GPS data is only logged once per second so efficiency is less important
 ************************************************************************/
-int log_GPS_data(GPS_data_t *GPS_data, float timestamp_sec);
+int log_GPS_data(GPS_data_t *GPS_data, uint64_t timestamp_sec);
 
 /************************************************************************
 *   flyMS_Error_Log()
