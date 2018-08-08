@@ -42,7 +42,7 @@ extern "C" {
 //Local Functions
 // static int init_fusion_bias(FusionBias *fusionBias);
 static void init_fusion(fusion_data_t* fusion, transform_matrix_t *transform);
-static void updateFusion(fusion_data_t *fusion, transform_matrix_t *transform);
+static void updateFusion(fusion_data_t *fusion, transform_matrix_t *transform, bool isInitializing);
 static void read_transform_imu(transform_matrix_t *transform);
 static void init_rotation_matrix(transform_matrix_t *transform, core_config_t *flight_config);
 
@@ -69,7 +69,7 @@ int imu_handler(control_variables_t *control, filters_t *filters)
 	read_transform_imu(&control->transform);
 
 	//Perform the data fusion to calculate pitch, roll, and yaw angles
-	updateFusion(&control->fusion, &control->transform);
+	updateFusion(&control->fusion, &control->transform, false);
 
 
 
@@ -147,7 +147,7 @@ int imu_handler(control_variables_t *control, filters_t *filters)
 int update_ekf_gps(control_variables_t *control, GPS_data_t *GPS_data)
 {
 	control->ekf_filter.input.gps_timestamp = control->time*1E6;
-	control->ekf_filter.input.gps_latlon[0] = (double)GPS_data->deg_latitude + (double)GPS_data->min_latitude / 60.0;// + control->time*1E7/20000;
+	control->ekf_filter.input.gps_latlon[0] = (double)GPS_data->deg_latitude + (double)GPS_data->min_latitude / 60.0;
 	control->ekf_filter.input.gps_latlon[1] = (double)GPS_data->deg_longitude + (double)GPS_data->min_longitude / 60.0;
 	control->ekf_filter.input.gps_latlon[2] = (double)GPS_data->gps_altitude;
 	control->ekf_filter.input.gps_fix = GPS_data->GPS_fix;
@@ -176,10 +176,10 @@ int initialize_imu(control_variables_t *control)
 
 	// set up IMU configuration
 	rc_imu_config_t imu_config = rc_default_imu_config();
-	imu_config.accel_fsr = A_FSR_2G;
+	imu_config.accel_fsr = A_FSR_4G;
 	imu_config.enable_magnetometer=1;
-//	imu_config.accel_dlpf = ACCEL_DLPF_5;
-//	imu_config.gyro_dlpf = GYRO_DLPF_5;
+	imu_config.accel_dlpf = ACCEL_DLPF_5;
+	imu_config.gyro_dlpf = GYRO_DLPF_5;
 
 	// start imu
 	if(rc_initialize_imu(&imu_data, imu_config)){
@@ -231,28 +231,39 @@ static void read_transform_imu(transform_matrix_t *transform)
 ************************************************************************/
 static void init_fusion(fusion_data_t* fusion, transform_matrix_t *transform)
 {
-	FusionAhrsInitialise(&fusion->fusionAhrs, 0.75f, 0.0f, 120.0f); // valid magnetic field defined as 20 uT to 70 uT
-
-	FusionBiasInitialise(&fusion->fusionBias, 25, DT);
+	/*	Three params here are: 
+		1. gain -  (<= 0) 0 means to only use gyro data in fusion, greater value use accel / mag more
+		2. min squared magnetic field, magnetic fields squared less than this will be discarded
+		3. max squared magnetic field, magnetic fields squared greater than this will be discarded
+	*/
+	FusionAhrsInitialise(&fusion->fusionAhrs, 0.25f, 0.0f, 120.0f); // valid magnetic field defined as 20 uT to 70 uT
+	/*
+		Two params here are: 
+		1. Min ADC threshold - gyroscope value threshold which means the device is stationary
+		2. DT - time difference in seconds
+	*/
+	FusionBiasInitialise(&fusion->fusionBias, (int)(0.2f / imu_data.gyro_to_degs), DT);
 
 	//Give Imu data to the fusion alg for initialization purposes
-	while (FusionAhrsIsInitialising(&fusion->fusionAhrs))
+	while (FusionAhrsIsInitialising(&fusion->fusionAhrs) || FusionBiasIsActive(&fusion->fusionBias))
 	{
 		read_transform_imu(transform);
 		
-		updateFusion(fusion, transform);
+		updateFusion(fusion, transform, true);
 		rc_usleep(DT_US);
 	}
 
-	int sample_count = 0;
-	while(sample_count < 300) //Continue for another 300 samples to let yaw reach equilibrium
-	{
-		read_transform_imu(transform);
+	//Don't do this for now
+
+	// int sample_count = 0;
+	// while(sample_count < 300) //Continue for another 300 samples to let yaw reach equilibrium
+	// {
+	// 	read_transform_imu(transform);
 		
-		updateFusion(fusion, transform);
-		rc_usleep(DT_US);
-		sample_count++;
-	}
+	// 	updateFusion(fusion, transform);
+	// 	rc_usleep(DT_US);
+	// 	sample_count++;
+	// }
 }
 /************************************************************************
 *			Allocatate memeory for the Tranformation Matrices
@@ -287,7 +298,7 @@ static void init_rotation_matrix(transform_matrix_t *transform, core_config_t *f
 /************************************************************************
 *         Update the Fusion Algorithm, Called once per IMU Update       *
 ************************************************************************/
-static void updateFusion(fusion_data_t *fusion, transform_matrix_t *transform)
+static void updateFusion(fusion_data_t *fusion, transform_matrix_t *transform, bool isInitializing)
 {
 
 	FusionVector3 gyroscope;
@@ -300,8 +311,11 @@ static void updateFusion(fusion_data_t *fusion, transform_matrix_t *transform)
 		gyroscope.array[i] = transform->gyro_drone.d[i];
 		accelerometer.array[i] = transform->accel_drone.d[i] / 9.81f;
 		magnetometer.array[i] = transform->mag_drone.d[i];
+		if (!isInitializing)
+			gyroscope.array[i] -= fusion->fusionBias.gyroscopeBias.array[i] * imu_data.gyro_to_degs;
 	}
-	FusionBiasUpdate(&fusion->fusionBias, imu_data.raw_gyro[0] & 0xFF, imu_data.raw_gyro[1] & 0xFF, imu_data.raw_gyro[2] & 0xFF);
+
+	FusionBiasUpdate(&fusion->fusionBias, imu_data.raw_gyro[0], imu_data.raw_gyro[1], imu_data.raw_gyro[2]);
 	FusionAhrsUpdate(&fusion->fusionAhrs, gyroscope, accelerometer, magnetometer, DT);																								
 	fusion->eulerAngles = FusionQuaternionToEulerAngles(fusion->fusionAhrs.quaternion);
 	

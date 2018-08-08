@@ -89,7 +89,7 @@ void* flight_core(void* ptr)
 	//control_variables_t *STATE = (control_variables_t*)ptr;
 	//printf("pointer value %f\n", STATE->pitch);
 	//Keep an i for loops
-	static uint8_t i=0, first_iteration_count=0;
+	int i=0;
 
 	//Variables to Initialize things upon startup
 	static uint8_t First_Iteration=1;
@@ -127,11 +127,6 @@ void* flight_core(void* ptr)
 		/******************************************************************
 		*				Take Care of Some Initialization Tasks			  *
 		******************************************************************/
-		if (first_iteration_count < 150)
-		{
-			first_iteration_count++;
-			continue;
-		}
 
 		if(First_Iteration){
 			control.setpoint.euler_ref[2]=control.euler[2];
@@ -167,14 +162,13 @@ void* flight_core(void* ptr)
 		control.dpitch_setpoint = update_filter(filters.pitch_PD, control.setpoint.euler_ref[0] - control.euler[0]);
 		control.u_euler[0] = update_filter(filters.pitch_rate_PD,control.dpitch_setpoint - control.euler_rate[0]);
 		control.u_euler[0] = saturateFilter(control.u_euler[0],-MAX_PITCH_COMPONENT,MAX_PITCH_COMPONENT);
+		
 		/************************************************************************
 		* 	                  		Roll Controller		                        *
 		************************************************************************/
 		control.droll_setpoint = update_filter(filters.roll_PD, control.setpoint.euler_ref[1] - control.euler[1]);
 		control.u_euler[1] = update_filter(filters.roll_rate_PD,control.droll_setpoint - control.euler_rate[1]);				
 		control.u_euler[1] = saturateFilter(control.u_euler[1],-MAX_ROLL_COMPONENT,MAX_ROLL_COMPONENT);
-		
-
 		
 		/************************************************************************
 		*                        	Yaw Controller                              *
