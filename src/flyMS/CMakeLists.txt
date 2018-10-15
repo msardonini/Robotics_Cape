@@ -31,3 +31,9 @@ target_link_libraries(flyMS ecl)
 target_link_libraries(flyMS roboticscape)
 target_link_libraries(flyMS filter)
 target_link_libraries(flyMS Fusion)
+
+add_executable(flight_replay 
+		${FLYMS_DIR}/test/replayFlight.cpp
+		${FLYMS_DIR}/src/logger.c)
+target_link_libraries(flight_replay pthread)
+target_link_libraries(flight_replay roboticscape)

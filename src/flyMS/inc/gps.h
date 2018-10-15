@@ -30,6 +30,8 @@ either expressed or implied, of the FreeBSD Project.
 #ifndef GPS_H
 #define GPS_H
 
+#include "flyMS_common.h"
+
 typedef struct GPS_data_t{
 //	char 	band_aid_buff[500];
 	int 	GPS_file;	//file functions use to access GPS data
