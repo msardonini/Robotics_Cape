@@ -10,6 +10,7 @@
 #define SETPOINT_H
 
 
+//System includes
 #include <string.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -17,10 +18,24 @@
 #include <pthread.h>
 #include <math.h>
 #include <time.h>
+#include <stdint.h>
 
-#include <flyMS.hpp>
+#include<thread>
+#include<mutex>
 
+
+//Package includes
+#include<roboticscape.h>
+// #include <flyMS.hpp>
+
+#define DT 0.005
+#define DT_US 5000
 #define MAX_DSM2_CHANNELS 8
+#define MAX_PITCH_RANGE 0.666 // in radians
+#define MAX_ROLL_RANGE 0.666 // in radians
+#define MAX_YAW_RATE 2.0 //in Radians per second
+#define MIN_THROTTLE 0.3
+#define MAX_THROTTLE 0.75
 
 typedef struct setpoint_t{
 	float	euler_ref[3];	// Reference (Desired) Position
@@ -52,20 +67,20 @@ class setpoint
 public:
 
 	//Default Constructor
-	setpoint(enum reference_mode_t refMode);
+	setpoint(enum reference_mode_t refMode, bool headless, bool debug);
 
 	//Default Destructor
 	~setpoint();
+	
+	void getSetpointData(setpoint_t* _setpoint);
 
-	void getSetpointData(setpoint_t &_setpointData);
+	int setpointManager();
 
 private:
 
 	int copy_dsm2_data();
 	int handle_rc_data_direct();
 	int rc_err_handler(reference_mode_t setpoint_type);
-	void * setpoint_manager(void* ptr);
-
 
 	bool enableHeadlessMode;
 	bool enableDebugMode;

@@ -91,47 +91,50 @@ int setpoint::handle_rc_data_direct()
 	{
 		//Set roll reference value
 		//DSM2 Receiver is inherently positive to the left
-		this->setpoint.euler_ref[1]= -dsm2_data[1]*MAX_ROLL_RANGE;	
+		this->setpointData.euler_ref[1]= -dsm2_data[1]*MAX_ROLL_RANGE;	
 		
 		//DSM2 Receiver is inherently positive upwards
-		this->setpoint.euler_ref[0]= -dsm2_data[2]*MAX_PITCH_RANGE;
+		this->setpointData.euler_ref[0]= -dsm2_data[2]*MAX_PITCH_RANGE;
 		
 		//Set Yaw, RC Controller acts on Yaw velocity, save a history for integration
 		//Apply the integration outside of current if statement, needs to run at 200Hz
-		this->setpoint.yaw_rate_ref[1]=this->setpoint.yaw_rate_ref[0];		
-		this->setpoint.yaw_rate_ref[0]=dsm2_data[3]*MAX_YAW_RATE;
+		this->setpointData.yaw_rate_ref[1]=this->setpointData.yaw_rate_ref[0];		
+		this->setpointData.yaw_rate_ref[0]=dsm2_data[3]*MAX_YAW_RATE;
 
 		//If Specified by the config file, convert from Drone Coordinate System to User Coordinate System
-		if (this->_enableHeadlessMode)
+		if (this->enableHeadlessMode)
 		{				
-			float P_R_MAG=pow(pow(this->setpoint.euler_ref[0],2)+pow(this->setpoint.euler_ref[1],2),0.5);
-			float Theta_Ref=atan2f(this->setpoint.euler_ref[0],this->setpoint.euler_ref[1]);
-			this->setpoint.euler_ref[1] =P_R_MAG*cos(Theta_Ref+this->state.euler[2]-this->setpoint.yaw_ref_offset);
-			this->setpoint.euler_ref[0]=P_R_MAG*sin(Theta_Ref+this->state.euler[2]-this->setpoint.yaw_ref_offset);
+			float P_R_MAG=pow(pow(this->setpointData.euler_ref[0],2)+pow(this->setpointData.euler_ref[1],2),0.5);
+			float Theta_Ref=atan2f(this->setpointData.euler_ref[0],this->setpointData.euler_ref[1]);
+		
+			//TODO: Give this thread access to state information so it can fly in headless mode
+			// this->setpointData.euler_ref[1] =P_R_MAG*cos(Theta_Ref+this->state.euler[2]-this->setpointData.yaw_ref_offset);
+			// this->setpointData.euler_ref[0]=P_R_MAG*sin(Theta_Ref+this->state.euler[2]-this->setpointData.yaw_ref_offset);
 		}
 		
 		//Apply a deadzone to keep integrator from wandering
-		if(fabs(this->setpoint.yaw_rate_ref[0])<0.05) {
-			this->setpoint.yaw_rate_ref[0]=0;
+		if(fabs(this->setpointData.yaw_rate_ref[0])<0.05) {
+			this->setpointData.yaw_rate_ref[0]=0;
 		}
 
 		//Kill Switch
-		this->setpoint.kill_switch[0]=dsm2_data[4]/2;
+		this->setpointData.kill_switch[0]=dsm2_data[4]/2;
 		
 		//Auxillary Switch
-		this->setpoint.Aux[1] = this->setpoint.Aux[0];
-		this->setpoint.Aux[0] = dsm2_data[5]; 
+		this->setpointData.Aux[1] = this->setpointData.Aux[0];
+		this->setpointData.Aux[0] = dsm2_data[5]; 
 		
 		//Set the throttle
-		this->setpoint.throttle=(dsm2_data[0]+1)* 0.5f *
-				(this->flight_config.max_throttle-this->flight_config.min_throttle)+this->flight_config.min_throttle;
+		//TODO: make these values configuarable
+		this->setpointData.throttle=(dsm2_data[0]+1)* 0.5f *
+				(MAX_THROTTLE-MIN_THROTTLE)+MIN_THROTTLE;
 		//Keep the aircraft at a constant height while making manuevers 
-		// this->setpoint.throttle *= 1/(cos(this->state.euler[1])*cos(this->state.euler[0]));
+		// this->setpointData.throttle *= 1/(cos(this->state.euler[1])*cos(this->state.euler[0]));
 	}
 
 	//Finally Update the integrator on the yaw reference value
-	this->setpoint.euler_ref[2]=this->setpoint.euler_ref[2] + 
-									(this->setpoint.yaw_rate_ref[0]+this->setpoint.yaw_rate_ref[1])*DT/2;
+	this->setpointData.euler_ref[2]=this->setpointData.euler_ref[2] + 
+									(this->setpointData.yaw_rate_ref[0]+this->setpointData.yaw_rate_ref[1])*DT/2;
 	this->setpointMutex.unlock();
 
 	return 0;
@@ -155,7 +158,8 @@ int setpoint::rc_err_handler(reference_mode_t setpoint_type)
 		char errMsg[50];
 		sprintf(errMsg,"\nLost Connection with Remote!! Shutting Down Immediately \n");	
 		printf("%s",errMsg);
-		flyMS_Error_Log(errMsg);
+		//TODO: add error message to the error log
+		// flyMS_Error_Log(errMsg);
 		rc_set_state(EXITING);
 	}
 	return 0;

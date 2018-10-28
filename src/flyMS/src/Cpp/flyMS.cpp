@@ -13,7 +13,7 @@
 flyMS::flyMS(bool _debugMode) : 
 	isDebugMode(_debugMode),
 	firstIteration(true) , 
-	setpointModule(RC_DIRECT),
+	setpointModule(RC_DIRECT, false, false),
 	imuModule(true)
 {
 
