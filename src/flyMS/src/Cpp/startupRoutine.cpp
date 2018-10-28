@@ -16,26 +16,13 @@ int flyMS::startupRoutine()
 	rc_initialize_dsm();
 
 	//Pause the program until the user toggles the kill switch
-	if(!this->isDebugMode)
+	if(!this->config.isDebugMode)
 	{	
 		if(this->readyCheck()){
 			printf("Exiting Program \n");
 			return -1;
 		}
 	}
-
-	//TODO: better way of importing config parameters
-	// load flight_core settings
-	// int force_debug_mode = control->flight_config.enable_debug_mode;
-	// if(load_core_config(&control->flight_config)){
-	// 	printf("WARNING: no configuration file found\n");
-	// 	printf("loading default settings\n");
-	// 	if(create_default_core_config_file(&control->flight_config)){
-	// 		printf("Warning, can't write default flight_config file\n");
-	// 	}
-	// }
-	// control->flight_config.enable_debug_mode = (force_debug_mode || control->flight_config.enable_debug_mode);
-	
 
 	// //Enable the data logger
 	// if(control->flight_config.enable_logging)
@@ -52,11 +39,6 @@ int flyMS::startupRoutine()
 
 	// initialize_filters(filters, &control->flight_config);
 
-	// /* 			Start the GPS 				*/
-	// if(control->flight_config.enable_gps)
-	// {
-	// 	GPS_data->GPS_init_check=GPS_init(GPS_data);
-	// }
 	//Should be disabled by default but we don't want to be pumping 5V into our BEC ESC output
 	rc_disable_servo_power_rail();
 	return 0;

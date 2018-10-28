@@ -9,17 +9,43 @@
 
 
 #include "flyMS.hpp"
-#include "flyMS_common.h"
+
+int parseInputs(int argc, char* argv[], flyMSParams* configParams);
 
 
 int main(int argc, char *argv[])
 {
-
 	//Initialize the cape and beaglebone hardware
 	if(rc_initialize()){
 		printf("ERROR: failed to initialize_cape\n");
 		return -1;
 	}
+
+	// Read the command line arguments and config file inputs
+	flyMSParams configParams;
+	parseInputs(argc, argv, &configParams);
+
+	//Initialize the flight hardware
+	// startupRoutine();
+
+	flyMS fly(configParams);
+
+	fly.startupRoutine();
+
+	rc_set_state(RUNNING);
+	while (rc_get_state() != EXITING) 
+	{
+		sleep(1);
+	}
+
+	rc_cleanup();
+	return 0;
+}
+
+
+int parseInputs(int argc, char* argv[], flyMSParams* configParams)
+{
+	bool isDebugMode = false;
 
 	//Parse the command line arguments
 	int in;
@@ -28,7 +54,7 @@ int main(int argc, char *argv[])
 		switch (in)
 		{
 			case 'd': 
-				flyMSData.flight_config.enable_debug_mode = 1;
+				isDebugMode = true;
 				printf("Running in Debug mode \n");
 				break;
 			case 'r': 
@@ -47,19 +73,15 @@ int main(int argc, char *argv[])
 		}
 	}
 
-	//Initialize the flight hardware
-	startupRoutine();
+	std::string configFileName(FLYMS_ROOT_DIR);
+	configFileName.append("/config/flyMSConfig.yaml");
 
-	flyMS fly;
+	configParams->loadConfigFile(configFileName);
 
-	rc_set_state(RUNNING);
-	while (rc_get_state() != EXITING) 
-	{
-		sleep(1);
-	}
 
-	rc_cleanup();
+	//Merge the common parameters between the config file and the command line inputs
+	configParams->isDebugMode |= isDebugMode;
+
+
 	return 0;
-
-
 }

@@ -10,11 +10,12 @@
 
 
 // Default Constructor
-flyMS::flyMS(bool _debugMode) : 
-	isDebugMode(_debugMode),
+flyMS::flyMS(flyMSParams _config) :
 	firstIteration(true) , 
-	setpointModule(RC_DIRECT, false, false),
-	imuModule(true)
+	config(_config), 
+	imuModule(_config),
+	setpointModule(_config),
+	gpsModule(_config)
 {
 
 }
@@ -157,7 +158,7 @@ int flyMS::flightCore()
 		/************************************************************************
 		*         				 Send Commands to ESCs 		                    *
 		************************************************************************/
-		if(!this->isDebugMode)
+		if(!this->config.isDebugMode)
 		{
 			std::vector<float> sendVec(4, 0.0);
 			//Send Commands to Motors
@@ -179,7 +180,7 @@ int flyMS::flightCore()
 		}
 
 		//Print some stuff to the console in debug mode
-		if(this->isDebugMode)
+		if(this->config.isDebugMode)
 		{	
 			// this->flyMS_console_print(&flyMSData);
 		}
@@ -222,7 +223,7 @@ int flyMS::initializeHardware()
 	rc_initialize_dsm();
 
 	//Pause the program until the user toggles the kill switch
-	if(!this->isDebugMode)
+	if(!this->config.isDebugMode)
 	{	
 		if(this->readyCheck()){
 			printf("Exiting Program \n");
@@ -233,8 +234,6 @@ int flyMS::initializeHardware()
 	//TODO load settings from the config file
 	
 	//TODO create the logging module and start
-
-	this->initializeFilters();
 
 	//Should be disabled by default but we don't want to be pumping 5V into our BEC ESC output
 	rc_disable_servo_power_rail();

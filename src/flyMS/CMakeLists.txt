@@ -50,6 +50,7 @@ set(SRCS_FLYMS_C++
 	${FLYMS_DIR}/config.cpp
 	${FLYMS_DIR}/ekf.cpp
 	${FLYMS_DIR}/flyMS.cpp
+	${FLYMS_DIR}/flyMSApp.cpp
 	${FLYMS_DIR}/gps.cpp
 	${FLYMS_DIR}/imu.cpp
 	${FLYMS_DIR}/pruClient.cpp

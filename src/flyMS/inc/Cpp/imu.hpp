@@ -18,6 +18,8 @@
 #define DEG_TO_RAD	0.01744
 #define MICROTESLA_TO_GAUSS 0.01f
 #define DT_US 5000
+#define D2R 0.0174533
+#define R2D 57.2958
 
 //System Includes
 #include <iostream>
@@ -34,27 +36,17 @@
 
 //Ours
 #include "ekf.hpp"
+#include "config.hpp"
 
-
-//TODO convert these to Eigen vectors and matrices
-typedef struct transform_matrix_t{
-	rc_matrix_t 	IMU_to_drone; 
-	rc_vector_t 	mag_imu;
-	rc_vector_t 	gyro_imu;
-	rc_vector_t 	accel_imu;
-	rc_vector_t 	mag_drone;
-	rc_vector_t		gyro_drone;
-	rc_vector_t 	accel_drone;
-}transform_matrix_t;
 
 typedef struct state_t{
-	float	euler[3];					// Euler angles of aircraft (in roll, pitch, yaw)
-	float	eulerPrevious[3];			// 1 Timestampe previousEuler angles of aircraft (in roll, pitch, yaw)
-	float	eulerRate[3];				// First derivative of euler angles (in roll/s, pitch/s, yaw/s)
+	Eigen::Vector3f	euler;					// Euler angles of aircraft (in roll, pitch, yaw)
+	Eigen::Vector3f eulerPrevious;			// 1 Timestampe previousEuler angles of aircraft (in roll, pitch, yaw)
+	Eigen::Vector3f	eulerRate;				// First derivative of euler angles (in roll/s, pitch/s, yaw/s)
 	
-	float accel[3];
-	float gyro[3];
-	float mag[3];
+	Eigen::Vector3f accel;
+	Eigen::Vector3f gyro;
+	Eigen::Vector3f mag;
 
 	float barometerAltitude;
 	float compassHeading;
@@ -69,7 +61,7 @@ class imu
 public:
 	
 	//Default Constructor
-	imu(bool enableBarometer);
+	imu(flyMSParams _config);
 
 	//Default Descructor
 	~imu();
@@ -117,29 +109,33 @@ private:
 	std::thread imuThread;
 	std::mutex imuMutex;
 
-	bool enableBarometer;
+	//Boolean to indicate if we are currently initializing the fusion algorithm
+	bool isInitializingFusion;
+
+	//Class to hold all of the configurable parameters
+	flyMSParams config;
 
 	ekf_filter_t ekfContainer;
 
 	//Struct to keep all the state information of the aircraft in the body frame
 	state_t stateBody;
+	state_t stateIMU;
 
-	//Variables for transforming data between different coordinate systems
-	transform_matrix_t transform;
+	//3x3 DCM for converting between imu and body frame
+	Eigen::Matrix3f imu2Body;
 
 	//Struct to get passed to the roboticsCape API for interfacing with the imu
 	rc_imu_data_t imu_data;
 
-	//Boolean to indicate if we are currently initializing the fusion algorithm
-	bool isInitializingFusion;
 
 	//Variables which control the Fusion of IMU data for Euler Angle estimation
 	FusionVector3 gyroscope;
 	FusionVector3 accelerometer;
 	FusionVector3 magnetometer;
-	FusionAhrs  fusionAhrs;
+	FusionAhrs fusionAhrs;
 	FusionEulerAngles eulerAngles;
 	FusionBias fusionBias;
+
 
 };
 

@@ -25,6 +25,8 @@
 //Package Includes
 #include <roboticscape.h>
 
+//Ours
+#include "config.hpp"
 
 
 #define DEG_TO_RAD 0.01744
@@ -58,7 +60,7 @@ class gps
 public:
 	
 	// Default Constructor
-	gps();
+	gps(flyMSParams _config);
 
 	//Default Destructor
 	~gps();
@@ -94,6 +96,8 @@ private:
 
 	//the serial file descriptor
 	int serialFd;
+
+	flyMSParams config;
 
 };
 

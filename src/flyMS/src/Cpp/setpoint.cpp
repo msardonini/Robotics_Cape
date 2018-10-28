@@ -8,9 +8,9 @@
 
 #include "setpoint.hpp"
 
-setpoint::setpoint(enum reference_mode_t refMode, bool _enableHeadlessMode, bool _enableDebugMode) : 
-	enableHeadlessMode(_enableHeadlessMode),
-	enableDebugMode(_enableDebugMode)
+setpoint::setpoint(flyMSParams _config) : 
+	config(_config)
+
 {
 	this->setpointThread = std::thread(&setpoint::setpointManager, this);
 }
@@ -54,7 +54,7 @@ int setpoint::setpointManager()
 		}
 		else
 		{
-			if(!this->enableDebugMode)
+			if(!this->config.isDebugMode)
 			{
 				//check to make sure too much time hasn't gone by since hearing the RC
 				rc_err_handler(setpoint_type);
@@ -76,7 +76,7 @@ int setpoint::setpointManager()
 
 		usleep(DT_US); //Run at the control frequency
 	}
-	return NULL;
+	return 0;
 }
 
 	
@@ -102,12 +102,13 @@ int setpoint::handle_rc_data_direct()
 		this->setpointData.yaw_rate_ref[0]=dsm2_data[3]*MAX_YAW_RATE;
 
 		//If Specified by the config file, convert from Drone Coordinate System to User Coordinate System
-		if (this->enableHeadlessMode)
+		if (this->config.isHeadlessMode)
 		{				
-			float P_R_MAG=pow(pow(this->setpointData.euler_ref[0],2)+pow(this->setpointData.euler_ref[1],2),0.5);
-			float Theta_Ref=atan2f(this->setpointData.euler_ref[0],this->setpointData.euler_ref[1]);
-		
 			//TODO: Give this thread access to state information so it can fly in headless mode
+		
+			// float P_R_MAG=pow(pow(this->setpointData.euler_ref[0],2)+pow(this->setpointData.euler_ref[1],2),0.5);
+			// float Theta_Ref=atan2f(this->setpointData.euler_ref[0],this->setpointData.euler_ref[1]);
+		
 			// this->setpointData.euler_ref[1] =P_R_MAG*cos(Theta_Ref+this->state.euler[2]-this->setpointData.yaw_ref_offset);
 			// this->setpointData.euler_ref[0]=P_R_MAG*sin(Theta_Ref+this->state.euler[2]-this->setpointData.yaw_ref_offset);
 		}
@@ -155,7 +156,7 @@ int setpoint::rc_err_handler(reference_mode_t setpoint_type)
 	dsm2_timeout++;
 	if(dsm2_timeout>1.5/DT) //If packet hasn't been received for 1.5 seconds
 	{ 
-		char errMsg[50];
+		char errMsg[100];
 		sprintf(errMsg,"\nLost Connection with Remote!! Shutting Down Immediately \n");	
 		printf("%s",errMsg);
 		//TODO: add error message to the error log

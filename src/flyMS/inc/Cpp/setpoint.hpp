@@ -28,6 +28,9 @@
 #include<roboticscape.h>
 // #include <flyMS.hpp>
 
+//Ours
+#include "config.hpp"
+
 #define DT 0.005
 #define DT_US 5000
 #define MAX_DSM2_CHANNELS 8
@@ -67,7 +70,7 @@ class setpoint
 public:
 
 	//Default Constructor
-	setpoint(enum reference_mode_t refMode, bool headless, bool debug);
+	setpoint(flyMSParams _config);
 
 	//Default Destructor
 	~setpoint();
@@ -82,8 +85,6 @@ private:
 	int handle_rc_data_direct();
 	int rc_err_handler(reference_mode_t setpoint_type);
 
-	bool enableHeadlessMode;
-	bool enableDebugMode;
 	uint8_t new_dsm_data = 0;
 	float dsm2_data[MAX_DSM2_CHANNELS];
 	int dsm2_timeout = 0;
@@ -94,6 +95,8 @@ private:
 
 	//All relevant setpoint data goes here
 	setpoint_t setpointData;
+
+	flyMSParams config;
 
 };
 

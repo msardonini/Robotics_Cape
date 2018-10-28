@@ -74,7 +74,7 @@ class flyMS
 
 public:
 	// Default Constructor
-	flyMS(bool _debugMode);
+	flyMS(flyMSParams _config);
 
 	//Default Destructor
 	~flyMS();
@@ -105,23 +105,24 @@ private:
 	bool isRunning;
 
 	//Boolean for running in debug mode
-	bool isDebugMode;
 	bool firstIteration;
 
-	//Classes for all the functions of the program
-	pruClient pruClientSender;
+	flyMSParams config;
 	
-	//Object and Data struct from the gps manager
-	gps gpsModule;
-	GPS_data_t gpsData;
-
 	//Object and Data struct from the imu manager
 	imu imuModule;
 	state_t imuData;
 
+	//Classes for all the functions of the program
+	pruClient pruClientSender;
+
 	//Object and Data struct from the setpoint manager
 	setpoint setpointModule;
 	setpoint_t setpointData;
+
+	//Object and Data struct from the gps manager
+	gps gpsModule;
+	GPS_data_t gpsData;
 
 	//Object and Data struct from the ekf manager
 	ekf2 ekfModule;
@@ -131,7 +132,6 @@ private:
 	controller_t control;
 	filters_t filter;
 
-	flyMSParams config;
 
 	int integrator_reset;
 	int integrator_start;

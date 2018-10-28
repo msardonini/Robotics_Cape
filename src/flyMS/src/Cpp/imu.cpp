@@ -10,9 +10,9 @@
 
 
 // Default Constructor
-imu::imu(bool _enableBarometer) : 
+imu::imu(flyMSParams _config) :
 	isInitializingFusion(true),
-	enableBarometer(_enableBarometer)
+	config(_config)
 {
 	//Created memory for the rotation matricies
 	this->initializeRotationMatrices();
@@ -34,7 +34,7 @@ int imu::initializeImu()
 	this->initializeRotationMatrices();
 
 	//Start the barometer
-	if(this->enableBarometer)
+	if(this->config.enableBarometer)
 	{
 		if(rc_initialize_barometer(OVERSAMPLE, INTERNAL_FILTER)<0){
 			printf("initialize_barometer failed\n");
@@ -73,20 +73,6 @@ int imu::update()
 
 
 
-	//Place the tranformed data into our control struct
-	int i = 0;
-	for (i = 0; i < 3; i++)
-	{
-		this->stateBody.eulerPrevious[i] 		= this->stateBody.euler[i];	
-		this->stateBody.euler[i] 				= this->eulerAngles.array[i] * DEG_TO_RAD;
-		// this->stateBody.eulerRate[i]			= update_filter(filters->gyro_lpf[i],this->transform.gyro_drone.d[i] * DEG_TO_RAD);
-		this->stateBody.eulerRate[i]			= this->transform.gyro_drone.d[i] * DEG_TO_RAD;
-		this->stateBody.mag[i]					= this->transform.mag_drone.d[i];
-		this->stateBody.accel[i]				= this->transform.accel_drone.d[i];
-		this->stateBody.gyro[i]				= this->stateBody.eulerRate[i];
-	}
-	this->stateBody.compassHeading = imu_data.compass_heading_raw;
-
 	/**********************************************************
 	*					Unwrap the Yaw value				  *
 	**********************************************************/
@@ -109,7 +95,7 @@ int imu::update()
 	*           Read the Barometer for Altitude				  *
 	**********************************************************/	
 	static int i1;
-	if (this->enableBarometer)
+	if (this->config.enableBarometer)
 	{		
 		i1++;
 		if (i1 == 10) // Only read the barometer at 25Hz
@@ -130,12 +116,15 @@ int imu::update()
 	/************************************************************************
 	*                   	Send data to PX4's EKF                          *
 	************************************************************************/
-	for (i = 0; i < 3; i++)
-	{
-		this->ekfContainer.input.accel[i] = this->transform.accel_drone.d[i];
-		this->ekfContainer.input.mag[i] = imu_data.mag[i] * MICROTESLA_TO_GAUSS;
-		this->ekfContainer.input.gyro[i] = this->stateBody.eulerRate[i];
-	}
+		//TODO: enable the EKF again
+
+	// int i;
+	// for (i = 0; i < 3; i++)
+	// {
+	// 	// this->ekfContainer.input.accel[i] = this->transform.accel_drone.d[i];
+	// 	// this->ekfContainer.input.mag[i] = imu_data.mag[i] * MICROTESLA_TO_GAUSS;
+	// 	// this->ekfContainer.input.gyro[i] = this->stateBody.eulerRate[i];
+	// }
 	//TODO implement the EKF and use real timestamps
 	// this->ekfContainer.input.IMU_timestamp = this->time_us;
 
@@ -162,15 +151,15 @@ void imu::read_transform_imu()
 	int i;
 	for (i=0;i<3;i++) 
 	{	
-		this->transform.mag_imu.d[i] = imu_data.mag[i];
-		this->transform.gyro_imu.d[i] = imu_data.gyro[i];
-		this->transform.accel_imu.d[i] = imu_data.accel[i];
+		this->stateIMU.mag(i) = imu_data.mag[i];
+		this->stateIMU.gyro(i) = imu_data.gyro[i];
+		this->stateIMU.accel(i) = imu_data.accel[i];
 	}
 
-	//Convert from IMU coordinate system to drone's
-	rc_matrix_times_col_vec(this->transform.IMU_to_drone, this->transform.mag_imu, &this->transform.mag_drone);
-	rc_matrix_times_col_vec(this->transform.IMU_to_drone, this->transform.gyro_imu, &this->transform.gyro_drone);
-	rc_matrix_times_col_vec(this->transform.IMU_to_drone, this->transform.accel_imu, &this->transform.accel_drone);
+	//Convert from IMU frame to body Frame
+	this->stateBody.mag = this->imu2Body * this->stateIMU.mag;
+	this->stateBody.gyro = this->imu2Body * this->stateIMU.gyro;
+	this->stateBody.accel = this->imu2Body * this->stateIMU.accel;
 }
 
 
@@ -208,31 +197,18 @@ void imu::init_fusion()
 ************************************************************************/
 void imu::initializeRotationMatrices()
 {
-	float pitch_offset, roll_offset, yaw_offset;
-	int i,j;
-	
-	rc_alloc_matrix(&this->transform.IMU_to_drone,3,3);
-	
-	rc_alloc_vector(&this->transform.gyro_imu,3);
-	rc_alloc_vector(&this->transform.accel_imu,3);
-	rc_alloc_vector(&this->transform.mag_imu,3);
-	rc_alloc_vector(&this->transform.gyro_drone,3);
-	rc_alloc_vector(&this->transform.accel_drone,3);
-	rc_alloc_vector(&this->transform.mag_drone,3);
+	//Make the Direcion Cosine Matric DCM from the input offsets from the config file
+	float cR1 = cosf(this->config.rollOffsetDegrees * D2R);
+	float sR1 = sinf(this->config.rollOffsetDegrees * D2R);
+	float cP1 = cosf(this->config.pitchOffsetDegrees * D2R);
+	float sP1 = sinf(this->config.pitchOffsetDegrees * D2R);
+	float cY1 = cosf(this->config.yawOffsetDegrees * D2R);
+	float sY1 = sinf(this->config.yawOffsetDegrees * D2R);
 
-	//TODO: Initialize all of the rotation matrices using Eigens
+	this->imu2Body << cR1*cY1, -cP1*sY1+sP1*sR1*cY1 ,  sP1*sY1+cP1*sR1*cY1
+				, cR1*sY1 ,  cP1*cY1+sP1*sR1*sY1 , -sP1*cY1+cP1*sR1*sY1
+				, -sR1 , sP1*cR1 , cP1*cR1;
 
-	//pitch_offset = 0; roll_offset = M_PI; yaw_offset = - M_PI;
-	// pitch_offset = flight_config->pitch_offset_deg*DEG_TO_RAD; 
-	// roll_offset = flight_config->roll_offset_deg*DEG_TO_RAD;
-	// yaw_offset = flight_config->yaw_offset_deg*DEG_TO_RAD;
-	
-	// float ROTATION_MAT1[][3] = ROTATION_MATRIX1;
-	// for(i=0; i<3; i++){
-	// 	for(j=0; j<3; j++){
-	// 		this->transform.IMU_to_drone.d[i][j]=ROTATION_MAT1[i][j];
-	// 	}
-	// }
 }
 
 /************************************************************************
@@ -248,9 +224,9 @@ void imu::updateFusion()
 	int i;
 	for (i = 0; i < 3; i++)
 	{
-		gyroscope.array[i] = this->transform.gyro_drone.d[i];
-		accelerometer.array[i] = this->transform.accel_drone.d[i] / 9.81f;
-		magnetometer.array[i] = this->transform.mag_drone.d[i];
+		gyroscope.array[i] = this->stateBody.gyro(i);
+		accelerometer.array[i] = this->stateBody.accel(i) / 9.81f;
+		magnetometer.array[i] = this->stateBody.mag(i);
 		if (!this->isInitializingFusion)
 			gyroscope.array[i] -= this->fusionBias.gyroscopeBias.array[i] * imu_data.gyro_to_degs;
 	}
@@ -270,4 +246,13 @@ void imu::updateFusion()
 
 	for (i = 0; i < 3; i++)
 		this->eulerAngles.array[i]*=-1.0f;
+
+	//Save the output
+	for (i = 0; i < 3; i++)
+	{
+		this->stateBody.eulerPrevious(i) 		= this->stateBody.euler(i);	
+		this->stateBody.euler(i)				= this->eulerAngles.array[i] * D2R;
+		this->stateBody.eulerRate(i)			= this->stateBody.gyro(i) * D2R;
+	}
+
 }

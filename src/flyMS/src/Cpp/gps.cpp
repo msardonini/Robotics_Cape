@@ -10,7 +10,7 @@
 
 //TODO take our the hardware inits outside of the class constructor
 //Default Constructor
-gps::gps()
+gps::gps(flyMSParams _config) : config (_config)
 {
 	int res;
 	struct termios newtio;

@@ -41,7 +41,7 @@ int pruClient::startPruClient()
     if((this->sockfd = socket(AF_INET, SOCK_STREAM, 0)) < 0)
     {
         std::cout<< "\n Error : Could not create socket: " << strerror(errno) << std::endl;
-        return NULL;
+        return -1;
     }
 
     this->serv_addr.sin_family = AF_INET;
@@ -51,14 +51,14 @@ int pruClient::startPruClient()
     if(inet_pton(AF_INET, "127.0.0.1" , &this->serv_addr.sin_addr)<=0)
     {
         std::cout<< "\n  inet_pton error occured: " << strerror(errno) << std::endl;
-        return NULL;
+        return -1;
     } 
 
     //Connect to the socket
     if(connect(this->sockfd, (struct sockaddr *)&this->serv_addr, sizeof(this->serv_addr)) < 0)
     {
         std::cout<< "\n Error : Connect Failed: " << strerror(errno) << std::endl;
-		return NULL;
+		return -1;
     }
 	
 	this->pruSenderThread = std::thread(&pruClient::pruSender, this);
@@ -77,6 +77,7 @@ int pruClient::setSendData(std::vector<float> _u)
 
 	//Give shared memory access back
 	this->pruSenderMutex.unlock();
+	return 0;
 }
 
 int pruClient::pruSender(){
