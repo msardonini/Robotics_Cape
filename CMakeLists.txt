@@ -14,6 +14,8 @@ add_compile_options(
 
 add_definitions(-DFLYMS_ROOT_DIR=\"${CMAKE_CURRENT_SOURCE_DIR}\")
 	
+add_subdirectory(lib/yaml-cpp)
+
 #Build the PX4 estimation control library
 include(lib/ecl/CMakeLists.txt)
 
@@ -63,21 +65,21 @@ include(src/rc_calibrate_mag/CMakeLists.txt)
 include(src/rc_calibrate_dsm/CMakeLists.txt)
 
 #Define install directory
-install(TARGETS flyMS DESTINATION /usr/bin/)
-install(TARGETS pru_handler DESTINATION /usr/bin/)
-install(TARGETS roboticscape DESTINATION /usr/lib/)
-install(TARGETS ecl DESTINATION /usr/lib/)
-install(TARGETS Fusion DESTINATION /usr/lib)
-install(TARGETS filter DESTINATION /usr/lib)
-install(TARGETS do_nothing DESTINATION /usr/bin)
+# install(TARGETS flyMS DESTINATION /usr/bin/)
+# install(TARGETS pru_handler DESTINATION /usr/bin/)
+# install(TARGETS roboticscape DESTINATION /usr/lib/)
+# install(TARGETS ecl DESTINATION /usr/lib/)
+# install(TARGETS Fusion DESTINATION /usr/lib)
+# install(TARGETS filter DESTINATION /usr/lib)
+# install(TARGETS do_nothing DESTINATION /usr/bin)
 
-install(TARGETS rc_calibrate_dsm DESTINATION /usr/bin/)
-install(TARGETS rc_calibrate_gyro DESTINATION /usr/bin/)
-install(TARGETS rc_calibrate_escs DESTINATION /usr/bin/)
-install(TARGETS rc_calibrate_mag DESTINATION /usr/bin/)
+# install(TARGETS rc_calibrate_dsm DESTINATION /usr/bin/)
+# install(TARGETS rc_calibrate_gyro DESTINATION /usr/bin/)
+# install(TARGETS rc_calibrate_escs DESTINATION /usr/bin/)
+# install(TARGETS rc_calibrate_mag DESTINATION /usr/bin/)
 
-install(TARGETS rc_test_fusion DESTINATION /usr/bin/)
-install(TARGETS rc_test_imu DESTINATION /usr/bin/)
-install(TARGETS rc_test_barometer DESTINATION /usr/bin/)
-install(TARGETS rc_test_dsm DESTINATION /usr/bin/)
-install(TARGETS rc_test_dmp DESTINATION /usr/bin/)
+# install(TARGETS rc_test_fusion DESTINATION /usr/bin/)
+# install(TARGETS rc_test_imu DESTINATION /usr/bin/)
+# install(TARGETS rc_test_barometer DESTINATION /usr/bin/)
+# install(TARGETS rc_test_dsm DESTINATION /usr/bin/)
+# install(TARGETS rc_test_dmp DESTINATION /usr/bin/)

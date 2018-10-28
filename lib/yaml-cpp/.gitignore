@@ -1,0 +1,10 @@
+*.o
+*.a
+*.so
+*.swp
+*.swo
+*.orig
+tags
+build/
+install/
+release/
