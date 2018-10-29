@@ -31,6 +31,7 @@
 #include "imu.hpp"
 #include "pruClient.hpp"
 #include "setpoint.hpp"
+#include "ekf.hpp"
 
 typedef struct controller_t{
 	float	droll_err_integrator;

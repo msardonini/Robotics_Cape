@@ -65,11 +65,12 @@ include_directories(${FLYMS_DIR}/inc)
 add_executable(flyMS_C++ ${SRCS_FLYMS_C++})
 
 
-target_link_libraries(flyMS_C++ m
-	rt,
-	pthread,
-	ecl,
-	roboticscape,
-	filter,
-	Fusion,
+target_link_libraries(flyMS_C++
+	 m
+	rt
+	ecl
+	pthread
+	roboticscape
+	filter
+	Fusion
 	yaml-cpp)

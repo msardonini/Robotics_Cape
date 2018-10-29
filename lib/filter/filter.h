@@ -27,7 +27,10 @@ of the authors and should not be interpreted as representing official policies,
 either expressed or implied, of the FreeBSD Project.
 */
 
-#pragma once
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 #include <stdint.h>
 #include <stdlib.h>
 
@@ -114,4 +117,9 @@ void print_filter(digital_filter_t *filter);
 
 
 
+#endif
+
+
+#ifdef __cplusplus
+}
 #endif

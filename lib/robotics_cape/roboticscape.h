@@ -8,6 +8,9 @@
 *
 * James Strawson - 2016
 *******************************************************************************/
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 #ifndef ROBOTICS_CAPE
 #define ROBOTICS_CAPE
@@ -2358,3 +2361,6 @@ int   rc_pid_filter(rc_filter_t* f,float kp,float ki,float kd,float Tf,float dt)
 #endif //ROBOTICS_CAPE
 
 
+#ifdef __cplusplus
+}
+#endif

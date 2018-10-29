@@ -44,6 +44,11 @@
 #define MIN_INTERVAL_MS 20
 
 
+ekf2::ekf2() {}
+
+
+ekf2::~ekf2() {}
+
 int ekf2::startEkf()
 {
 	this->ekfThread = std::thread(&ekf2::runEkf, this);

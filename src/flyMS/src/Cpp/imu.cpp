@@ -60,6 +60,11 @@ int imu::initializeImu()
 
 }
 
+int imu::getImuData(state_t* state)
+{
+	memcpy(state, &this->stateBody, sizeof(state_t));
+	return 0;
+}
 
 
 int imu::update()
