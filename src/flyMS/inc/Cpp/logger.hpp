@@ -19,10 +19,12 @@
 
 //Local Includes
 #include "config.hpp"
+#include "setpoint.hpp"
+#include "imu.hpp"
 
 
 #define CORE_LOG_TABLE \
-    X(uint64_t,  "%lu",  time       ) \
+    X(uint64_t,  "%lu",  timeMicroseconds) \
     X(float,  "%f",  roll           ) \
     X(float,  "%f",  pitch          ) \
     X(float,  "%f",  yaw            ) \
@@ -72,7 +74,7 @@ public:
     ~logger();	
     int createLogFiles();
     
-    int writeToLog();
+    int writeToLog(state_t *bodyState, controller_t *controller, setpoint_t *setpoint);
 
 
     //defines the config params as public members 

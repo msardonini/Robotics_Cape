@@ -26,6 +26,7 @@
 #include "filter.h"
 
 //Ours
+#include "logger.hpp"
 #include "gps.hpp"
 #include "config.hpp"
 #include "imu.hpp"
@@ -33,14 +34,6 @@
 #include "setpoint.hpp"
 #include "ekf.hpp"
 
-typedef struct controller_t{
-	float	droll_err_integrator;
-	float	dpitch_err_integrator;
-	float	dyaw_err_integrator;
-	float 	u_euler[3];					// Controller output for roll, pitch, yaw
-	float	u[4]; 								// Duty Cycle to send to each motor
-	float	standing_throttle, alt_error;
-}controller_t;
 
 typedef struct filters_t{
 	digital_filter_t			*pitch_rate_PD;
