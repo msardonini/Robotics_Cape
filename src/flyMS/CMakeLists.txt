@@ -48,6 +48,7 @@ set(FLYMS_DIR src/flyMS/src/Cpp)
 
 set(SRCS_FLYMS_C++
 	${FLYMS_DIR}/config.cpp
+	${FLYMS_DIR}/logger.cpp
 	${FLYMS_DIR}/ekf.cpp
 	${FLYMS_DIR}/flyMS.cpp
 	${FLYMS_DIR}/flyMSApp.cpp
