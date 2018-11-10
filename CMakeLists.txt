@@ -16,53 +16,54 @@ add_definitions(-DFLYMS_ROOT_DIR=\"${CMAKE_CURRENT_SOURCE_DIR}\")
 	
 add_subdirectory(lib/yaml-cpp)
 
-#Build the PX4 estimation control library
-include(lib/ecl/CMakeLists.txt)
+# #Build the PX4 estimation control library
+# include(lib/ecl/CMakeLists.txt)
 
 #Build the robotics cape library
-include(lib/robotics_cape/CMakeLists.txt)
+# include(lib/robotics_cape/CMakeLists.txt)
+add_subdirectory(lib/librobotcontrol)
 
-#Build the Accel/Gyro Fusion library
-include(lib/Fusion/CMakeLists.txt)
+# #Build the Accel/Gyro Fusion library
+# include(lib/Fusion/CMakeLists.txt)
 
-#Build the Accel/Gyro Fusion library
-include(lib/filter/CMakeLists.txt)
+# #Build the Accel/Gyro Fusion library
+# include(lib/filter/CMakeLists.txt)
 
-#Get the do_nothing sources
-include(src/do_nothing/CMakeLists.txt)
+# #Get the do_nothing sources
+# include(src/do_nothing/CMakeLists.txt)
 
-#Get the flyMS sources
-include(src/flyMS/CMakeLists.txt)
+# #Get the flyMS sources
+# include(src/flyMS/CMakeLists.txt)
 
 #Build the pru_handler
-include(src/pru_handler/CMakeLists.txt)
+add_subdirectory(src/pru_handler)
 
-#Build rc_test_imu
-include(src/rc_test_imu/CMakeLists.txt)
+# #Build rc_test_imu
+# include(src/rc_test_imu/CMakeLists.txt)
 
-#Build rc_test_fusion
-include(src/rc_test_fusion/CMakeLists.txt)
+# #Build rc_test_fusion
+# include(src/rc_test_fusion/CMakeLists.txt)
 
-#Build rc_test_barometer
-include(src/rc_test_barometer/CMakeLists.txt)
+# #Build rc_test_barometer
+# include(src/rc_test_barometer/CMakeLists.txt)
 
-#Build rc_test_dsm
-include(src/rc_test_dsm/CMakeLists.txt)
+# #Build rc_test_dsm
+# include(src/rc_test_dsm/CMakeLists.txt)
 
-#Build rc_test_dmp
-include(src/rc_test_dmp/CMakeLists.txt)
+# #Build rc_test_dmp
+# include(src/rc_test_dmp/CMakeLists.txt)
 
-#Build rc_calibrate_gyro
-include(src/rc_calibrate_gyro/CMakeLists.txt)
+# #Build rc_calibrate_gyro
+# include(src/rc_calibrate_gyro/CMakeLists.txt)
 
-#Build rc_calibrate_escs
-include(src/rc_calibrate_escs/CMakeLists.txt)
+# #Build rc_calibrate_escs
+# include(src/rc_calibrate_escs/CMakeLists.txt)
 
-#Build rc_calibrate_mag
-include(src/rc_calibrate_mag/CMakeLists.txt)
+# #Build rc_calibrate_mag
+# include(src/rc_calibrate_mag/CMakeLists.txt)
 
-#Build rc_calibrate_dsm
-include(src/rc_calibrate_dsm/CMakeLists.txt)
+# #Build rc_calibrate_dsm
+# include(src/rc_calibrate_dsm/CMakeLists.txt)
 
 #Define install directory
 # install(TARGETS flyMS DESTINATION /usr/bin/)

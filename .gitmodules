@@ -4,3 +4,6 @@
 [submodule "lib/Fusion"]
 	path = lib/Fusion
 	url = git@github.com:msardonini/Fusion.git
+[submodule "lib/librobotcontrol"]
+	path = lib/librobotcontrol
+	url = git@github.com:StrawsonDesign/librobotcontrol.git

@@ -1,11 +1,13 @@
-cmake_minimum_required(VERSION 2.8)
+cmake_minimum_required(VERSION 3.5)
 
-set(PRU_HANDLER_SRS
-          src/pru_handler/pru_handler.c)
+set(PRU_HANDLER_SRC
+          pruHandler.cpp)
   
  
-add_executable(pru_handler ${PRU_HANDLER_SRS})
-target_link_libraries(pru_handler roboticscape)
-target_link_libraries(pru_handler m)
-target_link_libraries(pru_handler pthread)
+add_executable(pruHandler ${PRU_HANDLER_SRC})
+
+
+target_link_libraries(pruHandler robotics_cape)
+# target_link_libraries(pru_handler m)
+# target_link_libraries(pru_handler pthread)
 
