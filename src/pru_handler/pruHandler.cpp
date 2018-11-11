@@ -30,9 +30,7 @@ pruHandler::~pruHandler()
 }
 
 int pruHandler::init_pru_handler()
-{
-	//startup the signal handler
-	this->initSignalHandler();	
+{	
 
 	//Check to see if this process is running somewhere else and kill it
 	this->checkForCompetingProcess();
@@ -46,19 +44,13 @@ int pruHandler::init_pru_handler()
 	//Initialize the server to receive commands to send to ESCs
 	this->initServer();
 	
-	this->pru_set_state(PRURUNNING);
+	this->pruState = PRURUNNING;
 
 	return 0;
 }
 
 
 
-void pruHandler::initSignalHandler()
-{
-     signal(SIGINT, pruHandler::shutdownPruHandler);
-     signal(SIGKILL, pruHandler::shutdownPruHandler);
-     signal(SIGHUP, pruHandler::shutdownPruHandler);
-}
 
 
 
@@ -131,7 +123,7 @@ int pruHandler::createPIDFile()
 
 	// Print current PID
 	this->logFid << "[pruHandler] Process ID: "<<(int)current_pid<< std::endl;
-
+	return 0;
 }
 
 int pruHandler::initServer()
@@ -151,7 +143,7 @@ int pruHandler::initServer()
 	}
 
 
-    listen(this->listenfd, 10);
+    if(listen(this->listenfd, 10))
 	{
 		this->logFid<< "[pruHandler] Listen Failed: " << strerror(errno) <<std::endl;
 		return -1;
@@ -162,18 +154,6 @@ int pruHandler::initServer()
 
 	return 0;
 }
-
-
-
-int pruHandler::pru_set_state(pru_state_t new_state){
-	pru_state = new_state;
-	return 0;
-}
-
-pru_state_t pruHandler::pru_get_state(){
-	return pru_state;
-}
-
 
 
 int pruHandler::run()
@@ -187,7 +167,7 @@ int pruHandler::run()
 	int rv;
 
 	start_over:
-	while(pru_get_state()!=PRUEXITING)
+	while(this->pruState!=PRUEXITING)
 	{
 		FD_ZERO(&set); /* clear the set */
 		FD_SET(this->listenfd, &set); /* add our file descriptor to the set */
@@ -213,13 +193,14 @@ int pruHandler::run()
 		}
 
 		//Send zero throttle when not connected to a program
-		rc_send_esc_pulse_normalized_all(0);
+		for (i = 0; i < PRU_NUM_CHANNELS; i++)
+			rc_servo_send_esc_pulse_normalized(i+1, 0.0);
 	}
 
 	timeoutRunning.tv_sec = 0;  
 	timeoutRunning.tv_usec = 30000;  // Set 30 ms timeout
 	setsockopt(this->connfd, SOL_SOCKET, SO_RCVTIMEO, (const char*)&timeoutRunning,sizeof(struct timeval));
-	while(pru_get_state()!=PRUEXITING)
+	while(this->pruState!=PRUEXITING)
     {
 		n = read(this->connfd, rcvBuff, sizeof(rcvBuff)-1);
 		if (n <= 0)
@@ -227,7 +208,8 @@ int pruHandler::run()
 			//#ifdef DEBUG
 			//printf("Timeout detected!! \n");
 			//#endif
-			rc_send_esc_pulse_normalized_all(0.0);
+			for (i = 0; i < PRU_NUM_CHANNELS; i++)
+				rc_servo_send_esc_pulse_normalized(i+1, 0.0);
 		}
 		else
 		{
@@ -260,7 +242,7 @@ int pruHandler::run()
 					for (i = 0; i < 4; i++)
 					{ 
 						val[i] = ((float)((this->rcvBuff[2*i+2] << 8) + this->rcvBuff[2*i+3]))/65536.0f;
-						rc_send_esc_pulse_normalized(i+1,val[i]);
+						rc_servo_send_esc_pulse_normalized(i+1,val[i]);
 					//	printf(" %f, ", val[i]);
 					}
 				//printf("\n");
@@ -271,15 +253,15 @@ int pruHandler::run()
 	return 0;
 }
 
-static void pruHandler::shutdownPruHandler(int signo){
+void pruHandler::shutdownPruHandler(int signo){
 	switch(signo)
 	{
 		case SIGINT: // normal ctrl-c shutdown interrupt
-			pru_set_state(PRUEXITING);
+			this->pruState = PRUEXITING;
 			this->logFid<< "[pruHandler] received SIGINT Ctrl-C" << std::endl;
 			break;
 		case SIGTERM: // catchable terminate signal
-			pru_set_state(PRUEXITING);
+			this->pruState = PRUEXITING;
 			this->logFid<< "[pruHandler] received SIGTERM" << std::endl;
 			break;
 		case SIGHUP: // terminal closed or disconnected, carry on anyway

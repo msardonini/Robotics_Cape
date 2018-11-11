@@ -34,6 +34,7 @@
 #define PID_FILE_PRU "/var/run/pru_handler.pid"
 #define LOG_FILE_PRU "/var/log/pru_handler.log"
 #define PRU_PORT 5000
+#define PRU_NUM_CHANNELS 4
 
 typedef enum pru_state_t {
          PRUUNINITIALIZED,
@@ -56,18 +57,19 @@ public:
 
 
 
+	void shutdownPruHandler(int signo);
+	int init_pru_handler();
+
 
 private:
 
 	int pru_set_state(pru_state_t new_state);
 	pru_state_t pru_get_state();
 
-	int init_pru_handler();
-	void initSignalHandler();
 	int checkForCompetingProcess();
 	int createPIDFile();
 	int initServer();
-	static void shutdownPruHandler(int signo);
+	int run();
 
 	//State of the Program
 	pru_state_t pruState;
