@@ -15,11 +15,10 @@
 // opt to use our own 2nd order filter instead.
 #define INTERNAL_FILTER	BMP_FILTER_8
 #define BMP_CHECK_HZ	1
-#define DEG_TO_RAD	0.01744
 #define MICROTESLA_TO_GAUSS 0.01f
 #define DT_US 5000
-#define D2R 0.0174533
-#define R2D 57.2958
+#define R2D_IMU 57.2958
+#define D2R_IMU	0.01744f
 
 //System Includes
 #include <iostream>
@@ -31,11 +30,12 @@
 //Package Includes
 #include <Eigen/Dense>
 #include "Fusion.h"
-#include "roboticscape.h"
-#include "filter.h"
+#include <rc/mpu.h>
+#include "ekf.hpp"
+#include <rc/led.h>
+
 
 //Ours
-#include "ekf.hpp"
 #include "config.hpp"
 
 
@@ -134,8 +134,10 @@ private:
 	Eigen::Matrix3f imu2Body;
 
 	//Struct to get passed to the roboticsCape API for interfacing with the imu
-	rc_imu_data_t imu_data;
+	rc_mpu_data_t imu_data;
 
+	//Struct to get passed to the roboticsCape API for interfacing with the bmp
+	rc_bmp_data_t bmp_data;
 
 	//Variables which control the Fusion of IMU data for Euler Angle estimation
 	FusionVector3 gyroscope;

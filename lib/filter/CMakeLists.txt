@@ -3,7 +3,7 @@ cmake_minimum_required(VERSION 2.8)
 
 project(FILTER)
 
-set(FILTER_DIR lib/filter/)
+set(FILTER_DIR ./)
 
 include_directories(
 	${FILTER_DIR}
@@ -15,3 +15,5 @@ set(FILTER_SRCS
 
 
 add_library(filter SHARED ${FILTER_SRCS})
+
+target_include_directories(filter PUBLIC ${FILTER_DIR})

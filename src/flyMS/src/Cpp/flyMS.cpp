@@ -219,8 +219,9 @@ uint64_t flyMS::getTimeMicroseconds()
 int flyMS::initializeHardware()
 {
 
-	//Initialize the remote controller
-	rc_initialize_dsm();
+	//Initialize the remote controller through the setpoint object
+	if(this->setpointModule.initRadioComs())
+		std::cerr<<"[flyMS] Error initializing Radio Coms!" << std::endl;
 
 	//Pause the program until the user toggles the kill switch
 	if(!this->config.isDebugMode)
@@ -234,9 +235,7 @@ int flyMS::initializeHardware()
 	//TODO load settings from the config file
 	
 	//TODO create the logging module and start
-
-	//Should be disabled by default but we don't want to be pumping 5V into our BEC ESC output
-	rc_disable_servo_power_rail();
+	
 	return 0;
 
 }

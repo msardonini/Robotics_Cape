@@ -12,9 +12,6 @@
 int flyMS::startupRoutine()
 {
 
-	//Initialize the remote controller
-	rc_initialize_dsm();
-
 	//Pause the program until the user toggles the kill switch
 	if(!this->config.isDebugMode)
 	{	
@@ -23,26 +20,7 @@ int flyMS::startupRoutine()
 			return -1;
 		}
 	}
-
-	// //Enable the data logger
-	// if(control->flight_config.enable_logging)
-	// {
-	// 	logger_init();
-	// }
-
-	// //Enable the data logger
-	// initialize_setpoint_manager(control);
-
-	
-	/* --------- Start the EKF for position estimates ----*/
-//	pthread_create(&flyMS_threads->ekf_thread, NULL, run_ekf, control->ekf_filter );
-
-	// initialize_filters(filters, &control->flight_config);
-
-	//Should be disabled by default but we don't want to be pumping 5V into our BEC ESC output
-	rc_disable_servo_power_rail();
 	return 0;
-
 }
 
 
@@ -59,7 +37,7 @@ int flyMS::readyCheck(){
 		reset_toggle++; // Only blink the led 1/100 the time this loop runs
 		if(toggle)
 		{
-			rc_set_led(GREEN,OFF);
+			rc_led_set(RC_LED_GREEN, 0);
 			if (reset_toggle == 20) 
 			{
 				toggle = 0;
@@ -68,7 +46,7 @@ int flyMS::readyCheck(){
 		}
 		else
 		{
-			rc_set_led(GREEN,ON);
+			rc_led_set(RC_LED_GREEN, 1);
 			if (reset_toggle == 20)
 			{
 				toggle=1;
@@ -76,10 +54,10 @@ int flyMS::readyCheck(){
 			}
 		}
 
-		if(rc_is_new_dsm_data()){
+		if(rc_dsm_is_new_data()){
 
 			val[1]=val[0];
-			val[0]=rc_get_dsm_ch_normalized(5);
+			val[0]=rc_dsm_ch_normalized(5);
 			if(val[0] < -0.75 && val[1] > 0.35){
 			count++;
 			} 
@@ -94,8 +72,8 @@ int flyMS::readyCheck(){
 	//make sure the kill switch is in the position to fly before starting
 	while(val[0] < 0.5 && rc_get_state()!=EXITING)
 		{
-		if(rc_is_new_dsm_data()){
-			val[0]=rc_get_dsm_ch_normalized(5);	
+		if(rc_dsm_is_new_data()){
+			val[0]=rc_dsm_ch_normalized(5);	
 			}
 		usleep(10000);
 		}
@@ -107,7 +85,7 @@ int flyMS::readyCheck(){
 	}
 	
 	printf("\nInitialized! Starting program\n");
-	rc_set_led(GREEN,ON);
+	rc_led_set(RC_LED_GREEN, 1);
 	return 0;
 }
 

@@ -207,7 +207,7 @@ int gps::dataMonitor()
 				this->gpsData.meters_lon= (this->gpsData.deg_longitude +
 									  this->gpsData.min_longitude/60)* 111000 *
 									  cos((this->gpsData.deg_latitude + 
-									  this->gpsData.min_latitude/60)*DEG_TO_RAD);
+									  this->gpsData.min_latitude/60)*D2R_GPS);
 				this->GGA_flag=true;
 			}
 			this->gpsMutex.unlock();

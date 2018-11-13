@@ -42,9 +42,9 @@ cmake_minimum_required(VERSION 2.8)
 
 # Build the C++ version of the flight control system
 
-include_directories(src/flyMS/inc/Cpp)
+include_directories(inc/Cpp)
 
-set(FLYMS_DIR src/flyMS/src/Cpp)
+set(FLYMS_DIR src/Cpp)
 
 set(SRCS_FLYMS_C++
 	${FLYMS_DIR}/config.cpp

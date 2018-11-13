@@ -14,26 +14,35 @@ add_compile_options(
 
 add_definitions(-DFLYMS_ROOT_DIR=\"${CMAKE_CURRENT_SOURCE_DIR}\")
 	
+set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} lib/eigen/cmake)
+find_package(Eigen3 REQUIRED)
+if(EIGEN3_FOUND)
+	include_directories(${EIGEN3_INCLUDE_DIR})
+else()
+	message(FATAL_ERROR "Cannot Find Eigen3")
+endif()
+
+
+#Build the robotics cape library
+add_subdirectory(lib/librobotcontrol)
+
+# #Build the Yaml-Cpp config file parser
 add_subdirectory(lib/yaml-cpp)
 
 # #Build the PX4 estimation control library
-# include(lib/ecl/CMakeLists.txt)
-
-#Build the robotics cape library
-# include(lib/robotics_cape/CMakeLists.txt)
-add_subdirectory(lib/librobotcontrol)
+add_subdirectory(lib/ecl)
 
 # #Build the Accel/Gyro Fusion library
-# include(lib/Fusion/CMakeLists.txt)
+add_subdirectory(lib/Fusion)
 
-# #Build the Accel/Gyro Fusion library
-# include(lib/filter/CMakeLists.txt)
+# #Build the Digital Filter Library
+add_subdirectory(lib/filter)
 
 # #Get the do_nothing sources
 # include(src/do_nothing/CMakeLists.txt)
 
 # #Get the flyMS sources
-# include(src/flyMS/CMakeLists.txt)
+add_subdirectory(src/flyMS)
 
 #Build the pru_handler
 add_subdirectory(src/pru_handler)

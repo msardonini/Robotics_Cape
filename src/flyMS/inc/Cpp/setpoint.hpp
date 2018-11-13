@@ -79,6 +79,8 @@ public:
 
 	int setpointManager();
 
+	int initRadioComs();
+
 private:
 
 	int copy_dsm2_data();

@@ -4,6 +4,37 @@ flyMSParams::flyMSParams(){}
 flyMSParams::~flyMSParams(){}
 
 
+
+/* This namespace assists with creating yaml files. The 
+    macro defines default values to be created,
+    and these templated functions convert the values to 
+    the proper strings to save in the yaml file depending on the type" */
+namespace conv2string
+{
+    template <typename T>
+    const std::string getDefaultValueString(T val)
+    {
+        std::string tmpString(std::to_string(val));
+        return tmpString;
+    }
+
+    template <> 
+    const std::string getDefaultValueString<bool>(bool val)
+    {
+        std::string tmpString;
+        (val) ? (tmpString += "true") : (tmpString += "false");
+        return tmpString;
+    }
+
+    template <>
+    const std::string getDefaultValueString<std::string>(std::string val)
+    {
+        return val;
+    }
+}
+
+
+
 void flyMSParams::loadConfigFile(std::string filename)
 {
     //Check if the file exists, if not, create one with default values
@@ -38,7 +69,8 @@ int flyMSParams::writeConfigFile(std::string filename)
     configfile << "---" <<std::endl;
     configfile << "flyMSParams: " <<std::endl;
 
-    #define X(type, fmt, name, defaultVal) configfile << "    " << #name << ": " << defaultVal << std::endl;
+
+  #define X(type, fmt, name, defaultVal) configfile << "    " << #name << ": " << conv2string::getDefaultValueString(static_cast<type>(defaultVal)) << std::endl;
     CORE_CONFIG_TABLE
     #undef X
 

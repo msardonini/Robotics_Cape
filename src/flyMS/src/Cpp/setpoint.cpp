@@ -20,6 +20,11 @@ setpoint::~setpoint()
 	this->setpointThread.join();
 }
 
+int setpoint::initRadioComs()
+{
+	return rc_dsm_init();
+}
+
 void setpoint::getSetpointData(setpoint_t* _setpoint)
 {
 	this->setpointMutex.lock();
@@ -46,7 +51,7 @@ int setpoint::setpointManager()
 		*           If there is new dsm2 data read it in 		  *
 		*			and make a local copy from the driver's data  *
 		**********************************************************/
-		if (rc_is_new_dsm_data())
+		if (rc_dsm_is_new_data())
 		{
 			copy_dsm2_data();
 			new_dsm_data = 1;
@@ -146,7 +151,7 @@ int setpoint::copy_dsm2_data()
 	int i;
 	for (i = 0; i < MAX_DSM2_CHANNELS; i++)\
 	{
-		dsm2_data[i] = rc_get_dsm_ch_normalized(i+1);
+		dsm2_data[i] = rc_dsm_ch_normalized(i+1);
 	}
 	return 0;
 }

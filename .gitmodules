@@ -7,3 +7,6 @@
 [submodule "lib/librobotcontrol"]
 	path = lib/librobotcontrol
 	url = git@github.com:StrawsonDesign/librobotcontrol.git
+[submodule "lib/eigen3"]
+	path = lib/eigen3
+	url = git@github.com:OPM/eigen3.git

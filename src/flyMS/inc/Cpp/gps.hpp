@@ -29,7 +29,7 @@
 #include "config.hpp"
 
 
-#define DEG_TO_RAD 0.01744
+#define D2R_GPS 0.01744
 #define BAUDRATE B4800
 #define BAUDRATE2 B57600
 #define MODEMDEVICE "/dev/ttyO1" 

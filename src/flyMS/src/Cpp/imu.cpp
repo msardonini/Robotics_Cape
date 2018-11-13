@@ -36,23 +36,21 @@ int imu::initializeImu()
 	//Start the barometer
 	if(this->config.enableBarometer)
 	{
-		if(rc_initialize_barometer(OVERSAMPLE, INTERNAL_FILTER)<0){
+		if(rc_bmp_init(OVERSAMPLE, INTERNAL_FILTER))
+ 		{
 			printf("initialize_barometer failed\n");
 			return -1;
 		}
 	}
 
-	// set up IMU configuration
-	rc_imu_config_t imu_config = rc_default_imu_config();
-	imu_config.accel_fsr = A_FSR_4G;
-	imu_config.enable_magnetometer=1;
-	imu_config.accel_dlpf = ACCEL_DLPF_5;
-	imu_config.gyro_dlpf = GYRO_DLPF_5;
-
-	// start imu
-	if(rc_initialize_imu(&this->imu_data, imu_config)){
-		printf("ERROR: can't talk to IMU, all hope is lost\n");
-		rc_blink_led(RED, 5, 5);
+	rc_mpu_config_t conf = rc_mpu_default_config();
+	conf.i2c_bus = 2;
+	conf.enable_magnetometer = 1;
+	conf.show_warnings = 0;
+	if(rc_mpu_initialize(&this->imu_data, conf)){
+		fprintf(stderr,"ERROR: can't talk to IMU, all hope is lost\n");
+		rc_led_set(RC_LED_RED, 1);
+		rc_led_set(RC_LED_GREEN, 0);
 		return -1;
 	}
 
@@ -75,8 +73,6 @@ int imu::update()
 	this->read_transform_imu();
 	//Perform the data fusion to calculate pitch, roll, and yaw angles
 	this->updateFusion();
-
-
 
 	/**********************************************************
 	*					Unwrap the Yaw value				  *
@@ -106,16 +102,18 @@ int imu::update()
 		if (i1 == 10) // Only read the barometer at 25Hz
 		{
 			// perform the i2c reads to the sensor, this takes a bit of time
-			if(rc_read_barometer()<0){
+			if(rc_bmp_read(&bmp_data)<0){
 				printf("\rERROR: Can't read Barometer");
 				fflush(stdout);
 			}
 			i1=0;
 		}
 		// this->baro_alt = update_filter(filters.LPF_baro_alt,rc_bmp_get_altitude_m() - initial_alt);
-		this->stateBody.barometerAltitude = rc_bmp_get_altitude_m();
-		this->ekfContainer.input.barometer_updated = 1;
-		this->ekfContainer.input.barometer_alt = this->stateBody.barometerAltitude;
+		
+		//TODO: Interface with the barometer data
+		// this->stateBody.barometerAltitude = rc_bmp_get_altitude_m();
+		// this->ekfContainer.input.barometer_updated = 1;
+		// this->ekfContainer.input.barometer_alt = this->stateBody.barometerAltitude;
 	}
 
 	/************************************************************************
@@ -143,12 +141,16 @@ int imu::update()
 ************************************************************************/
 void imu::read_transform_imu()
 {
-	if(rc_read_accel_data(&imu_data)<0){
+
+	if(rc_mpu_read_accel(&this->imu_data) < 0){
 		printf("read accel data failed\n");
 	}
-	if(rc_read_mag_data(&imu_data)<0){
-		printf("read mag data failed\n");
+	if(rc_mpu_read_gyro(&this->imu_data)<0){
+		printf("read gyro data failed\n");
 	}
+	if(rc_mpu_read_mag(&this->imu_data)){
+			printf("read mag data failed\n");
+		}
 
 	/**********************************************************
 	*		Perform the Coordinate System Transformation	  *
@@ -156,9 +158,9 @@ void imu::read_transform_imu()
 	int i;
 	for (i=0;i<3;i++) 
 	{	
-		this->stateIMU.mag(i) = imu_data.mag[i];
-		this->stateIMU.gyro(i) = imu_data.gyro[i];
-		this->stateIMU.accel(i) = imu_data.accel[i];
+		this->stateIMU.mag(i) = this->imu_data.mag[i];
+		this->stateIMU.gyro(i) = this->imu_data.gyro[i];
+		this->stateIMU.accel(i) = this->imu_data.accel[i];
 	}
 
 	//Convert from IMU frame to body Frame
@@ -203,12 +205,12 @@ void imu::init_fusion()
 void imu::initializeRotationMatrices()
 {
 	//Make the Direcion Cosine Matric DCM from the input offsets from the config file
-	float cR1 = cosf(this->config.rollOffsetDegrees * D2R);
-	float sR1 = sinf(this->config.rollOffsetDegrees * D2R);
-	float cP1 = cosf(this->config.pitchOffsetDegrees * D2R);
-	float sP1 = sinf(this->config.pitchOffsetDegrees * D2R);
-	float cY1 = cosf(this->config.yawOffsetDegrees * D2R);
-	float sY1 = sinf(this->config.yawOffsetDegrees * D2R);
+	float cR1 = cosf(this->config.rollOffsetDegrees * D2R_IMU);
+	float sR1 = sinf(this->config.rollOffsetDegrees * D2R_IMU);
+	float cP1 = cosf(this->config.pitchOffsetDegrees * D2R_IMU);
+	float sP1 = sinf(this->config.pitchOffsetDegrees * D2R_IMU);
+	float cY1 = cosf(this->config.yawOffsetDegrees * D2R_IMU);
+	float sY1 = sinf(this->config.yawOffsetDegrees * D2R_IMU);
 
 	this->imu2Body << cR1*cY1, -cP1*sY1+sP1*sR1*cY1 ,  sP1*sY1+cP1*sR1*cY1
 				, cR1*sY1 ,  cP1*cY1+sP1*sR1*sY1 , -sP1*cY1+cP1*sR1*sY1
@@ -246,8 +248,8 @@ void imu::updateFusion()
 	mag = powf(powf(this->eulerAngles.angle.pitch,2.0f)+powf(this->eulerAngles.angle.roll,2.0f),0.5f);
 	theta = atan2f(this->eulerAngles.angle.roll, this->eulerAngles.angle.pitch);
 	
-	this->eulerAngles.angle.roll = mag * sinf(theta-this->eulerAngles.angle.yaw*DEG_TO_RAD);
-	this->eulerAngles.angle.pitch = mag * cosf(theta-this->eulerAngles.angle.yaw*DEG_TO_RAD);
+	this->eulerAngles.angle.roll = mag * sinf(theta-this->eulerAngles.angle.yaw*D2R_IMU);
+	this->eulerAngles.angle.pitch = mag * cosf(theta-this->eulerAngles.angle.yaw*D2R_IMU);
 
 	for (i = 0; i < 3; i++)
 		this->eulerAngles.array[i]*=-1.0f;
@@ -256,8 +258,8 @@ void imu::updateFusion()
 	for (i = 0; i < 3; i++)
 	{
 		this->stateBody.eulerPrevious(i) 		= this->stateBody.euler(i);	
-		this->stateBody.euler(i)				= this->eulerAngles.array[i] * D2R;
-		this->stateBody.eulerRate(i)			= this->stateBody.gyro(i) * D2R;
+		this->stateBody.euler(i)				= this->eulerAngles.array[i] * D2R_IMU;
+		this->stateBody.eulerRate(i)			= this->stateBody.gyro(i) * D2R_IMU;
 	}
 
 }
