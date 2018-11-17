@@ -1,7 +1,11 @@
 #include "config.hpp"
 
 flyMSParams::flyMSParams(){}
-flyMSParams::~flyMSParams(){}
+
+
+flyMSParams::~flyMSParams(){
+    printf("config destructor\n");
+}
 
 
 
@@ -54,7 +58,7 @@ void flyMSParams::loadConfigFile(std::string filename)
     this->flyMSYamlNode = rootNode["flyMSParams"];
 
     //take the loaded config file and put into the class varialbes
-    #define X(type, fmt, name, default) this->name = this->flyMSYamlNode[#name].as<type>();
+    #define X(type, fmt, name, default) this->config.name = this->flyMSYamlNode[#name].as<type>();
     CORE_CONFIG_TABLE
     #undef X
 

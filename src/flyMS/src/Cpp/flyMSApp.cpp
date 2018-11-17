@@ -6,20 +6,21 @@
  * @date 10/15/2018
  */
 
+//System Includes
+#include <signal.h>
 
-
+//Our Includes
 #include "flyMS.hpp"
 
 int parseInputs(int argc, char* argv[], flyMSParams* configParams);
+void initSignalHandler();
+void onSignalReceived(int signo);
 
 
 int main(int argc, char *argv[])
 {
-	//Initialize the cape and beaglebone hardware
-	if(rc_initialize()){
-		printf("ERROR: failed to initialize_cape\n");
-		return -1;
-	}
+	//Enable the signal handler so we can exit cleanly on SIGINT
+	initSignalHandler();
 
 	// Read the command line arguments and config file inputs
 	flyMSParams configParams;
@@ -28,17 +29,18 @@ int main(int argc, char *argv[])
 	//Initialize the flight hardware
 	// startupRoutine();
 
-	flyMS fly(configParams);
-
-	fly.startupRoutine();
-
 	rc_set_state(RUNNING);
+	flyMS fly();
+	// flyMS fly(configParams.config);
+	// fly.startupRoutine();
+
 	while (rc_get_state() != EXITING) 
 	{
 		sleep(1);
 	}
 
-	rc_cleanup();
+	// rc_cleanup();
+	printf("exiting now!\n");
 	return 0;
 }
 
@@ -80,8 +82,20 @@ int parseInputs(int argc, char* argv[], flyMSParams* configParams)
 
 
 	//Merge the common parameters between the config file and the command line inputs
-	configParams->isDebugMode |= isDebugMode;
-
+	configParams->config.isDebugMode |= isDebugMode;
 
 	return 0;
+}
+
+void onSignalReceived(int signo)
+{
+	rc_set_state(EXITING);
+}
+
+
+void initSignalHandler()
+{
+     signal(SIGINT, onSignalReceived);
+     signal(SIGKILL, onSignalReceived);
+     signal(SIGHUP, onSignalReceived);
 }

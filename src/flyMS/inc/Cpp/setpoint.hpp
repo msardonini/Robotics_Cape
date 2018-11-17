@@ -70,7 +70,9 @@ class setpoint
 public:
 
 	//Default Constructor
-	setpoint(flyMSParams _config);
+	setpoint();
+
+	setpoint(config_t _config);
 
 	//Default Destructor
 	~setpoint();
@@ -79,7 +81,7 @@ public:
 
 	int setpointManager();
 
-	int initRadioComs();
+	int start();
 
 private:
 
@@ -98,7 +100,7 @@ private:
 	//All relevant setpoint data goes here
 	setpoint_t setpointData;
 
-	flyMSParams config;
+	config_t config;
 
 };
 

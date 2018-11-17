@@ -20,7 +20,7 @@ void onSignalReceived(int signo)
 }
 
 
-void initSignalHandler(pruHandler* handler)
+void initSignalHandler()
 {
      signal(SIGINT, onSignalReceived);
      signal(SIGKILL, onSignalReceived);
@@ -28,10 +28,10 @@ void initSignalHandler(pruHandler* handler)
 }
 
 
-
-
 int main(int argc, char* argv[])
 {
+
+	initSignalHandler();
 
 	handler.init_pru_handler();
 

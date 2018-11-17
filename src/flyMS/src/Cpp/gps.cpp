@@ -8,6 +8,8 @@
 
 #include "gps.hpp"
 
+gps::gps() {}
+
 //TODO take our the hardware inits outside of the class constructor
 //Default Constructor
 gps::gps(flyMSParams _config) : config (_config)
@@ -127,7 +129,9 @@ gps::gps(flyMSParams _config) : config (_config)
 //Default Destructor
 gps::~gps()
 {
+
 	this->gpsThread.join();
+	printf("gps Destructor\n");
 }
 
 

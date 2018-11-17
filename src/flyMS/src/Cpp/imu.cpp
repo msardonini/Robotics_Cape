@@ -10,28 +10,38 @@
 
 
 // Default Constructor
-imu::imu(flyMSParams _config) :
+imu::imu() {}
+
+
+imu::imu(config_t _config) :
 	isInitializingFusion(true),
 	config(_config)
 {
-	//Created memory for the rotation matricies
-	this->initializeRotationMatrices();
+	//Make the Direcion Cosine Matric DCM from the input offsets from the config file
+	float cR1 = cosf(this->config.rollOffsetDegrees * D2R_IMU);
+	float sR1 = sinf(this->config.rollOffsetDegrees * D2R_IMU);
+	float cP1 = cosf(this->config.pitchOffsetDegrees * D2R_IMU);
+	float sP1 = sinf(this->config.pitchOffsetDegrees * D2R_IMU);
+	float cY1 = cosf(this->config.yawOffsetDegrees * D2R_IMU);
+	float sY1 = sinf(this->config.yawOffsetDegrees * D2R_IMU);
 
-	//Initialize the fusion library which converts raw IMU data to Euler angles
-	init_fusion();
+	this->imu2Body << cR1*cY1, -cP1*sY1+sP1*sR1*cY1 ,  sP1*sY1+cP1*sR1*cY1
+				, cR1*sY1 ,  cP1*cY1+sP1*sR1*sY1 , -sP1*cY1+cP1*sR1*sY1
+				, -sR1 , sP1*cR1 , cP1*cR1;
+
+				printf("(config val for drollKI  %f)\n", config.Droll_KI);
+
 }
 
 
 //Default Destructor
 imu::~imu()
 {
-
+	printf("imu Destructor\n");
 }
 
 int imu::initializeImu()
 {
-	//Allocate memory for the tranformation matrices and vectors
-	this->initializeRotationMatrices();
 
 	//Start the barometer
 	if(this->config.enableBarometer)
@@ -53,6 +63,9 @@ int imu::initializeImu()
 		rc_led_set(RC_LED_GREEN, 0);
 		return -1;
 	}
+
+	//Initialize the fusion library which converts raw IMU data to Euler angles
+	this->init_fusion();
 
 	return 0;
 
@@ -197,25 +210,6 @@ void imu::init_fusion()
 		rc_usleep(DT_US);
 	}
 	this->isInitializingFusion = false;
-}
-
-/************************************************************************
-*			Allocatate memeory for the Tranformation Matrices
-************************************************************************/
-void imu::initializeRotationMatrices()
-{
-	//Make the Direcion Cosine Matric DCM from the input offsets from the config file
-	float cR1 = cosf(this->config.rollOffsetDegrees * D2R_IMU);
-	float sR1 = sinf(this->config.rollOffsetDegrees * D2R_IMU);
-	float cP1 = cosf(this->config.pitchOffsetDegrees * D2R_IMU);
-	float sP1 = sinf(this->config.pitchOffsetDegrees * D2R_IMU);
-	float cY1 = cosf(this->config.yawOffsetDegrees * D2R_IMU);
-	float sY1 = sinf(this->config.yawOffsetDegrees * D2R_IMU);
-
-	this->imu2Body << cR1*cY1, -cP1*sY1+sP1*sR1*cY1 ,  sP1*sY1+cP1*sR1*cY1
-				, cR1*sY1 ,  cP1*cY1+sP1*sR1*sY1 , -sP1*cY1+cP1*sR1*sY1
-				, -sR1 , sP1*cR1 , cP1*cR1;
-
 }
 
 /************************************************************************

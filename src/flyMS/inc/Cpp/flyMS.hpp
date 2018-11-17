@@ -68,7 +68,9 @@ class flyMS
 
 public:
 	// Default Constructor
-	flyMS(flyMSParams _config);
+	flyMS();
+
+	flyMS(config_t _config);
 
 	//Default Destructor
 	~flyMS();
@@ -101,7 +103,8 @@ private:
 	//Boolean for running in debug mode
 	bool firstIteration;
 
-	flyMSParams config;
+	//Object for managing the user configurable parameters
+	config_t config;
 	
 	//Object and Data struct from the imu manager
 	imu imuModule;
@@ -119,8 +122,8 @@ private:
 	GPS_data_t gpsData;
 
 	//Object and Data struct from the ekf manager
-	ekf2 ekfModule;
-	ekf_filter_t ekfData;
+	// ekf2 ekfModule;
+	// ekf_filter_t ekfData;
 
 	//Struct for the control inputs
 	controller_t control;

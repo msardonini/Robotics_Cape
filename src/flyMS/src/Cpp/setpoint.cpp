@@ -8,21 +8,25 @@
 
 #include "setpoint.hpp"
 
-setpoint::setpoint(flyMSParams _config) : 
+setpoint::setpoint() {}
+
+setpoint::setpoint(config_t _config) : 
 	config(_config)
 
 {
-	this->setpointThread = std::thread(&setpoint::setpointManager, this);
 }
 
 setpoint::~setpoint()
 {
+		printf("setpoint Destructor\n");
 	this->setpointThread.join();
 }
 
-int setpoint::initRadioComs()
+int setpoint::start()
 {
-	return rc_dsm_init();
+	int ret = rc_dsm_init();
+	this->setpointThread = std::thread(&setpoint::setpointManager, this);
+	return ret;
 }
 
 void setpoint::getSetpointData(setpoint_t* _setpoint)
@@ -81,6 +85,7 @@ int setpoint::setpointManager()
 
 		usleep(DT_US); //Run at the control frequency
 	}
+	printf("(exiting the setpoint thread!)\n" );
 	return 0;
 }
 
@@ -124,6 +129,7 @@ int setpoint::handle_rc_data_direct()
 		}
 
 		//Kill Switch
+		this->setpointData.kill_switch[1] = this->setpointData.kill_switch[0];
 		this->setpointData.kill_switch[0]=dsm2_data[4]/2;
 		
 		//Auxillary Switch

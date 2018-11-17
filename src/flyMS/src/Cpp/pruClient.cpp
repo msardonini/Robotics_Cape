@@ -16,7 +16,7 @@ pruClient::pruClient() : u(NUM_CHANNELS)
 
 pruClient::~pruClient()
 {
-	this->pruSenderThread.join();
+	// this->pruSenderThread.join();
 }
 
 int pruClient::startPruClient()

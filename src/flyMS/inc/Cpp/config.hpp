@@ -66,22 +66,26 @@
     X(float,  "%f", aux6,   0   )
 
 
+typedef struct config_t
+{
+    //defines the config params as public members 
+    #define X(type, fmt, name, defaultVal) type name;
+    CORE_CONFIG_TABLE
+    #undef X
+} config_t;
+
 class flyMSParams
 {
   public:
 
     flyMSParams();
-    ~flyMSParams();	
+    ~flyMSParams(); 
     void loadConfigFile(std::string filename);
     int writeConfigFile(std::string filename);
 
     YAML::Node flyMSYamlNode;
     
-
-    //defines the config params as public members 
-    #define X(type, fmt, name, defaultVal) type name;
-    CORE_CONFIG_TABLE
-    #undef X
+    config_t config;
 
 
     // bool enableBarometer;

@@ -8,14 +8,16 @@
 
 #include "flyMS.hpp"
 
-
 // Default Constructor
-flyMS::flyMS(flyMSParams _config) :
-	firstIteration(true) , 
-	config(_config), 
-	imuModule(_config),
-	setpointModule(_config),
-	gpsModule(_config)
+flyMS::flyMS() {}
+
+
+flyMS::flyMS(config_t _config) //:
+	// firstIteration(true) , 
+	// config(_config)
+	// imuModule(_config),
+	// setpointModule(_config),
+	// gpsModule(_config)
 {
 
 }
@@ -24,7 +26,8 @@ flyMS::flyMS(flyMSParams _config) :
 //Default Destructor
 flyMS::~flyMS()
 {
-
+	printf("flyMS Destructor\n");
+	sleep(2);
 }
 
 
@@ -213,31 +216,6 @@ uint64_t flyMS::getTimeMicroseconds()
 	struct timespec tv;
 	clock_gettime(CLOCK_MONOTONIC, &tv);
 	return tv.tv_sec*(uint64_t)1E6 + tv.tv_nsec/(uint64_t)1E3;
-}
-
-
-int flyMS::initializeHardware()
-{
-
-	//Initialize the remote controller through the setpoint object
-	if(this->setpointModule.initRadioComs())
-		std::cerr<<"[flyMS] Error initializing Radio Coms!" << std::endl;
-
-	//Pause the program until the user toggles the kill switch
-	if(!this->config.isDebugMode)
-	{	
-		if(this->readyCheck()){
-			printf("Exiting Program \n");
-			return -1;
-		}
-	}
-
-	//TODO load settings from the config file
-	
-	//TODO create the logging module and start
-	
-	return 0;
-
 }
 
 

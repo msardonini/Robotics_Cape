@@ -11,9 +11,13 @@
 
 int flyMS::startupRoutine()
 {
+	//Initialize the remote controller through the setpoint object
+	if(this->setpointModule.start())
+		std::cerr<<"[flyMS] Error initializing Radio Coms!" << std::endl;
+
 
 	//Pause the program until the user toggles the kill switch
-	if(!this->config.isDebugMode)
+	if(!this->config.isDebugMode || 1)
 	{	
 		if(this->readyCheck()){
 			printf("Exiting Program \n");
@@ -54,18 +58,16 @@ int flyMS::readyCheck(){
 			}
 		}
 
-		if(rc_dsm_is_new_data()){
+		this->setpointModule.getSetpointData(&this->setpointData);
 
-			val[1]=val[0];
-			val[0]=rc_dsm_ch_normalized(5);
-			if(val[0] < -0.75 && val[1] > 0.35){
+		val[1]=this->setpointData.kill_switch[1];
+		val[0]=this->setpointData.kill_switch[0];
+		if(val[0] < -0.75 && val[1] > 0.35)
 			count++;
-			} 
-			if(val[0] > 0.75 && val[1] < 0.35){
+		if(val[0] > 0.75 && val[1] < 0.35)
 			count++;
-			}
+
 			
-		}
 		usleep(10000);
 	}
 	

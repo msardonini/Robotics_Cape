@@ -60,6 +60,8 @@ class gps
 public:
 	
 	// Default Constructor
+	gps();
+
 	gps(flyMSParams _config);
 
 	//Default Destructor

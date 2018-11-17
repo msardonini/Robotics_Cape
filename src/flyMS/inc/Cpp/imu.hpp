@@ -70,7 +70,9 @@ class imu
 public:
 	
 	//Default Constructor
-	imu(flyMSParams _config);
+	imu();
+
+	imu(config_t _config);
 
 	//Default Descructor
 	~imu();
@@ -112,7 +114,6 @@ private:
 	void init_fusion();
 	void updateFusion();
 	void read_transform_imu();
-	void initializeRotationMatrices();
 
 	//Variables to control the imu thread
 	std::thread imuThread;
@@ -121,8 +122,8 @@ private:
 	//Boolean to indicate if we are currently initializing the fusion algorithm
 	bool isInitializingFusion;
 
-	//Class to hold all of the configurable parameters
-	flyMSParams config;
+	//Struct to hold all of the configurable parameters
+	config_t config;
 
 	ekf_filter_t ekfContainer;
 
