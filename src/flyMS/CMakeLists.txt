@@ -57,7 +57,7 @@ set(SRCS_FLYMS_C++
 	${FLYMS_DIR}/pruClient.cpp
 	${FLYMS_DIR}/setpoint.cpp
 	${FLYMS_DIR}/startupRoutine.cpp
-	# ${FLYMS_DIR}/src/logger.cpp
+	${FLYMS_DIR}/logger.cpp
 )
 
 include_directories(${FLYMS_DIR}/inc)

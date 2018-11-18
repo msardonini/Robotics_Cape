@@ -1,11 +1,12 @@
 #include "config.hpp"
 
+
+//Default Constructor
 flyMSParams::flyMSParams(){}
 
 
-flyMSParams::~flyMSParams(){
-    printf("config destructor\n");
-}
+flyMSParams::~flyMSParams(){}
+//Default Destructor
 
 
 

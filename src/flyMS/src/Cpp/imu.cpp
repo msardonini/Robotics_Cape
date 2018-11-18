@@ -8,14 +8,10 @@
 
 #include "imu.hpp"
 
-
-// Default Constructor
-imu::imu() {}
-
-
-imu::imu(config_t _config) :
+imu::imu(config_t _config, logger& _loggingModule) :
 	isInitializingFusion(true),
-	config(_config)
+	config(_config),
+	loggingModule(_loggingModule)
 {
 	//Make the Direcion Cosine Matric DCM from the input offsets from the config file
 	float cR1 = cosf(this->config.rollOffsetDegrees * D2R_IMU);
@@ -28,16 +24,13 @@ imu::imu(config_t _config) :
 	this->imu2Body << cR1*cY1, -cP1*sY1+sP1*sR1*cY1 ,  sP1*sY1+cP1*sR1*cY1
 				, cR1*sY1 ,  cP1*cY1+sP1*sR1*sY1 , -sP1*cY1+cP1*sR1*sY1
 				, -sR1 , sP1*cR1 , cP1*cR1;
-
-				printf("(config val for drollKI  %f)\n", config.Droll_KI);
-
 }
 
 
 //Default Destructor
 imu::~imu()
 {
-	printf("imu Destructor\n");
+	// this->loggingModule.flyMS_printf("imu Destructor\n");
 }
 
 int imu::initializeImu()
@@ -48,7 +41,7 @@ int imu::initializeImu()
 	{
 		if(rc_bmp_init(OVERSAMPLE, INTERNAL_FILTER))
  		{
-			printf("initialize_barometer failed\n");
+			this->loggingModule.flyMS_printf("initialize_barometer failed\n");
 			return -1;
 		}
 	}
@@ -58,7 +51,7 @@ int imu::initializeImu()
 	conf.enable_magnetometer = 1;
 	conf.show_warnings = 0;
 	if(rc_mpu_initialize(&this->imu_data, conf)){
-		fprintf(stderr,"ERROR: can't talk to IMU, all hope is lost\n");
+		this->loggingModule.flyMS_printf("ERROR: can't talk to IMU, all hope is lost\n");
 		rc_led_set(RC_LED_RED, 1);
 		rc_led_set(RC_LED_GREEN, 0);
 		return -1;
@@ -116,7 +109,7 @@ int imu::update()
 		{
 			// perform the i2c reads to the sensor, this takes a bit of time
 			if(rc_bmp_read(&bmp_data)<0){
-				printf("\rERROR: Can't read Barometer");
+				this->loggingModule.flyMS_printf("\rERROR: Can't read Barometer");
 				fflush(stdout);
 			}
 			i1=0;
@@ -156,18 +149,19 @@ void imu::read_transform_imu()
 {
 
 	if(rc_mpu_read_accel(&this->imu_data) < 0){
-		printf("read accel data failed\n");
+		this->loggingModule.flyMS_printf("read accel data failed\n");
 	}
 	if(rc_mpu_read_gyro(&this->imu_data)<0){
-		printf("read gyro data failed\n");
+		this->loggingModule.flyMS_printf("read gyro data failed\n");
 	}
 	if(rc_mpu_read_mag(&this->imu_data)){
-			printf("read mag data failed\n");
+			this->loggingModule.flyMS_printf("read mag data failed\n");
 		}
 
 	/**********************************************************
 	*		Perform the Coordinate System Transformation	  *
 	**********************************************************/
+	
 	int i;
 	for (i=0;i<3;i++) 
 	{	

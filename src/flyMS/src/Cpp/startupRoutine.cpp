@@ -17,13 +17,24 @@ int flyMS::startupRoutine()
 
 
 	//Pause the program until the user toggles the kill switch
-	if(!this->config.isDebugMode || 1)
+	if(!this->config.isDebugMode)
 	{	
 		if(this->readyCheck()){
 			printf("Exiting Program \n");
 			return -1;
 		}
 	}
+	this->setpointModule.setInitializationFlag(false);
+
+	//Initialize the IMU Hardware
+	this->imuModule.initializeImu();
+
+	//Initialize the logger
+	this->loggingModule.createLogFiles();
+
+	//Start the flight program
+	this->flightcoreThread = std::thread(&flyMS::flightCore, this);
+
 	return 0;
 }
 
@@ -33,6 +44,7 @@ int flyMS::readyCheck(){
 	//Keep kill switch down to remain operational
     int count=1, toggle = 0, reset_toggle = 0;
 	float val[2] = {0.0f , 0.0f};
+	bool firstRun = true;
 	printf("Toggle the kill swtich twice and leave up to initialize\n");
 	while(count<6 && rc_get_state()!=EXITING)
 	{
@@ -58,27 +70,38 @@ int flyMS::readyCheck(){
 			}
 		}
 
-		this->setpointModule.getSetpointData(&this->setpointData);
+		if(this->setpointModule.getSetpointData(&this->setpointData))
+		{
+			//Skip the first run to let data history fill up
+			if (firstRun)
+			{
+				firstRun = false;
+				continue;
+			}
+			val[1]=this->setpointData.kill_switch[1];
+			val[0]=this->setpointData.kill_switch[0];
+			std::cout <<  "val0 " << val[0] << " val1 " << val[1] << " count " << count << std::endl;
+		
+			if(val[0] < 0.25 && val[1] > 0.25)
+				count++;
+			if(val[0] > 0.25 && val[1] < 0.25)
+				count++;
+		}
 
-		val[1]=this->setpointData.kill_switch[1];
-		val[0]=this->setpointData.kill_switch[0];
-		if(val[0] < -0.75 && val[1] > 0.35)
-			count++;
-		if(val[0] > 0.75 && val[1] < 0.35)
-			count++;
-
-			
 		usleep(10000);
 	}
 	
 	//make sure the kill switch is in the position to fly before starting
-	while(val[0] < 0.5 && rc_get_state()!=EXITING)
+	while(val[0] < 0.25 && rc_get_state()!=EXITING)
+	{
+		if(this->setpointModule.getSetpointData(&this->setpointData))
 		{
-		if(rc_dsm_is_new_data()){
-			val[0]=rc_dsm_ch_normalized(5);	
-			}
-		usleep(10000);
+			val[1]=this->setpointData.kill_switch[1];
+			val[0]=this->setpointData.kill_switch[0];
 		}
+
+		usleep(10000);
+	}
 	
 	if(rc_get_state() == EXITING)
 	{
@@ -99,14 +122,14 @@ int flyMS::readyCheck(){
 int flyMS::initializeFilters()
 {
 
-	// filters->pitch_PD = generatePID(flight_config->pitch_KP, flight_config->pitch_KI, flight_config->pitch_KD, 0.15, DT);
-	// filters->roll_PD  = generatePID(flight_config->roll_KP, flight_config->roll_KI, flight_config->roll_KD, 0.15, DT);
-	// //filters->yaw_PD   = generatePID(YAW_KP,		  0, YAW_KD,	    0.15, 0.005);
+	this->filters.pitch_PD = generatePID(this->config.pitch_KP, this->config.pitch_KI, this->config.pitch_KD, 0.15, DT);
+	this->filters.roll_PD  = generatePID(this->config.roll_KP, this->config.roll_KI, this->config.roll_KD, 0.15, DT);
+	this->filters.yaw_PD   = generatePID(this->config.yaw_KP, this->config.yaw_KI, this->config.yaw_KD,	    0.15, 0.005);
 
 	// //PD Controller (I is done manually)
-	// filters->pitch_rate_PD = generatePID(flight_config->Dpitch_KP, 0, flight_config->Dpitch_KD, 0.15, DT);
-	// filters->roll_rate_PD  = generatePID(flight_config->Droll_KP, 0, flight_config->Droll_KD, 0.15, DT);
-	// filters->yaw_rate_PD   = generatePID(flight_config->yaw_KP,		  0, flight_config->yaw_KD,	    0.15, DT);
+	this->filters.pitch_rate_PD = generatePID(this->config.Dpitch_KP, 0, this->config.Dpitch_KD, 0.15, DT);
+	this->filters.roll_rate_PD  = generatePID(this->config.Droll_KP, 0, this->config.Droll_KD, 0.15, DT);
+	this->filters.yaw_rate_PD   = generatePID(this->config.yaw_KP,		  0, this->config.yaw_KD,	    0.15, DT);
 	
 	// //Gains on Low Pass Filter for raw gyroscope output
 	

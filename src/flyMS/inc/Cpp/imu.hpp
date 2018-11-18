@@ -37,42 +37,15 @@
 
 //Ours
 #include "config.hpp"
+#include "logger.hpp"
 
-
-typedef struct state_t{
-	Eigen::Vector3f	euler;					// Euler angles of aircraft (in roll, pitch, yaw)
-	Eigen::Vector3f eulerPrevious;			// 1 Timestampe previousEuler angles of aircraft (in roll, pitch, yaw)
-	Eigen::Vector3f	eulerRate;				// First derivative of euler angles (in roll/s, pitch/s, yaw/s)
-	
-	Eigen::Vector3f accel;
-	Eigen::Vector3f gyro;
-	Eigen::Vector3f mag;
-
-	float barometerAltitude;
-	float compassHeading;
-
-	int		num_wraps;				// Number of spins in Yaw
-	float	initialYaw;
-}state_t;
-
-typedef struct controller_t{
-	float	droll_err_integrator;
-	float	dpitch_err_integrator;
-	float	dyaw_err_integrator;
-	float 	u_euler[3];					// Controller output for roll, pitch, yaw
-	float	u[4]; 								// Duty Cycle to send to each motor
-	float	standing_throttle, alt_error;
-}controller_t;
 
 
 class imu
 {
 public:
-	
-	//Default Constructor
-	imu();
 
-	imu(config_t _config);
+	imu(config_t _config, logger &loggingModule);
 
 	//Default Descructor
 	~imu();
@@ -148,7 +121,8 @@ private:
 	FusionEulerAngles eulerAngles;
 	FusionBias fusionBias;
 
-
+	//Mainly for flyMS_printf
+	logger &loggingModule;
 };
 
 #endif //IMU_H

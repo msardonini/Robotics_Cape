@@ -16,7 +16,9 @@ pruClient::pruClient() : u(NUM_CHANNELS)
 
 pruClient::~pruClient()
 {
-	// this->pruSenderThread.join();
+	//Join the thread if executing
+	if(this->pruSenderThread.joinable())
+		this->pruSenderThread.join();
 }
 
 int pruClient::startPruClient()

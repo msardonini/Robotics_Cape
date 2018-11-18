@@ -27,6 +27,7 @@
 
 //Ours
 #include "config.hpp"
+#include "logger.hpp"
 
 
 #define D2R_GPS 0.01744
@@ -58,11 +59,8 @@ class gps
 {
 
 public:
-	
-	// Default Constructor
-	gps();
 
-	gps(flyMSParams _config);
+	gps(config_t _config, logger& _loggingModule);
 
 	//Default Destructor
 	~gps();
@@ -99,7 +97,9 @@ private:
 	//the serial file descriptor
 	int serialFd;
 
-	flyMSParams config;
+	config_t config;
+
+	logger& loggingModule;
 
 };
 

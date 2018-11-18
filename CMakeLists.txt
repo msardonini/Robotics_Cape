@@ -5,7 +5,7 @@ project(flyMS)
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11")
 
 add_compile_options(
-	-Wall
+	# -Wall
 	-Wno-deprecated-declarations
 	-Wno-enum-compare
 	-Wno-unused-local-typedefs
@@ -14,7 +14,7 @@ add_compile_options(
 
 add_definitions(-DFLYMS_ROOT_DIR=\"${CMAKE_CURRENT_SOURCE_DIR}\")
 	
-set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} lib/eigen/cmake)
+set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} ${CMAKE_CURRENT_SOURCE_DIR}/lib/eigen3/cmake)
 find_package(Eigen3 REQUIRED)
 if(EIGEN3_FOUND)
 	include_directories(${EIGEN3_INCLUDE_DIR})

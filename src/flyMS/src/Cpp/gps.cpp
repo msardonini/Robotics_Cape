@@ -8,11 +8,11 @@
 
 #include "gps.hpp"
 
-gps::gps() {}
-
 //TODO take our the hardware inits outside of the class constructor
 //Default Constructor
-gps::gps(flyMSParams _config) : config (_config)
+gps::gps(config_t _config, logger& _loggingModule) :
+	config (_config),
+	loggingModule(_loggingModule)
 {
 	int res;
 	struct termios newtio;
@@ -62,18 +62,18 @@ gps::gps(flyMSParams _config) : config (_config)
 	if (select(this->serialFd + 1, &read_fds, &write_fds, &except_fds, &timeout) == 1)
 	{
 		
-		printf("\n Changing Baud to 57600. Look for >>$PTNLRPT,A*3D<< for successful transmission\n");
+		this->loggingModule.flyMS_printf("\n Changing Baud to 57600. Look for >>$PTNLRPT,A*3D<< for successful transmission\n");
 		write(this->serialFd,"$PTNLSPT,057600,8,N,1,4,4*12\r\n",30); //Change Baud Rade to 57600
 		usleep(300000);
 		res = read(this->serialFd, buf, 255);
 		buf[res] = 0;  	
-		//printf("No Fix, Message transmitted from Module is: %s",buf);
+		//this->loggingModule.flyMS_printf("No Fix, Message transmitted from Module is: %s",buf);
 		
 	}
 	else
 	{
 		// timeout or error
-		//printf("Successfully taken off of 9800 Baud, Proceeding,\n");
+		//this->loggingModule.flyMS_printf("Successfully taken off of 9800 Baud, Proceeding,\n");
 	}
 	
 	//Now the device is reading faster at 57600 Baud, change settings on the beagleboard
@@ -97,12 +97,12 @@ gps::gps(flyMSParams _config) : config (_config)
 	
 	if (select(this->serialFd + 1, &read_fds2, &write_fds2, &except_fds2, &timeout2) == 1)
 	{
-		printf("GPS init successful\n");
+		this->loggingModule.flyMS_printf("GPS init successful\n");
 	}
 	else
 	{
 		// timeout or error
-		printf("GPS Failed, Contining on without GPS\n");
+		this->loggingModule.flyMS_printf("GPS Failed, Contining on without GPS\n");
 	}	
 	
 
@@ -110,18 +110,18 @@ gps::gps(flyMSParams _config) : config (_config)
 	usleep(50000);
 	//res = read(this->serialFd, buf, 255);
     //buf[res] = 0;  		
-	//printf("%s", buf);
+	//this->loggingModule.flyMS_printf("%s", buf);
 	
 	write(this->serialFd,"$PTNLQBA*54\r\n",13); //antenna check
-	//printf("Antenna query\n");
+	//this->loggingModule.flyMS_printf("Antenna query\n");
 	usleep(50000); 
 	//res = read(this->serialFd, buf, 255);
     //buf[res] = 0;  		
-	//printf("%s", buf);
+	//this->loggingModule.flyMS_printf("%s", buf);
 	
 	//Start the GPS thread
 	this->gpsThread = std::thread(&gps::dataMonitor, this);
-	//printf("GPS Thread Started\n");
+	//this->loggingModule.flyMS_printf("GPS Thread Started\n");
 
 
 }
@@ -129,9 +129,9 @@ gps::gps(flyMSParams _config) : config (_config)
 //Default Destructor
 gps::~gps()
 {
-
-	this->gpsThread.join();
-	printf("gps Destructor\n");
+	//Join the Thread if running
+	if(this->gpsThread.joinable())
+		this->gpsThread.join();
 }
 
 
@@ -148,7 +148,7 @@ int gps::dataMonitor()
 		
 		res = read(this->serialFd, buf, 255);
 		buf[res] = 0;
-		//printf("%s\n",buf);
+		//this->loggingModule.flyMS_printf("%s\n",buf);
 		//Clear all the buffers before reading any data
 		memset(Deg_Lat_buf,0,sizeof(Deg_Lat_buf)); memset(Min_Lat_buf,0,sizeof(Min_Lat_buf)); 
 		memset(Deg_Lon_buf,0,sizeof(Deg_Lon_buf)); memset(Min_Lon_buf,0,sizeof(Min_Lon_buf));
@@ -237,11 +237,10 @@ int gps::dataMonitor()
 			this->gpsMutex.unlock();
 		}
 		
-	//	printf("GGA: %d VTG %d Data ready: %d\n\n",GGA_flag,VTG_flag,GPS_data_flag);
+	//	this->loggingModule.flyMS_printf("GGA: %d VTG %d Data ready: %d\n\n",GGA_flag,VTG_flag,GPS_data_flag);
 		if(GGA_flag==1 && VTG_flag==1) GPS_data_flag=1; //Flag to note that GPS data is ready
 
 	}
-	printf("GPS Thread Ended\n");
 
 	return 0;
 }

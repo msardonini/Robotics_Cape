@@ -26,21 +26,19 @@ int main(int argc, char *argv[])
 	flyMSParams configParams;
 	parseInputs(argc, argv, &configParams);
 
-	//Initialize the flight hardware
-	// startupRoutine();
 
 	rc_set_state(RUNNING);
-	flyMS fly();
-	// flyMS fly(configParams.config);
-	// fly.startupRoutine();
+	// flyMS fly;
+	flyMS fly(configParams.config);
+	//Initialize the flight hardware
+	fly.startupRoutine();
 
 	while (rc_get_state() != EXITING) 
 	{
 		sleep(1);
 	}
 
-	// rc_cleanup();
-	printf("exiting now!\n");
+	rc_cleanup();
 	return 0;
 }
 
@@ -89,7 +87,13 @@ int parseInputs(int argc, char* argv[], flyMSParams* configParams)
 
 void onSignalReceived(int signo)
 {
-	rc_set_state(EXITING);
+	switch (signo)
+	{
+		case SIGHUP:
+			break;
+		default:
+			rc_set_state(EXITING);
+	}
 }
 
 

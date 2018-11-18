@@ -10,17 +10,18 @@
 
 //System Includes
 #include <string>
+#include <mutex>
 #include <fstream>
 #include <iostream>
 #include <sys/stat.h>
+#include <stdarg.h>
 
 //Package Includes
 
 
 //Local Includes
+#include "common.hpp"
 #include "config.hpp"
-#include "setpoint.hpp"
-#include "imu.hpp"
 
 
 #define CORE_LOG_TABLE \
@@ -76,6 +77,8 @@ public:
     
     int writeToLog(state_t *bodyState, controller_t *controller, setpoint_t *setpoint);
 
+    //Smart method for print statements. Sends to the terminal if open, also sends to console log file.
+    int flyMS_printf(const char* format, ...);
 
     //defines the config params as public members 
     #define X(type, fmt, name) type name;
@@ -85,10 +88,14 @@ public:
 private:
 
     bool fileExists(std::string filename);
+    
+    //Bool to indicate if this process is running as a daemon or from a terminal
+    bool isRunningConsole;
+    std::mutex printMutex;
 
+    //Objects to handle program output to file
     std::ofstream dataLogFid;
     std::ofstream errorFid;
-    std::ofstream configFid;
     std::ofstream consoleLogFid;
 
 };

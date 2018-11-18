@@ -8,26 +8,26 @@
 
 #include "flyMS.hpp"
 
-// Default Constructor
-flyMS::flyMS() {}
 
-
-flyMS::flyMS(config_t _config) //:
-	// firstIteration(true) , 
-	// config(_config)
-	// imuModule(_config),
-	// setpointModule(_config),
-	// gpsModule(_config)
+flyMS::flyMS(config_t _config) :
+	firstIteration(true),
+	loggingModule(), 
+	config(_config),
+	imuModule(_config, this->loggingModule),
+	setpointModule(_config, this->loggingModule),
+	gpsModule(_config, this->loggingModule)
 {
-
+	//All software initialization tasks go here
+	this->initializeFilters();
 }
 
 
 //Default Destructor
 flyMS::~flyMS()
 {
-	printf("flyMS Destructor\n");
-	sleep(2);
+	//Join the thread if executing
+	if(this->flightcoreThread.joinable())
+		this->flightcoreThread.join();
 }
 
 
@@ -81,29 +81,29 @@ int flyMS::flightCore()
 		// 	}
 	 //       // this->setpointData.altitudeSetpoint=this->setpointData.altitudeSetpoint+(this->setpointData.altitudeSetpointRate)*DT;
 
-		// 	//this->control.uthrottle = update_filter(this->filter.altitudeHoldPID, this->setpointData.altitudeSetpoint - flyMSData.baro_alt);
+		// 	//this->control.uthrottle = update_filter(this->filters.altitudeHoldPID, this->setpointData.altitudeSetpoint - flyMSData.baro_alt);
 		// 	//this->setpointData.throttle = this->control.uthrottle + flyMSData.standing_throttle;
 		// }
 			
 		/************************************************************************
 		* 	                  		Pitch Controller	                        *
 		************************************************************************/
-		this->setpointData.dpitch_setpoint = update_filter(this->filter.pitch_PD, this->setpointData.euler_ref[0] - this->imuData.euler[0]);
-		this->control.u_euler[0] = update_filter(this->filter.pitch_rate_PD,this->setpointData.dpitch_setpoint - this->imuData.eulerRate[0]);
+		this->setpointData.dpitch_setpoint = update_filter(this->filters.pitch_PD, this->setpointData.euler_ref[0] - this->imuData.euler[0]);
+		this->control.u_euler[0] = update_filter(this->filters.pitch_rate_PD,this->setpointData.dpitch_setpoint - this->imuData.eulerRate[0]);
 		this->control.u_euler[0] = saturateFilter(this->control.u_euler[0],-MAX_PITCH_COMPONENT,MAX_PITCH_COMPONENT);
 		
 		/************************************************************************
 		* 	                  		Roll Controller		                        *
 		************************************************************************/
-		this->setpointData.droll_setpoint = update_filter(this->filter.roll_PD, this->setpointData.euler_ref[1] - this->imuData.euler[1]);
-		this->control.u_euler[1] = update_filter(this->filter.roll_rate_PD,this->setpointData.droll_setpoint - this->imuData.eulerRate[1]);				
+		this->setpointData.droll_setpoint = update_filter(this->filters.roll_PD, this->setpointData.euler_ref[1] - this->imuData.euler[1]);
+		this->control.u_euler[1] = update_filter(this->filters.roll_rate_PD,this->setpointData.droll_setpoint - this->imuData.eulerRate[1]);				
 		this->control.u_euler[1] = saturateFilter(this->control.u_euler[1],-MAX_ROLL_COMPONENT,MAX_ROLL_COMPONENT);
 		
 		/************************************************************************
 		*                        	Yaw Controller                              *
 		************************************************************************/	
-		// this->control.u_euler[2] = update_filter(this->filter.yaw_rate_PD,this->setpointData.euler_ref[2]-this->imuData.euler[2]);
-		this->control.u_euler[2] = update_filter(this->filter.yaw_rate_PD,this->setpointData.yaw_rate_ref[0]-this->imuData.eulerRate[2]);
+		// this->control.u_euler[2] = update_filter(this->filters.yaw_rate_PD,this->setpointData.euler_ref[2]-this->imuData.euler[2]);
+		this->control.u_euler[2] = update_filter(this->filters.yaw_rate_PD,this->setpointData.yaw_rate_ref[0]-this->imuData.eulerRate[2]);
 		
 		/************************************************************************
 		*                   	Apply the Integrators                           *
@@ -156,7 +156,7 @@ int flyMS::flightCore()
 		/************************************************************************
 		*         		Check Output Ranges, if outside, adjust                 *
 		************************************************************************/
-		check_output_range(this->control.u);
+		this->check_output_range(this->control.u);
 		
 		/************************************************************************
 		*         				 Send Commands to ESCs 		                    *
@@ -174,18 +174,15 @@ int flyMS::flightCore()
 		/************************************************************************
 		*         		Check the kill Switch and Shutdown if set               *
 		************************************************************************/
-		if(this->setpointData.kill_switch[0] < .5) {
-			char errMsg[50];
-			sprintf(errMsg, "\nKill Switch Hit! Shutting Down\n");
-			printf("%s",errMsg);
-			// flyMS_Error_Log(errMsg);
+		if(this->setpointData.kill_switch[0] < .25 && !this->config.isDebugMode) {
+			this->loggingModule.flyMS_printf("\nKill Switch Hit! Shutting Down\n");
 			rc_set_state(EXITING);
 		}
 
 		//Print some stuff to the console in debug mode
 		if(this->config.isDebugMode)
 		{	
-			// this->flyMS_console_print(&flyMSData);
+			this->console_print();
 		}
 		/************************************************************************
 		*         		Check for GPS Data and Handle Accordingly               *
@@ -195,7 +192,7 @@ int flyMS::flightCore()
 		/************************************************************************
 		*         			Log Important Flight Data For Analysis              *
 		************************************************************************/
-		// log_data(&flyMSData);
+		this->loggingModule.writeToLog(&this->imuData, &this->control, &this->setpointData);
 
 		timeFinish = this->getTimeMicroseconds();
 		
@@ -221,42 +218,42 @@ uint64_t flyMS::getTimeMicroseconds()
 
 int flyMS::console_print()
 {
-	printf("\r ");
-//	printf("time %3.3f ", control->time);
-//	printf("Alt_ref %3.1f ",control->alt_ref);
-//	printf(" U1:  %2.2f ",control->u[0]);
-//	printf(" U2: %2.2f ",control->u[1]);
-//	printf(" U3:  %2.2f ",control->u[2]);
-//	printf(" U4: %2.2f ",control->u[3]);	
-//	printf(" Throt %2.2f ", control->throttle);
-//	printf("Aux %2.1f ", control->setpoint.Aux[0]);
-//	printf("function: %f",rc_get_dsm_ch_normalized(6));
-//	printf("num wraps %d ",control->num_wraps);
-	// printf(" Pitch_ref %2.2f ", control->setpoint.pitch_ref);
-	// printf(" Roll_ref %2.2f ", control->setpoint.roll_ref);
-	// printf(" Yaw_ref %2.2f ", control->setpoint.yaw_ref[0]);
-	printf(" Pitch %1.2f ", this->imuData.euler[0]);
-	printf(" Roll %1.2f ", this->imuData.euler[1]);
-	printf(" Yaw %2.3f ", this->imuData.euler[2]); 
-//	printf(" Mag X %4.2f",control->mag[0]);
-//	printf(" Mag Y %4.2f",control->mag[1]);
-//	printf(" Mag Z %4.2f",control->mag[2]);
-	// printf(" Accel X %4.2f",control->accel[0]);
-	// printf(" Accel Y %4.2f",control->accel[1]);
-	// printf(" Accel Z %4.2f",control->accel[2]);
-// 	printf(" Pos N %2.3f ", control->ekf_filter.output.ned_pos[0]); 
-//	printf(" Pos E %2.3f ", control->ekf_filter.output.ned_pos[1]); 
-//	printf(" Pos D %2.3f ", control->ekf_filter.output.ned_pos[2]); 
-	// printf(" DPitch %1.2f ", control->euler_rate[0]); 
-	// printf(" DRoll %1.2f ", control->euler_rate[1]);
-	// printf(" DYaw %2.3f ", control->euler_rate[2]); 	
-//	printf(" uyaw %2.3f ", control->upitch); 		
-//	printf(" uyaw %2.3f ", control->uroll); 		
-//	printf(" uyaw %2.3f ", control->uyaw);
-//	printf(" GPS pos lat: %2.2f", control->GPS_data.pos_lat);
-//	printf(" GPS pos lon: %2.2f", control->GPS_data.pos_lon);
-//	printf(" HDOP: %f", control->GPS_data.HDOP);
-//	printf("Baro Alt: %f ",control->baro_alt);
+	this->loggingModule.flyMS_printf("\r ");
+//	this->loggingModule.flyMS_printf("time %3.3f ", control->time);
+//	this->loggingModule.flyMS_printf("Alt_ref %3.1f ",control->alt_ref);
+//	this->loggingModule.flyMS_printf(" U1:  %2.2f ",control->u[0]);
+//	this->loggingModule.flyMS_printf(" U2: %2.2f ",control->u[1]);
+//	this->loggingModule.flyMS_printf(" U3:  %2.2f ",control->u[2]);
+//	this->loggingModule.flyMS_printf(" U4: %2.2f ",control->u[3]);	
+//	this->loggingModule.flyMS_printf(" Throt %2.2f ", control->throttle);
+//	this->loggingModule.flyMS_printf("Aux %2.1f ", control->setpoint.Aux[0]);
+//	this->loggingModule.flyMS_printf("function: %f",rc_get_dsm_ch_normalized(6));
+//	this->loggingModule.flyMS_printf("num wraps %d ",control->num_wraps);
+	// this->loggingModule.flyMS_printf(" Pitch_ref %2.2f ", control->setpoint.pitch_ref);
+	// this->loggingModule.flyMS_printf(" Roll_ref %2.2f ", control->setpoint.roll_ref);
+	// this->loggingModule.flyMS_printf(" Yaw_ref %2.2f ", control->setpoint.yaw_ref[0]);
+	this->loggingModule.flyMS_printf(" Pitch %1.2f ", this->imuData.euler[0]);
+	this->loggingModule.flyMS_printf(" Roll %1.2f ", this->imuData.euler[1]);
+	this->loggingModule.flyMS_printf(" Yaw %2.3f ", this->imuData.euler[2]); 
+//	this->loggingModule.flyMS_printf(" Mag X %4.2f",control->mag[0]);
+//	this->loggingModule.flyMS_printf(" Mag Y %4.2f",control->mag[1]);
+//	this->loggingModule.flyMS_printf(" Mag Z %4.2f",control->mag[2]);
+	// this->loggingModule.flyMS_printf(" Accel X %4.2f",control->accel[0]);
+	// this->loggingModule.flyMS_printf(" Accel Y %4.2f",control->accel[1]);
+	// this->loggingModule.flyMS_printf(" Accel Z %4.2f",control->accel[2]);
+// 	this->loggingModule.flyMS_printf(" Pos N %2.3f ", control->ekf_filter.output.ned_pos[0]); 
+//	this->loggingModule.flyMS_printf(" Pos E %2.3f ", control->ekf_filter.output.ned_pos[1]); 
+//	this->loggingModule.flyMS_printf(" Pos D %2.3f ", control->ekf_filter.output.ned_pos[2]); 
+	// this->loggingModule.flyMS_printf(" DPitch %1.2f ", control->euler_rate[0]); 
+	// this->loggingModule.flyMS_printf(" DRoll %1.2f ", control->euler_rate[1]);
+	// this->loggingModule.flyMS_printf(" DYaw %2.3f ", control->euler_rate[2]); 	
+//	this->loggingModule.flyMS_printf(" uyaw %2.3f ", control->upitch); 		
+//	this->loggingModule.flyMS_printf(" uyaw %2.3f ", control->uroll); 		
+//	this->loggingModule.flyMS_printf(" uyaw %2.3f ", control->uyaw);
+//	this->loggingModule.flyMS_printf(" GPS pos lat: %2.2f", control->GPS_data.pos_lat);
+//	this->loggingModule.flyMS_printf(" GPS pos lon: %2.2f", control->GPS_data.pos_lon);
+//	this->loggingModule.flyMS_printf(" HDOP: %f", control->GPS_data.HDOP);
+//	this->loggingModule.flyMS_printf("Baro Alt: %f ",control->baro_alt);
 	fflush(stdout);
 	return 0;
 }

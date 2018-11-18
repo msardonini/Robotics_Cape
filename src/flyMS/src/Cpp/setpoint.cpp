@@ -8,18 +8,20 @@
 
 #include "setpoint.hpp"
 
-setpoint::setpoint() {}
-
-setpoint::setpoint(config_t _config) : 
-	config(_config)
-
+setpoint::setpoint(config_t _config, logger& _loggingModule) :
+	isInitializing(true),
+	isReadyToParse(false),
+	isReadyToSend(false),
+	setpoint_type(RC_DIRECT),
+	config(_config),
+	loggingModule(_loggingModule)
 {
 }
 
 setpoint::~setpoint()
 {
-		printf("setpoint Destructor\n");
-	this->setpointThread.join();
+	if(this->setpointThread.joinable())
+		this->setpointThread.join();
 }
 
 int setpoint::start()
@@ -29,11 +31,19 @@ int setpoint::start()
 	return ret;
 }
 
-void setpoint::getSetpointData(setpoint_t* _setpoint)
+//Gets the data from the local thread. Returns zero if no new data is available
+bool setpoint::getSetpointData(setpoint_t* _setpoint)
 {
-	this->setpointMutex.lock();
-	memcpy(_setpoint, &this->setpointData, sizeof(setpoint_t));
-	this->setpointMutex.unlock();
+	if(this->isReadyToSend)
+	{
+		this->setpointMutex.lock();
+		memcpy(_setpoint, &this->setpointData, sizeof(setpoint_t));
+		this->isReadyToSend = false;
+		this->setpointMutex.unlock();
+		return true;
+	}
+	else
+		return false;
 }
 
 /*
@@ -47,7 +57,6 @@ void setpoint::getSetpointData(setpoint_t* _setpoint)
 
 int setpoint::setpointManager()
 {
-	enum reference_mode_t setpoint_type = RC_DIRECT;
 
 	while (rc_get_state()!= EXITING)
 	{
@@ -57,8 +66,8 @@ int setpoint::setpointManager()
 		**********************************************************/
 		if (rc_dsm_is_new_data())
 		{
-			copy_dsm2_data();
-			new_dsm_data = 1;
+			this->copy_dsm2_data();
+			this->isReadyToParse = true;
 			dsm2_timeout = 0;
 		}
 		else
@@ -66,9 +75,8 @@ int setpoint::setpointManager()
 			if(!this->config.isDebugMode)
 			{
 				//check to make sure too much time hasn't gone by since hearing the RC
-				rc_err_handler(setpoint_type);
+				this->rc_err_handler(setpoint_type);
 			}
-			new_dsm_data = 0;
 		}
 
 		switch (setpoint_type)
@@ -79,13 +87,15 @@ int setpoint::setpointManager()
 			case RC_NAVIGATION:
 
 			break;
+			case RC_INITIALIZATION:
+
+			break;
 			default:
-				printf("Error, invalid reference mode! \n");
+				this->loggingModule.flyMS_printf("Error, invalid reference mode! \n");
 		}
 
 		usleep(DT_US); //Run at the control frequency
 	}
-	printf("(exiting the setpoint thread!)\n" );
 	return 0;
 }
 
@@ -97,7 +107,7 @@ int setpoint::handle_rc_data_direct()
 	/**********************************************************
 	*           Read the RC Controller for Commands           *
 	**********************************************************/
-	if(new_dsm_data)
+	if(this->isReadyToParse)
 	{
 		//Set roll reference value
 		//DSM2 Receiver is inherently positive to the left
@@ -142,11 +152,15 @@ int setpoint::handle_rc_data_direct()
 				(MAX_THROTTLE-MIN_THROTTLE)+MIN_THROTTLE;
 		//Keep the aircraft at a constant height while making manuevers 
 		// this->setpointData.throttle *= 1/(cos(this->state.euler[1])*cos(this->state.euler[0]));
-	}
 
-	//Finally Update the integrator on the yaw reference value
-	this->setpointData.euler_ref[2]=this->setpointData.euler_ref[2] + 
-									(this->setpointData.yaw_rate_ref[0]+this->setpointData.yaw_rate_ref[1])*DT/2;
+		//Finally Update the integrator on the yaw reference value
+		this->setpointData.euler_ref[2]=this->setpointData.euler_ref[2] + 
+										(this->setpointData.yaw_rate_ref[0]+this->setpointData.yaw_rate_ref[1])*DT/2;
+
+		this->isReadyToParse = false;
+		this->isReadyToSend = true;
+
+	}
 	this->setpointMutex.unlock();
 
 	return 0;
@@ -164,15 +178,21 @@ int setpoint::copy_dsm2_data()
 
 int setpoint::rc_err_handler(reference_mode_t setpoint_type)
 {
-	dsm2_timeout++;
-	if(dsm2_timeout>1.5/DT) //If packet hasn't been received for 1.5 seconds
-	{ 
-		char errMsg[100];
-		sprintf(errMsg,"\nLost Connection with Remote!! Shutting Down Immediately \n");	
-		printf("%s",errMsg);
-		//TODO: add error message to the error log
-		// flyMS_Error_Log(errMsg);
+	//If we are in the initializing stage don't bother shutting down the program
+	if (this->isInitializing)
+		return 0;
+
+	this->dsm2_timeout++;
+	if(this->dsm2_timeout>1.5/DT) //If packet hasn't been received for 1.5 seconds
+	{
+		this->loggingModule.flyMS_printf("\nLost Connection with Remote!! Shutting Down Immediately \n");
 		rc_set_state(EXITING);
+		return -1;
 	}
 	return 0;
+}
+
+void setpoint::setInitializationFlag(bool flag)
+{
+	this->isInitializing = flag;
 }
