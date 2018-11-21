@@ -1,0 +1,12 @@
+[Unit]
+Description=flyMS
+After=network.target robotcontrol.service pruHandler.service
+
+[Service]
+User=root
+Restart=always
+PIDFile=/var/run/flyMS.pid
+ExecStart=/usr/bin/flyMS_C++
+
+[Install]
+WantedBy=multi-user.target

@@ -1,9 +1,11 @@
 #!/bin/sh
 
 
-cp start_flyMS.service /lib/systemd/system/
+sudo cp flyMS.service /lib/systemd/system/
+sudo cp pruHandler.service /lib/systemd/system/
 
-systemctl daemon-reload
-systemctl enable start_flyMS
+sudo systemctl daemon-reload
+sudo systemctl enable flyMS
+sudo systemctl enable pruHandler
 
 

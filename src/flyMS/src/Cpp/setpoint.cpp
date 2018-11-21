@@ -79,6 +79,7 @@ int setpoint::setpointManager()
 			}
 		}
 
+		this->setpointMutex.lock();
 		switch (setpoint_type)
 		{
 			case RC_DIRECT:
@@ -93,7 +94,7 @@ int setpoint::setpointManager()
 			default:
 				this->loggingModule.flyMS_printf("Error, invalid reference mode! \n");
 		}
-
+		this->setpointMutex.unlock();
 		usleep(DT_US); //Run at the control frequency
 	}
 	return 0;
@@ -102,7 +103,7 @@ int setpoint::setpointManager()
 	
 int setpoint::handle_rc_data_direct()
 {
-	this->setpointMutex.lock();
+	
 
 	/**********************************************************
 	*           Read the RC Controller for Commands           *
@@ -140,7 +141,7 @@ int setpoint::handle_rc_data_direct()
 
 		//Kill Switch
 		this->setpointData.kill_switch[1] = this->setpointData.kill_switch[0];
-		this->setpointData.kill_switch[0]=dsm2_data[4]/2;
+		this->setpointData.kill_switch[0]=dsm2_data[4];
 		
 		//Auxillary Switch
 		this->setpointData.Aux[1] = this->setpointData.Aux[0];
@@ -148,8 +149,8 @@ int setpoint::handle_rc_data_direct()
 		
 		//Set the throttle
 		//TODO: make these values configuarable
-		this->setpointData.throttle=(dsm2_data[0]+1)* 0.5f *
-				(MAX_THROTTLE-MIN_THROTTLE)+MIN_THROTTLE;
+		this->setpointData.throttle=(dsm2_data[0]) *
+				(MAX_THROTTLE-MIN_THROTTLE) + MIN_THROTTLE;
 		//Keep the aircraft at a constant height while making manuevers 
 		// this->setpointData.throttle *= 1/(cos(this->state.euler[1])*cos(this->state.euler[0]));
 
@@ -161,7 +162,7 @@ int setpoint::handle_rc_data_direct()
 		this->isReadyToSend = true;
 
 	}
-	this->setpointMutex.unlock();
+	
 
 	return 0;
 }

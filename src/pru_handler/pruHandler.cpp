@@ -27,6 +27,9 @@ pruHandler::~pruHandler()
     close(connfd);
 	remove(PID_FILE_PRU);
 	this->logFid.close();
+
+	if(this->pruHandlerThread.joinable())
+		this->pruHandlerThread.join();
 }
 
 int pruHandler::init_pru_handler()
@@ -46,12 +49,9 @@ int pruHandler::init_pru_handler()
 	
 	this->pruState = PRURUNNING;
 
+	this->pruHandlerThread = std::thread(&pruHandler::run, this);
 	return 0;
 }
-
-
-
-
 
 
 int pruHandler::checkForCompetingProcess()
@@ -207,6 +207,7 @@ int pruHandler::run()
 		{
 			//#ifdef DEBUG
 			//printf("Timeout detected!! \n");
+			this->logFid<< "Timeout Detected!" << std::endl;
 			//#endif
 			for (i = 0; i < PRU_NUM_CHANNELS; i++)
 				rc_servo_send_esc_pulse_normalized(i+1, 0.0);
@@ -231,9 +232,7 @@ int pruHandler::run()
 					&&	this->rcvBuff[9] == 'n')
 				{
 					close(this->connfd);
-					#ifdef DEBUG
-					printf("Closing session! \n");
-					#endif
+					this->logFid<< "Closing Session!" << std::endl;
 					goto start_over;
 				}
 				else

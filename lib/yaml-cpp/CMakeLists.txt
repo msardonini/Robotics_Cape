@@ -391,4 +391,6 @@ install(TARGETS yaml-cpp DESTINATION ${INSTALL_DIR}/lib)
 # Install headers 
 install(DIRECTORY ${YAML_CPP_ROOT}/include DESTINATION ${INSTALL_DIR} FILES_MATCHING PATTERN "*.h")
 
-
+install(TARGETS yaml-cpp
+	DESTINATION /usr/lib
+	)

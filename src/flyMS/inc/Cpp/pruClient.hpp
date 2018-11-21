@@ -68,7 +68,7 @@ private:
 	std::thread pruSenderThread;
 	std::mutex pruSenderMutex;
 	//Data we send over the network interface
-	uint8_t send_flag;
+	bool send_flag;
 	std::vector<float> u;
 
 	//Socket variables

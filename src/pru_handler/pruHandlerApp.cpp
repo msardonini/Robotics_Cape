@@ -13,10 +13,13 @@
 #include "pruHandler.hpp"
 
 pruHandler handler;
+bool isRunning = true;
+
 
 void onSignalReceived(int signo)
 {
 	handler.shutdownPruHandler(signo);
+	isRunning = false;
 }
 
 
@@ -30,12 +33,24 @@ void initSignalHandler()
 
 int main(int argc, char* argv[])
 {
-
+	int count = 0;
+	while( count < 60)
+	{
+		if(access("/sys/class/remoteproc/remoteproc1/state", F_OK ) != 0)
+		{
+			printf("ERROR:  pru-rproc driver not loaded\n");
+		} 
+		else break;
+		
+		sleep(1);
+		count++;
+	}
+	
 	initSignalHandler();
 
 	handler.init_pru_handler();
 
-	while(1)
+	while(isRunning)
 	{
 		sleep(1);
 	}

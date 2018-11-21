@@ -16,7 +16,6 @@
 #define INTERNAL_FILTER	BMP_FILTER_8
 #define BMP_CHECK_HZ	1
 #define MICROTESLA_TO_GAUSS 0.01f
-#define DT_US 5000
 #define R2D_IMU 57.2958
 #define D2R_IMU	0.01744f
 

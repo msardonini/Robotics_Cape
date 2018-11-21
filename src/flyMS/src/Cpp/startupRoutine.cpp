@@ -29,6 +29,9 @@ int flyMS::startupRoutine()
 	//Initialize the IMU Hardware
 	this->imuModule.initializeImu();
 
+	//Initialize the client to connect to the PRU handler
+	this->pruClientSender.startPruClient();
+
 	//Initialize the logger
 	this->loggingModule.createLogFiles();
 
@@ -80,7 +83,6 @@ int flyMS::readyCheck(){
 			}
 			val[1]=this->setpointData.kill_switch[1];
 			val[0]=this->setpointData.kill_switch[0];
-			std::cout <<  "val0 " << val[0] << " val1 " << val[1] << " count " << count << std::endl;
 		
 			if(val[0] < 0.25 && val[1] > 0.25)
 				count++;

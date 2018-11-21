@@ -47,12 +47,15 @@ int flyMS::flightCore()
 		*			Grab the time for Periphal Apps and Logs 			  *
 		******************************************************************/
 		timeStart = this->getTimeMicroseconds();
+		// printf("time diff start %" PRIu64 "\n", (this->getTimeMicroseconds() - timeStart));
 		
 		/******************************************************************
 		*			Read, Parse, and Translate IMU data for Flight		  *
 		******************************************************************/
 		this->imuModule.update();
 		this->imuModule.getImuData(&this->imuData);
+
+		// printf("time diff imu %" PRIu64 "\n", (this->getTimeMicroseconds() - timeStart));
 
 		/******************************************************************
 		*				Take Care of Some Initialization Tasks			  *
@@ -63,6 +66,11 @@ int flyMS::flightCore()
 			this->setpointData.yaw_ref_offset = this->imuData.euler[2];
 			this->firstIteration=false;
 		}
+
+		/************************************************************************
+		*                       	Get Setpoint Data                           *
+		************************************************************************/
+		this->setpointModule.getSetpointData(&this->setpointData);
 
 		/************************************************************************
 		*                   	Throttle Controller                             *
@@ -158,6 +166,7 @@ int flyMS::flightCore()
 		************************************************************************/
 		this->check_output_range(this->control.u);
 		
+		// printf("time diff control %" PRIu64 "\n", (this->getTimeMicroseconds() - timeStart));
 		/************************************************************************
 		*         				 Send Commands to ESCs 		                    *
 		************************************************************************/
@@ -174,7 +183,7 @@ int flyMS::flightCore()
 		/************************************************************************
 		*         		Check the kill Switch and Shutdown if set               *
 		************************************************************************/
-		if(this->setpointData.kill_switch[0] < .25 && !this->config.isDebugMode) {
+		if(this->setpointData.kill_switch[0] < 0.5 && !this->config.isDebugMode) {
 			this->loggingModule.flyMS_printf("\nKill Switch Hit! Shutting Down\n");
 			rc_set_state(EXITING);
 		}
@@ -182,25 +191,28 @@ int flyMS::flightCore()
 		//Print some stuff to the console in debug mode
 		if(this->config.isDebugMode)
 		{	
-			this->console_print();
+			// this->console_print();
 		}
 		/************************************************************************
 		*         		Check for GPS Data and Handle Accordingly               *
 		************************************************************************/
 		this->gpsModule.getGpsData(&this->gpsData);
 
+		// printf("time diff GPS %" PRIu64 "\n", (this->getTimeMicroseconds() - timeStart));
 		/************************************************************************
 		*         			Log Important Flight Data For Analysis              *
 		************************************************************************/
 		this->loggingModule.writeToLog(&this->imuData, &this->control, &this->setpointData);
 
 		timeFinish = this->getTimeMicroseconds();
+		// printf("time diff finish %" PRIu64 "\n", (this->getTimeMicroseconds() - timeStart));
 		
 		// if (timeFinish - timeStart > 1E5) flyMS_Error_Log("Error timeout detected! Control Loop backed up\n");
 		uint64_t sleep_time = DT_US - (timeFinish - timeStart);
 
 		//Check to make sure the elapsed time wasn't greater than time allowed. If so don't sleep at all
 		if (sleep_time < DT_US)	rc_usleep(sleep_time);
+		else this->loggingModule.flyMS_printf("[flyMS] Error! Control thread too slow!\n");
 
 	}
 	return 0;
@@ -212,7 +224,7 @@ uint64_t flyMS::getTimeMicroseconds()
 {
 	struct timespec tv;
 	clock_gettime(CLOCK_MONOTONIC, &tv);
-	return tv.tv_sec*(uint64_t)1E6 + tv.tv_nsec/(uint64_t)1E3;
+	return (uint64_t)tv.tv_sec*1E6 + (uint64_t)tv.tv_nsec/1E3;
 }
 
 
@@ -225,16 +237,16 @@ int flyMS::console_print()
 //	this->loggingModule.flyMS_printf(" U2: %2.2f ",control->u[1]);
 //	this->loggingModule.flyMS_printf(" U3:  %2.2f ",control->u[2]);
 //	this->loggingModule.flyMS_printf(" U4: %2.2f ",control->u[3]);	
-//	this->loggingModule.flyMS_printf(" Throt %2.2f ", control->throttle);
 //	this->loggingModule.flyMS_printf("Aux %2.1f ", control->setpoint.Aux[0]);
 //	this->loggingModule.flyMS_printf("function: %f",rc_get_dsm_ch_normalized(6));
 //	this->loggingModule.flyMS_printf("num wraps %d ",control->num_wraps);
-	// this->loggingModule.flyMS_printf(" Pitch_ref %2.2f ", control->setpoint.pitch_ref);
-	// this->loggingModule.flyMS_printf(" Roll_ref %2.2f ", control->setpoint.roll_ref);
-	// this->loggingModule.flyMS_printf(" Yaw_ref %2.2f ", control->setpoint.yaw_ref[0]);
-	this->loggingModule.flyMS_printf(" Pitch %1.2f ", this->imuData.euler[0]);
-	this->loggingModule.flyMS_printf(" Roll %1.2f ", this->imuData.euler[1]);
-	this->loggingModule.flyMS_printf(" Yaw %2.3f ", this->imuData.euler[2]); 
+	this->loggingModule.flyMS_printf(" Throt %2.2f ", this->setpointData.throttle);
+	this->loggingModule.flyMS_printf(" Pitch_ref %2.2f ", this->setpointData.euler_ref[0]);
+	this->loggingModule.flyMS_printf(" Roll_ref %2.2f ", this->setpointData.euler_ref[1]);
+	this->loggingModule.flyMS_printf(" Yaw_ref %2.2f ", this->setpointData.euler_ref[2]);
+	// this->loggingModule.flyMS_printf(" Pitch %1.2f ", this->imuData.euler[0]);
+	// this->loggingModule.flyMS_printf(" Roll %1.2f ", this->imuData.euler[1]);
+	// this->loggingModule.flyMS_printf(" Yaw %2.3f ", this->imuData.euler[2]); 
 //	this->loggingModule.flyMS_printf(" Mag X %4.2f",control->mag[0]);
 //	this->loggingModule.flyMS_printf(" Mag Y %4.2f",control->mag[1]);
 //	this->loggingModule.flyMS_printf(" Mag Z %4.2f",control->mag[2]);

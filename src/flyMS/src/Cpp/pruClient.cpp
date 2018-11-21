@@ -73,9 +73,11 @@ int pruClient::setSendData(std::vector<float> _u)
 	this->pruSenderMutex.lock();
 
 	if(_u.size() != NUM_CHANNELS)
-		std::cout<<"Error in pruHandler! Wrong number of channels given" << std::endl;
+		std::cout<<"[pruClient]! Wrong number of channels given" << std::endl;
 	//Set the values
 	this->u = _u;
+
+	this->send_flag = true;
 
 	//Give shared memory access back
 	this->pruSenderMutex.unlock();
@@ -113,7 +115,7 @@ int pruClient::pruSender(){
 			}
 			//Send the data			
 			write(this->sockfd, this->sendBuff, sizeof(this->sendBuff)-1);
-			this->send_flag = 0;
+			this->send_flag = false;
 		}
 
 		//Give shared memory access back

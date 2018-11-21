@@ -13,7 +13,7 @@
 #define MIN_THROTTLE 0.3
 #define MAX_THROTTLE 0.75
 #define MAX_YAW_COMPONENT 0.25
-#define DT_US 5000
+
 
 //System Includes
 #include <iostream>
@@ -34,7 +34,6 @@
 #include "pruClient.hpp"
 #include "setpoint.hpp"
 #include "ekf.hpp"
-
 
 
 

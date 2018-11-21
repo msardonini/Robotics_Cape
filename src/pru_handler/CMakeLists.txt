@@ -12,3 +12,7 @@ target_link_libraries(pruHandler robotics_cape pthread)
 # target_link_libraries(pru_handler m)
 # target_link_libraries(pru_handler pthread)
 
+install(TARGETS pruHandler
+	DESTINATION /usr/bin/
+	)
+

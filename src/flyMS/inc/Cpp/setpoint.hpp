@@ -33,8 +33,6 @@
 #include "config.hpp"
 #include "logger.hpp"
 
-#define DT 0.005
-#define DT_US 5000
 #define MAX_DSM2_CHANNELS 8
 #define MAX_PITCH_RANGE 0.666 // in radians
 #define MAX_ROLL_RANGE 0.666 // in radians

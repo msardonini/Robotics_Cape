@@ -148,15 +148,15 @@ int imu::update()
 void imu::read_transform_imu()
 {
 
-	if(rc_mpu_read_accel(&this->imu_data) < 0){
-		this->loggingModule.flyMS_printf("read accel data failed\n");
-	}
+	// if(rc_mpu_read_accel(&this->imu_data) < 0){
+	// 	this->loggingModule.flyMS_printf("read accel data failed\n");
+	// }
 	if(rc_mpu_read_gyro(&this->imu_data)<0){
 		this->loggingModule.flyMS_printf("read gyro data failed\n");
 	}
-	if(rc_mpu_read_mag(&this->imu_data)){
-			this->loggingModule.flyMS_printf("read mag data failed\n");
-		}
+	// if(rc_mpu_read_mag(&this->imu_data)){
+	// 		this->loggingModule.flyMS_printf("read mag data failed\n");
+	// 	}
 
 	/**********************************************************
 	*		Perform the Coordinate System Transformation	  *

@@ -9,6 +9,8 @@
 #ifndef COMMON_H
 #define COMMON_H
 
+#define DT_US 10000
+#define DT 0.01
 
 #include "filter.h"
 #include "Eigen/Dense"

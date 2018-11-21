@@ -10,6 +10,7 @@
 
 
 //System Includes
+#include <thread>
 #include <fcntl.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
@@ -73,6 +74,8 @@ private:
 
 	//State of the Program
 	pru_state_t pruState;
+
+	std::thread pruHandlerThread;
 
 	int listenfd;
 	int connfd;

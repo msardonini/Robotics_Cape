@@ -75,3 +75,7 @@ target_link_libraries(flyMS_C++
 	filter
 	Fusion
 	yaml-cpp)
+
+install(TARGETS flyMS_C++
+	DESTINATION /usr/bin/
+	)

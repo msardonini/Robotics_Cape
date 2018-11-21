@@ -8,7 +8,6 @@
 #ifndef EKF_HPP
 #define EKF_HPP
 
-#define DT 0.005
 
 //System includes	
 #include <stdio.h>
@@ -29,6 +28,7 @@
 
 //Ours
 #include "ekf.h"
+#include "common.hpp"
 
 
 
