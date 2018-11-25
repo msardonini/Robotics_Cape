@@ -138,6 +138,8 @@ int logger::writeToLog(state_t *bodyState, controller_t *controller, setpoint_t 
     this->pitch_ref = setpoint->euler_ref[1];
     this->yaw_ref = setpoint->euler_ref[2];
     this->Aux = setpoint->Aux[0];
+    this->droll_setpoint = setpoint->droll_setpoint;
+    this->dpitch_setpoint = setpoint->dpitch_setpoint;
 
 
 

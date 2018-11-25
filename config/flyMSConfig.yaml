@@ -26,9 +26,9 @@ flyMSParams:
     Dpitch_KI: 0.500000
     Dpitch_KD: 0.001200
     max_pitch_setpoint: 0.400000
-    yaw_KP: 0.500000
+    yaw_KP: 0.0800000
     yaw_KI: 0.050000
-    yaw_KD: 0.050000
+    yaw_KD: 0.001000
     max_yaw_rate: 3.000000
     idle_speed: 0.300000
     min_throttle: 0.300000

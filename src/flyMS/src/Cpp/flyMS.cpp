@@ -117,31 +117,31 @@ int flyMS::flightCore()
 		*                   	Apply the Integrators                           *
 		************************************************************************/	
 			
-		if(this->setpointData.throttle<MIN_THROTTLE+.01){	
-			this->integrator_reset++;
-			this->integrator_start=0;
-		}else{
-			this->integrator_reset=0;
-			this->integrator_start++;
-		}
+		// if(this->setpointData.throttle<MIN_THROTTLE+.01){	
+		// 	this->integrator_reset++;
+		// 	this->integrator_start=0;
+		// }else{
+		// 	this->integrator_reset=0;
+		// 	this->integrator_start++;
+		// }
 		
-		if(this->integrator_reset==300){// if landed, reset integrators and Yaw error
-			this->setpointData.euler_ref[2]=this->imuData.euler[2];
-			this->control.droll_err_integrator=0; 
-			this->control.dpitch_err_integrator=0;
-			this->control.dyaw_err_integrator=0;
-		}
+		// if(this->integrator_reset==300){// if landed, reset integrators and Yaw error
+		// 	this->setpointData.euler_ref[2]=this->imuData.euler[2];
+		// 	this->control.droll_err_integrator=0; 
+		// 	this->control.dpitch_err_integrator=0;
+		// 	this->control.dyaw_err_integrator=0;
+		// }
 			
-		//only use integrators if airborne (above minimum throttle for > 1.5 seconds)
-		if(this->integrator_start >  400){
-			this->control.dpitch_err_integrator += this->control.u_euler[0] * DT;
-			this->control.droll_err_integrator  += this->control.u_euler[1] * DT;
-			this->control.dyaw_err_integrator += this->control.u_euler[2] * DT;		
+		// //only use integrators if airborne (above minimum throttle for > 1.5 seconds)
+		// if(this->integrator_start >  400){
+		// 	this->control.dpitch_err_integrator += this->control.u_euler[0] * DT;
+		// 	this->control.droll_err_integrator  += this->control.u_euler[1] * DT;
+		// 	this->control.dyaw_err_integrator += this->control.u_euler[2] * DT;		
 			
-			this->control.u_euler[0] += this->config.Dpitch_KI * this->control.dpitch_err_integrator;
-			this->control.u_euler[1] += this->config.Droll_KI * this->control.droll_err_integrator;
-			this->control.u_euler[2] += this->config.yaw_KI * this->control.dyaw_err_integrator;
-		}
+		// 	this->control.u_euler[0] += this->config.Dpitch_KI * this->control.dpitch_err_integrator;
+		// 	this->control.u_euler[1] += this->config.Droll_KI * this->control.droll_err_integrator;
+		// 	this->control.u_euler[2] += this->config.yaw_KI * this->control.dyaw_err_integrator;
+		// }
 		
 		//Apply a saturation filter
 		this->control.u_euler[2] = saturateFilter(this->control.u_euler[2],-MAX_YAW_COMPONENT,MAX_YAW_COMPONENT);
