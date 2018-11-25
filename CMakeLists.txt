@@ -25,6 +25,7 @@ endif()
 
 #Build the robotics cape library
 add_subdirectory(lib/librobotcontrol)
+include_directories(lib/librobotcontrol/library/include)
 
 # #Build the Yaml-Cpp config file parser
 add_subdirectory(lib/yaml-cpp)

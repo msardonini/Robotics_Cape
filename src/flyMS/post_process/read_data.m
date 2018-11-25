@@ -1,10 +1,12 @@
-%  close all;
+ close all;
 clear all; 
 clc;
  
-filename = uigetdir('../../../flight_logs/','pick a run for plotting');
+% filename = uigetdir('../../../flight_logs/','pick a run for plotting');
+filename = uigetdir('./','pick a run for plotting');
 
-nohup=csvread([filename '/logger.csv'],1,0);
+
+nohup=csvread([filename '/logger.txt'],1,0);
 
 % nohup(1,:) = []; % discard first log
 
@@ -59,6 +61,9 @@ mag(:,1) = nohup(:,37);
 mag(:,2) = nohup(:,38);
 mag(:,3) = nohup(:,39);
 
+
+droll_setpoint = nohup(:,40);
+dpitch_setpoint = nohup(:,41);
 
 try
     nohup2=dlmread([filename '/GPS_logger.csv'],',',1,0);
@@ -138,10 +143,10 @@ legend('Pitch Ref','Roll Ref','Yaw Ref')
 figure
 hold on
 % plot(time,throttle1)
+plot(time,uyaw,'r','Linewidth',2)
 plot(time,upitch,'k')
 plot(time,uroll,'c')
-plot(time,uyaw,'r','Linewidth',2)
-legend('uPitch','uRoll','uYaw')
+legend('uYaw','uPitch','uRoll')
 
 
 figure
@@ -154,28 +159,39 @@ hold on
 plot(time,pitch)
 plot(time,pitch_ref)
 plot(time,upitch)
-legend('pitch','ref','upitch')
-
-figure
-plot(time,baro_alt)
-title('Barometer Altitude')
+plot(time,d_pitch)
+legend('pitch','ref','upitch', 'pitch vel')
 
 
 figure
 hold on
-plot(time,accel(:,1))
-plot(time,accel(:,2))
-plot(time,accel(:,3))
-title('Acceleration')
-legend('x','y','z')
+plot(pitch)
+plot(pitch_ref)
+plot(upitch)
+plot(d_pitch/15)
+plot(dpitch_setpoint)
+legend('pitch','ref','upitch', 'pitch vel','dpitch_setpoint')
 
-figure
-hold on
-plot(time,mag(:,1))
-plot(time,mag(:,2))
-plot(time,mag(:,3))
-legend('Mag1','Mag2','Mag3')
-title('Raw Magnetometer Data')
+% figure
+% plot(time,baro_alt)
+% title('Barometer Altitude')
+% 
+% 
+% figure
+% hold on
+% plot(time,accel(:,1))
+% plot(time,accel(:,2))
+% plot(time,accel(:,3))
+% title('Acceleration')
+% legend('x','y','z')
+% 
+% figure
+% hold on
+% plot(time,mag(:,1))
+% plot(time,mag(:,2))
+% plot(time,mag(:,3))
+% legend('Mag1','Mag2','Mag3')
+% title('Raw Magnetometer Data')
 
 if plot_gps
 

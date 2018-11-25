@@ -15,6 +15,7 @@
 #include <iostream>
 #include <sys/stat.h>
 #include <stdarg.h>
+#include <unistd.h>
 
 //Package Includes
 

@@ -20,8 +20,9 @@
 #include <time.h>
 #include <stdint.h>
 
-#include<thread>
-#include<mutex>
+#include <atomic>
+#include <thread>
+#include <mutex>
 
 
 //Package includes
@@ -77,13 +78,13 @@ private:
 	bool isInitializing;
 	enum reference_mode_t setpoint_type;
 	bool isReadyToParse;
-	bool isReadyToSend;
+	std::atomic <bool> isReadyToSend;
 	float dsm2_data[MAX_DSM2_CHANNELS];
 	int dsm2_timeout;
 
 	//Variables to control multithreading
 	std::thread setpointThread;
-	std::mutex setpointMutex;
+	std::timed_mutex setpointMutex;
 
 	//All relevant setpoint data goes here
 	setpoint_t setpointData;

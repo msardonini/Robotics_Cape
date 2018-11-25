@@ -71,7 +71,7 @@ target_link_libraries(flyMS_C++
 	rt
 	ecl
 	pthread
-	roboticscape
+	robotics_cape
 	filter
 	Fusion
 	yaml-cpp)

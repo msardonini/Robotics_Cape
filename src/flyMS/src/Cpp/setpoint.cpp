@@ -34,13 +34,15 @@ int setpoint::start()
 //Gets the data from the local thread. Returns zero if no new data is available
 bool setpoint::getSetpointData(setpoint_t* _setpoint)
 {
-	if(this->isReadyToSend)
+	if(this->isReadyToSend.load())
 	{
-		this->setpointMutex.lock();
-		memcpy(_setpoint, &this->setpointData, sizeof(setpoint_t));
-		this->isReadyToSend = false;
-		this->setpointMutex.unlock();
-		return true;
+		if(this->setpointMutex.try_lock_for(std::chrono::milliseconds(5)))
+		{
+			memcpy(_setpoint, &this->setpointData, sizeof(setpoint_t));
+			this->isReadyToSend.store(false);
+			this->setpointMutex.unlock();
+			return true;
+		}
 	}
 	else
 		return false;
@@ -159,7 +161,7 @@ int setpoint::handle_rc_data_direct()
 										(this->setpointData.yaw_rate_ref[0]+this->setpointData.yaw_rate_ref[1])*DT/2;
 
 		this->isReadyToParse = false;
-		this->isReadyToSend = true;
+		this->isReadyToSend.store(true);
 
 	}
 	
