@@ -32,9 +32,6 @@ int flyMS::startupRoutine()
 	//Initialize the client to connect to the PRU handler
 	this->pruClientSender.startPruClient();
 
-	//Initialize the logger
-	this->loggingModule.createLogFiles();
-
 	//Start the flight program
 	this->flightcoreThread = std::thread(&flyMS::flightCore, this);
 

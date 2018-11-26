@@ -17,6 +17,9 @@ logger::logger()
 
     if(isatty(fileno(stdout)))
         this->isRunningConsole = true;
+
+    //Initialize the logger
+    this->createLogFiles();    
 }
 
 

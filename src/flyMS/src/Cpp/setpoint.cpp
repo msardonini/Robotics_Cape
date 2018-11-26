@@ -44,8 +44,7 @@ bool setpoint::getSetpointData(setpoint_t* _setpoint)
 			return true;
 		}
 	}
-	else
-		return false;
+	return false;
 }
 
 /*

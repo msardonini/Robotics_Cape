@@ -98,31 +98,28 @@ gps::gps(config_t _config, logger& _loggingModule) :
 	if (select(this->serialFd + 1, &read_fds2, &write_fds2, &except_fds2, &timeout2) == 1)
 	{
 		this->loggingModule.flyMS_printf("GPS init successful\n");
+		write(this->serialFd,"$PTNLSNM,0005,01*52\r\n",21); //NMEA message to output GGA  & VTG only
+		usleep(50000);
+		//res = read(this->serialFd, buf, 255);
+	    //buf[res] = 0;  		
+		//this->loggingModule.flyMS_printf("%s", buf);
+		
+		write(this->serialFd,"$PTNLQBA*54\r\n",13); //antenna check
+		//this->loggingModule.flyMS_printf("Antenna query\n");
+		usleep(50000); 
+		//res = read(this->serialFd, buf, 255);
+	    //buf[res] = 0;  		
+		//this->loggingModule.flyMS_printf("%s", buf);
+		
+		//Start the GPS thread
+		this->gpsThread = std::thread(&gps::dataMonitor, this);
+		//this->loggingModule.flyMS_printf("GPS Thread Started\n");
 	}
 	else
 	{
 		// timeout or error
 		this->loggingModule.flyMS_printf("GPS Failed, Contining on without GPS\n");
 	}	
-	
-
-	write(this->serialFd,"$PTNLSNM,0005,01*52\r\n",21); //NMEA message to output GGA  & VTG only
-	usleep(50000);
-	//res = read(this->serialFd, buf, 255);
-    //buf[res] = 0;  		
-	//this->loggingModule.flyMS_printf("%s", buf);
-	
-	write(this->serialFd,"$PTNLQBA*54\r\n",13); //antenna check
-	//this->loggingModule.flyMS_printf("Antenna query\n");
-	usleep(50000); 
-	//res = read(this->serialFd, buf, 255);
-    //buf[res] = 0;  		
-	//this->loggingModule.flyMS_printf("%s", buf);
-	
-	//Start the GPS thread
-	this->gpsThread = std::thread(&gps::dataMonitor, this);
-	//this->loggingModule.flyMS_printf("GPS Thread Started\n");
-
 
 }
 

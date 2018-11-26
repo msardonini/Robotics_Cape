@@ -38,7 +38,7 @@ int main(int argc, char *argv[])
 		sleep(1);
 	}
 
-	rc_cleanup();
+	// rc_cleanup();
 	return 0;
 }
 
