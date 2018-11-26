@@ -23,7 +23,17 @@ logger::logger()
 }
 
 
-logger::~logger(){}
+logger::~logger()
+{
+
+//Close the log files if they are still open
+    if(this->dataLogFid.is_open())
+    	this->dataLogFid.close();
+    if(this->errorFid.is_open())
+    	this->errorFid.close();
+    if(this->consoleLogFid.is_open())
+    	this->consoleLogFid.close();
+}
 
 
 int logger::createLogFiles()
@@ -70,7 +80,7 @@ int logger::createLogFiles()
     if (!fileExistsCheck)
         return -1;
 
-    // //take the loaded config file and put into the class varialbes
+	// //take the loaded config file and put into the class varialbes
     // #define X(type, fmt, name, default) this->name = this->flyMSYamlNode[#name].as<type>();
     // CORE_CONFIG_TABLE
     // #undef X
@@ -106,8 +116,9 @@ int logger::flyMS_printf ( const char * format, ... )
 
     //Write the character string to file
     if (this->consoleLogFid.is_open())
-        this->consoleLogFid << buffer;
-
+    { 
+	    this->consoleLogFid << buffer << std::flush;
+	}
     va_end (args);
 
     //Free our dynamically allocated string buffer
