@@ -14,12 +14,14 @@
 #include "yaml-cpp/yaml.h"
 
 #define CORE_CONFIG_TABLE\
-    X(int,  "%d", enableBarometer,     1       )\
+    X(bool,  "%d", enableBarometer,     1       )\
     X(int,  "%d", enable_gps,           1       )\
     X(int,  "%d", enable_logging,       1       )\
     X(bool,  "%d", isDebugMode      ,    false       )\
     X(int,  "%d", enable_autonomy,      0       )\
     X(bool,  "%d", isHeadlessMode,        false       )\
+    X(bool,  "%d", enableDMP,           true       )\
+    X(bool,  "%d", enableFusion,        false       )\
                                                 \
     X(float,  "%f", pitchOffsetDegrees,   0.0f    )\
     X(float,  "%f", rollOffsetDegrees,    0.0f    )\

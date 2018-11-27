@@ -1,9 +1,11 @@
 ---
 flyMSParams: 
-    enableBarometer: 1
+    enableBarometer: false
     enable_gps: 1
     enable_logging: 1
     isDebugMode: false
+    enableDMP: true
+    enableFusion: false
     enable_autonomy: 0
     isHeadlessMode: false
     pitchOffsetDegrees: 0.000000

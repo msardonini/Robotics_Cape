@@ -191,7 +191,7 @@ int flyMS::flightCore()
 		//Print some stuff to the console in debug mode
 		if(this->config.isDebugMode)
 		{	
-			// this->console_print();
+			this->console_print();
 		}
 		/************************************************************************
 		*         		Check for GPS Data and Handle Accordingly               *
@@ -212,7 +212,7 @@ int flyMS::flightCore()
 
 		//Check to make sure the elapsed time wasn't greater than time allowed. If so don't sleep at all
 		if (sleep_time < DT_US)	rc_usleep(sleep_time);
-		else this->loggingModule.flyMS_printf("[flyMS] Error! Control thread too slow!\n");
+		else this->loggingModule.flyMS_printf("[flyMS] Error! Control thread too slow! time in milliseconds: %u \n", (timeFinish - timeStart)/1000);
 
 	}
 	return 0;
@@ -240,13 +240,13 @@ int flyMS::console_print()
 //	this->loggingModule.flyMS_printf("Aux %2.1f ", control->setpoint.Aux[0]);
 //	this->loggingModule.flyMS_printf("function: %f",rc_get_dsm_ch_normalized(6));
 //	this->loggingModule.flyMS_printf("num wraps %d ",control->num_wraps);
-	this->loggingModule.flyMS_printf(" Throt %2.2f ", this->setpointData.throttle);
-	this->loggingModule.flyMS_printf(" Pitch_ref %2.2f ", this->setpointData.euler_ref[0]);
-	this->loggingModule.flyMS_printf(" Roll_ref %2.2f ", this->setpointData.euler_ref[1]);
-	this->loggingModule.flyMS_printf(" Yaw_ref %2.2f ", this->setpointData.euler_ref[2]);
-	// this->loggingModule.flyMS_printf(" Pitch %1.2f ", this->imuData.euler[0]);
-	// this->loggingModule.flyMS_printf(" Roll %1.2f ", this->imuData.euler[1]);
-	// this->loggingModule.flyMS_printf(" Yaw %2.3f ", this->imuData.euler[2]); 
+	// this->loggingModule.flyMS_printf(" Throt %2.2f ", this->setpointData.throttle);
+	// this->loggingModule.flyMS_printf(" Pitch_ref %2.2f ", this->setpointData.euler_ref[0]);
+	// this->loggingModule.flyMS_printf(" Roll_ref %2.2f ", this->setpointData.euler_ref[1]);
+	// this->loggingModule.flyMS_printf(" Yaw_ref %2.2f ", this->setpointData.euler_ref[2]);
+	this->loggingModule.flyMS_printf(" Pitch %1.2f ", this->imuData.euler[0]);
+	this->loggingModule.flyMS_printf(" Roll %1.2f ", this->imuData.euler[1]);
+	this->loggingModule.flyMS_printf(" Yaw %2.3f ", this->imuData.euler[2]); 
 //	this->loggingModule.flyMS_printf(" Mag X %4.2f",control->mag[0]);
 //	this->loggingModule.flyMS_printf(" Mag Y %4.2f",control->mag[1]);
 //	this->loggingModule.flyMS_printf(" Mag Z %4.2f",control->mag[2]);

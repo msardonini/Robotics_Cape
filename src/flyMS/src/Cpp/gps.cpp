@@ -235,7 +235,7 @@ int gps::dataMonitor()
 		}
 		
 	//	this->loggingModule.flyMS_printf("GGA: %d VTG %d Data ready: %d\n\n",GGA_flag,VTG_flag,GPS_data_flag);
-		if(GGA_flag==1 && VTG_flag==1) GPS_data_flag=1; //Flag to note that GPS data is ready
+		if(this->GGA_flag && this->VTG_flag) this->GPS_data_flag.store(false); //Flag to note that GPS data is ready
 
 	}
 
@@ -244,22 +244,19 @@ int gps::dataMonitor()
 
 int gps::getGpsData(GPS_data_t *_data)
 {
-	this->gpsMutex.lock();
-	memcpy(_data, &this->gpsData, sizeof(GPS_data_t));
-	this->gpsMutex.unlock();
-
-	return 0;
-}
-
-uint8_t gps::is_new_GPS_data(){
-	uint8_t tmp = GPS_data_flag;
-	if (GPS_data_flag)
+	if(this->GPS_data_flag.load())
 	{
-		this->GGA_flag = false;
-		this->VTG_flag = false;
-		this->GPS_data_flag = false;
+		if(this->gpsMutex.try_lock_for(std::chrono::milliseconds(5)))
+		{
+			memcpy(_data, &this->gpsData, sizeof(GPS_data_t));
+			this->GPS_data_flag.store(false);
+			this->GGA_flag = false;
+			this->VTG_flag = false;
+			this->gpsMutex.unlock();
+			return true;
+		}
 	}
-	return tmp;
+	return 0;
 }
 
 float gps::get_NMEA_field(int field, char buf[], int comma[]){

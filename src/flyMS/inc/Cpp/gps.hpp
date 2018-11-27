@@ -12,6 +12,7 @@
 //System Includes
 #include <iostream>
 #include <thread>
+#include <atomic>
 #include <mutex>
 #include <string>
 #include <vector>
@@ -77,8 +78,6 @@ public:
 private:
 	int dataMonitor();
 
-	uint8_t is_new_GPS_data();
-
 	float get_NMEA_field(int field, char buf[], int comma[]);
 
 	void read_raw_gps(char *buf, GPS_data_t *GPS_data);
@@ -87,12 +86,12 @@ private:
 
 	//Variables to manage the gps threads
 	std::thread gpsThread;
-	std::mutex gpsMutex;
+	std::timed_mutex gpsMutex;
 
 	//Flags to signal if messages have arrived
 	bool GGA_flag;
 	bool VTG_flag;
-	bool GPS_data_flag;
+	std::atomic<bool> GPS_data_flag;
 
 	//the serial file descriptor
 	int serialFd;

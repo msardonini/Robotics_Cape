@@ -8,6 +8,16 @@
 
 #include "imu.hpp"
 
+rc_mpu_data_t imuDataShared;
+rc_mpu_data_t imuDataLocal;
+std::mutex localMutex;
+
+static void dmpCallback(void)
+{
+	std::lock_guard<std::mutex> lock(localMutex);
+	memcpy(&imuDataLocal, &imuDataShared, sizeof(rc_mpu_data_t));
+}
+
 imu::imu(config_t _config, logger& _loggingModule) :
 	isInitializingFusion(true),
 	config(_config),
@@ -30,6 +40,7 @@ imu::imu(config_t _config, logger& _loggingModule) :
 //Default Destructor
 imu::~imu()
 {
+	rc_mpu_power_off();
 	// this->loggingModule.flyMS_printf("imu Destructor\n");
 }
 
@@ -46,19 +57,41 @@ int imu::initializeImu()
 		}
 	}
 
-	rc_mpu_config_t conf = rc_mpu_default_config();
-	conf.i2c_bus = 2;
-	conf.enable_magnetometer = 1;
-	conf.show_warnings = 0;
-	if(rc_mpu_initialize(&this->imu_data, conf)){
-		this->loggingModule.flyMS_printf("ERROR: can't talk to IMU, all hope is lost\n");
-		rc_led_set(RC_LED_RED, 1);
-		rc_led_set(RC_LED_GREEN, 0);
-		return -1;
-	}
+	if(this->config.enableFusion)
+	{
+		rc_mpu_config_t conf = rc_mpu_default_config();
+		conf.i2c_bus = 2;
+		conf.enable_magnetometer = 1;
+		conf.show_warnings = 0;
+		if(rc_mpu_initialize(&this->imu_data, conf)){
+			this->loggingModule.flyMS_printf("ERROR: can't talk to IMU, all hope is lost\n");
+			rc_led_set(RC_LED_RED, 1);
+			rc_led_set(RC_LED_GREEN, 0);
+			return -1;
+		}
 
-	//Initialize the fusion library which converts raw IMU data to Euler angles
-	this->init_fusion();
+		//Initialize the fusion library which converts raw IMU data to Euler angles
+		this->init_fusion();
+	}
+	else if(this->config.enableDMP)
+	{
+		rc_mpu_config_t conf = rc_mpu_default_config();
+		conf.i2c_bus = 2;
+		conf.gpio_interrupt_pin_chip = 3;
+		conf.gpio_interrupt_pin = 21;
+		conf.enable_magnetometer = 1;
+		conf.dmp_fetch_accel_gyro=1;
+		conf.dmp_sample_rate = 100;
+		conf.orient = ORIENTATION_Z_UP;
+
+
+		if(rc_mpu_initialize_dmp(&imuDataShared, conf)){
+			this->loggingModule.flyMS_printf("rc_mpu_initialize_failed\n");
+		return -1;
+		}
+
+		rc_mpu_set_dmp_callback(&dmpCallback);
+	}
 
 	return 0;
 
@@ -78,7 +111,8 @@ int imu::update()
 	**********************************************************/
 	this->read_transform_imu();
 	//Perform the data fusion to calculate pitch, roll, and yaw angles
-	this->updateFusion();
+	if (this->config.enableFusion)
+		this->updateFusion();
 
 	/**********************************************************
 	*					Unwrap the Yaw value				  *
@@ -148,16 +182,34 @@ int imu::update()
 void imu::read_transform_imu()
 {
 
-	// if(rc_mpu_read_accel(&this->imu_data) < 0){
-	// 	this->loggingModule.flyMS_printf("read accel data failed\n");
-	// }
-	if(rc_mpu_read_gyro(&this->imu_data)<0){
-		this->loggingModule.flyMS_printf("read gyro data failed\n");
+	if(this->config.enableFusion)
+	{	
+		if(rc_mpu_read_accel(&this->imu_data) < 0){
+			this->loggingModule.flyMS_printf("read accel data failed\n");
+		}
+		if(rc_mpu_read_gyro(&this->imu_data)<0){
+			this->loggingModule.flyMS_printf("read gyro data failed\n");
+		}
+		if(rc_mpu_read_mag(&this->imu_data)){
+				this->loggingModule.flyMS_printf("read mag data failed\n");
+		}
 	}
-	// if(rc_mpu_read_mag(&this->imu_data)){
-	// 		this->loggingModule.flyMS_printf("read mag data failed\n");
-	// 	}
+	else if(this->config.enableDMP)
+	{
+		localMutex.lock();
+		memcpy(&this->imu_data, &imuDataLocal, sizeof(rc_mpu_data_t));
+		localMutex.unlock();
 
+
+		//Save the output
+		for (int i = 0; i < 3; i++)
+		{
+			this->stateBody.eulerPrevious(i) 		= this->stateBody.euler(i);	
+			this->stateBody.euler(i)				= this->imu_data.dmp_TaitBryan[i];
+			this->stateBody.eulerRate(i)			= this->imu_data.gyro[i];
+		}
+
+	}
 	/**********************************************************
 	*		Perform the Coordinate System Transformation	  *
 	**********************************************************/
