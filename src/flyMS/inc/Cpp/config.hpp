@@ -16,6 +16,7 @@
 #define CORE_CONFIG_TABLE\
     X(bool,  "%d", enableBarometer,     1       )\
     X(int,  "%d", enable_gps,           1       )\
+    X(int,  "%d", flightMode,           1       )\
     X(int,  "%d", enable_logging,       1       )\
     X(bool,  "%d", isDebugMode      ,    false       )\
     X(int,  "%d", enable_autonomy,      0       )\

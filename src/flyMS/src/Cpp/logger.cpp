@@ -17,9 +17,6 @@ logger::logger()
 
     if(isatty(fileno(stdout)))
         this->isRunningConsole = true;
-
-    //Initialize the logger
-    this->createLogFiles();    
 }
 
 
@@ -79,12 +76,10 @@ int logger::createLogFiles()
     this->flyMS_printf("creating log files in %s\n",  filePath.c_str());
     if (!fileExistsCheck)
         return -1;
-
-	// //take the loaded config file and put into the class varialbes
-    // #define X(type, fmt, name, default) this->name = this->flyMSYamlNode[#name].as<type>();
-    // CORE_CONFIG_TABLE
-    // #undef X
     
+    //If the flyMS_printf member was called before the file was created, data will be in here
+    this->consoleLogFid << this->consoleInitBuffer.str();
+
     //Write the Header to the Data log file
     #define X(type, fmt, name) this->dataLogFid << #name << ",";
     CORE_LOG_TABLE
@@ -114,11 +109,12 @@ int logger::flyMS_printf ( const char * format, ... )
     if(this->isRunningConsole)
         fprintf(stdout, buffer);
 
-    //Write the character string to file
+    //Write the character string to file, if not open yet, write to buffer until it gets opened
     if (this->consoleLogFid.is_open())
-    { 
 	    this->consoleLogFid << buffer << std::flush;
-	}
+    else
+        this->consoleInitBuffer << buffer << std::flush;
+
     va_end (args);
 
     //Free our dynamically allocated string buffer

@@ -34,13 +34,6 @@
 #include "config.hpp"
 #include "logger.hpp"
 
-#define MAX_DSM2_CHANNELS 8
-#define MAX_PITCH_RANGE 0.666 // in radians
-#define MAX_ROLL_RANGE 0.666 // in radians
-#define MAX_YAW_RATE 2.0 //in Radians per second
-#define MIN_THROTTLE 0.3
-#define MAX_THROTTLE 0.75
-
 
 typedef enum reference_mode_t
 {

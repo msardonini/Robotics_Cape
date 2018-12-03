@@ -26,12 +26,13 @@ int main(int argc, char *argv[])
 	flyMSParams configParams;
 	parseInputs(argc, argv, &configParams);
 
-
-	rc_set_state(RUNNING);
+	rc_set_state(UNINITIALIZED);
 	// flyMS fly;
-	flyMS fly(configParams.config);
+	flyMS fly(configParams);
 	//Initialize the flight hardware
 	fly.startupRoutine();
+
+	//Reload the config file in case changes were made while waiting
 
 	while (rc_get_state() != EXITING) 
 	{

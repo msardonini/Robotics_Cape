@@ -9,16 +9,16 @@
 #include "flyMS.hpp"
 
 
-flyMS::flyMS(config_t _config) :
+flyMS::flyMS(flyMSParams &_config) :
+	configModule(_config),
 	firstIteration(true),
 	loggingModule(), 
-	config(_config),
-	imuModule(_config, this->loggingModule),
-	setpointModule(_config, this->loggingModule),
-	gpsModule(_config, this->loggingModule)
+	config(_config.config),
+	imuModule(_config.config, this->loggingModule),
+	setpointModule(_config.config, this->loggingModule),
+	gpsModule(_config.config, this->loggingModule)
 {
-	//All software initialization tasks go here
-	this->initializeFilters();
+
 }
 
 
@@ -93,19 +93,37 @@ int flyMS::flightCore()
 		// 	//this->setpointData.throttle = this->control.uthrottle + flyMSData.standing_throttle;
 		// }
 			
-		/************************************************************************
-		* 	                  		Pitch Controller	                        *
-		************************************************************************/
-		this->setpointData.dpitch_setpoint = update_filter(this->filters.pitch_PD, this->setpointData.euler_ref[0] - this->imuData.euler[0]);
-		this->control.u_euler[0] = update_filter(this->filters.pitch_rate_PD,this->setpointData.dpitch_setpoint - this->imuData.eulerRate[0]);
-		this->control.u_euler[0] = saturateFilter(this->control.u_euler[0],-MAX_PITCH_COMPONENT,MAX_PITCH_COMPONENT);
 		
 		/************************************************************************
 		* 	                  		Roll Controller		                        *
 		************************************************************************/
-		this->setpointData.droll_setpoint = update_filter(this->filters.roll_PD, this->setpointData.euler_ref[1] - this->imuData.euler[1]);
-		this->control.u_euler[1] = update_filter(this->filters.roll_rate_PD,this->setpointData.droll_setpoint - this->imuData.eulerRate[1]);				
-		this->control.u_euler[1] = saturateFilter(this->control.u_euler[1],-MAX_ROLL_COMPONENT,MAX_ROLL_COMPONENT);
+		if (this->config.flightMode == 1) // Stabilized Flight Mode
+			this->setpointData.droll_setpoint = update_filter(this->filters.roll_PD, this->setpointData.euler_ref[0] - this->imuData.euler[0]);
+		else if (this->config.flightMode == 2) // Acro mode
+			this->setpointData.droll_setpoint = this->setpointData.euler_ref[0];
+		else
+		{
+			this->loggingModule.flyMS_printf("[flyMS] Error! Invalid flight mode. Shutting down now");
+			rc_set_state(EXITING);
+			return -1;
+		}
+
+		this->imuData.eulerRate[0] = update_filter(this->filters.gyro_lpf[0], this->imuData.eulerRate[0]);
+		this->control.u_euler[0] = update_filter(this->filters.roll_rate_PD,this->setpointData.droll_setpoint - this->imuData.eulerRate[0]);				
+		this->control.u_euler[0] = saturateFilter(this->control.u_euler[0],-MAX_ROLL_COMPONENT,MAX_ROLL_COMPONENT);
+
+		/************************************************************************
+		* 	                  		Pitch Controller	                        *
+		************************************************************************/
+		if (this->config.flightMode == 1) // Stabilized Flight Mode
+			this->setpointData.dpitch_setpoint = update_filter(this->filters.pitch_PD, this->setpointData.euler_ref[1] - this->imuData.euler[1]);
+		else if (this->config.flightMode == 2) // Acro mode
+			this->setpointData.dpitch_setpoint = this->setpointData.euler_ref[1];
+
+
+		this->imuData.eulerRate[1] = update_filter(this->filters.gyro_lpf[1], this->imuData.eulerRate[1]);
+		this->control.u_euler[1] = update_filter(this->filters.pitch_rate_PD,this->setpointData.dpitch_setpoint - this->imuData.eulerRate[1]);
+		this->control.u_euler[1] = saturateFilter(this->control.u_euler[1],-MAX_PITCH_COMPONENT,MAX_PITCH_COMPONENT);
 		
 		/************************************************************************
 		*                        	Yaw Controller                              *
@@ -156,10 +174,10 @@ int flyMS::flightCore()
 		*                 	  yellow       	    black
 		************************************************************************/
 		
-		this->control.u[0]=this->setpointData.throttle+this->control.u_euler[1]+this->control.u_euler[0]-this->control.u_euler[2];
-		this->control.u[1]=this->setpointData.throttle-this->control.u_euler[1]+this->control.u_euler[0]+this->control.u_euler[2];
-		this->control.u[2]=this->setpointData.throttle+this->control.u_euler[1]-this->control.u_euler[0]+this->control.u_euler[2];
-		this->control.u[3]=this->setpointData.throttle-this->control.u_euler[1]-this->control.u_euler[0]-this->control.u_euler[2];		
+		this->control.u[0]=this->setpointData.throttle+this->control.u_euler[0]+this->control.u_euler[1]-this->control.u_euler[2];
+		this->control.u[1]=this->setpointData.throttle-this->control.u_euler[0]+this->control.u_euler[1]+this->control.u_euler[2];
+		this->control.u[2]=this->setpointData.throttle+this->control.u_euler[0]-this->control.u_euler[1]+this->control.u_euler[2];
+		this->control.u[3]=this->setpointData.throttle-this->control.u_euler[0]-this->control.u_euler[1]-this->control.u_euler[2];		
 
 		/************************************************************************
 		*         		Check Output Ranges, if outside, adjust                 *
@@ -244,8 +262,8 @@ int flyMS::console_print()
 	// this->loggingModule.flyMS_printf(" Pitch_ref %2.2f ", this->setpointData.euler_ref[0]);
 	// this->loggingModule.flyMS_printf(" Roll_ref %2.2f ", this->setpointData.euler_ref[1]);
 	// this->loggingModule.flyMS_printf(" Yaw_ref %2.2f ", this->setpointData.euler_ref[2]);
-	this->loggingModule.flyMS_printf(" Pitch %1.2f ", this->imuData.euler[0]);
-	this->loggingModule.flyMS_printf(" Roll %1.2f ", this->imuData.euler[1]);
+	this->loggingModule.flyMS_printf(" Roll %1.2f ", this->imuData.euler[0]);
+	this->loggingModule.flyMS_printf(" Pitch %1.2f ", this->imuData.euler[1]);
 	this->loggingModule.flyMS_printf(" Yaw %2.3f ", this->imuData.euler[2]); 
 //	this->loggingModule.flyMS_printf(" Mag X %4.2f",control->mag[0]);
 //	this->loggingModule.flyMS_printf(" Mag Y %4.2f",control->mag[1]);

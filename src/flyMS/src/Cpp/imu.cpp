@@ -201,7 +201,6 @@ void imu::read_transform_imu()
 		localMutex.unlock();
 
 
-		//Save the output
 		for (int i = 0; i < 3; i++)
 		{
 			this->stateBody.eulerPrevious(i) 		= this->stateBody.euler(i);	
@@ -226,6 +225,8 @@ void imu::read_transform_imu()
 	this->stateBody.mag = this->imu2Body * this->stateIMU.mag;
 	this->stateBody.gyro = this->imu2Body * this->stateIMU.gyro;
 	this->stateBody.accel = this->imu2Body * this->stateIMU.accel;
+	this->stateBody.euler = this->imu2Body * this->stateBody.euler;
+	this->stateBody.eulerRate = this->imu2Body * this->stateBody.eulerRate;
 }
 
 

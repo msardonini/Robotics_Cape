@@ -11,6 +11,20 @@
 
 #define DT_US 10000
 #define DT 0.01
+#define MAX_PITCH_COMPONENT 0.25
+#define MAX_ROLL_COMPONENT 0.25
+#define MAX_YAW_COMPONENT 0.25
+#define MIN_THROTTLE 0.3
+#define MAX_THROTTLE 0.75
+#define MAX_PITCH_RANGE 0.666 // in radians
+#define MAX_ROLL_RANGE 0.666 // in radians
+#define MAX_ROLL_RANGE_ACRO 0.861799 // in radians/sec
+#define MAX_PITCH_RANGE_ACRO 0.861799 // in radians/sec
+
+#define MAX_DSM2_CHANNELS 8
+#define MAX_YAW_RATE 2.0 //in Radians per second
+#define MIN_THROTTLE 0.3
+#define MAX_THROTTLE 0.75
 
 #include "filter.h"
 #include "Eigen/Dense"

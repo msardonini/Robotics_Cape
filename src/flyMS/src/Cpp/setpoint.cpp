@@ -113,10 +113,17 @@ int setpoint::handle_rc_data_direct()
 	{
 		//Set roll reference value
 		//DSM2 Receiver is inherently positive to the left
-		this->setpointData.euler_ref[1]= -dsm2_data[1]*MAX_ROLL_RANGE;	
-		
+		if(this->config.flightMode == 1) //Stabilized Flight Mode
+		{
+			this->setpointData.euler_ref[0]= -dsm2_data[1]*MAX_ROLL_RANGE;	
+			this->setpointData.euler_ref[1]= -dsm2_data[2]*MAX_PITCH_RANGE;
+		}
+		else if (this->config.flightMode == 2)
+		{
+			this->setpointData.euler_ref[0]= -dsm2_data[1]*MAX_ROLL_RANGE_ACRO;	
+			this->setpointData.euler_ref[1]= -dsm2_data[2]*MAX_PITCH_RANGE_ACRO;	
+		}
 		//DSM2 Receiver is inherently positive upwards
-		this->setpointData.euler_ref[0]= -dsm2_data[2]*MAX_PITCH_RANGE;
 		
 		//Set Yaw, RC Controller acts on Yaw velocity, save a history for integration
 		//Apply the integration outside of current if statement, needs to run at 200Hz

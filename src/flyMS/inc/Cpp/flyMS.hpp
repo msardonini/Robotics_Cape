@@ -8,13 +8,6 @@
 #ifndef FLYMS_H
 #define FLYMS_H
 
-#define MAX_PITCH_COMPONENT 0.25
-#define MAX_ROLL_COMPONENT 0.25
-#define MIN_THROTTLE 0.3
-#define MAX_THROTTLE 0.75
-#define MAX_YAW_COMPONENT 0.25
-
-
 //System Includes
 #include <iostream>
 #include <thread>
@@ -42,7 +35,7 @@ class flyMS
 
 public:
 
-	flyMS(config_t _config);
+	flyMS(flyMSParams &configModule);
 
 	//Default Destructor
 	~flyMS();
@@ -77,11 +70,12 @@ private:
 	//Boolean for running in debug mode
 	bool firstIteration;
 
+	//Object for managing the user configurable parameters
+	flyMSParams &configModule;
+	config_t config;
+
 	//Class to handle and write to the log file
 	logger loggingModule;
-
-	//Object for managing the user configurable parameters
-	config_t config;
 	
 	//Object and Data struct from the imu manager
 	imu imuModule;

@@ -13,6 +13,7 @@
 #include <mutex>
 #include <fstream>
 #include <iostream>
+#include <sstream>
 #include <sys/stat.h>
 #include <stdarg.h>
 #include <unistd.h>
@@ -98,6 +99,7 @@ private:
     std::ofstream dataLogFid;
     std::ofstream errorFid;
     std::ofstream consoleLogFid;
+    std::ostringstream consoleInitBuffer;
 
 };
 
