@@ -84,6 +84,28 @@ int imu::initializeImu()
 		conf.dmp_sample_rate = 100;
 		conf.orient = ORIENTATION_Z_UP;
 
+		//Check our DCM for the proper orientation config parameter
+		float thresh = 0.95f;
+		if (this->imu2Body(0,2) > thresh)
+			conf.orient = ORIENTATION_X_UP;
+		else if (this->imu2Body(0,2) < -thresh)
+			conf.orient = ORIENTATION_X_DOWN;
+		else if (this->imu2Body(1,2) > thresh)
+			conf.orient = ORIENTATION_Y_UP;
+		else if (this->imu2Body(1,2) < -thresh)
+			conf.orient = ORIENTATION_Y_DOWN;
+		else if (this->imu2Body(2,2) > thresh)
+			conf.orient = ORIENTATION_Z_UP;
+		else if (this->imu2Body(2,2) < -thresh)
+			conf.orient = ORIENTATION_Z_DOWN;
+		else
+		{
+			this->loggingModule.flyMS_printf("Error! In order to be in DMP mode, \
+						one of the X,Y,Z vectors on the IMU needs to be parallel with Gravity\n");
+			rc_led_set(RC_LED_RED, 1);
+			rc_led_set(RC_LED_GREEN, 0);
+		}
+
 
 		if(rc_mpu_initialize_dmp(&imuDataShared, conf)){
 			this->loggingModule.flyMS_printf("rc_mpu_initialize_failed\n");

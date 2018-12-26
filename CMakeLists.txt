@@ -22,8 +22,9 @@ else()
 	message(FATAL_ERROR "Cannot Find Eigen3")
 endif()
 
-
+# Sets variable to a value if variable is unset.
 #Build the robotics cape library
+include(cmake/px4_add_library.cmake)
 add_subdirectory(lib/librobotcontrol)
 include_directories(lib/librobotcontrol/library/include)
 
