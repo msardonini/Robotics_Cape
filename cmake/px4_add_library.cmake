@@ -9,6 +9,11 @@ function(px4_add_library target)
 
 	target_compile_definitions(${target} PRIVATE MODULE_NAME="${target}")
 
+	install(TARGETS ${target}
+		DESTINATION /usr/lib
+		)
+
+
 	# # all PX4 libraries have access to parameters and uORB
 	# add_dependencies(${target} uorb_headers)
 	# target_link_libraries(${target} PRIVATE prebuild_targets parameters_interface uorb_msgs)

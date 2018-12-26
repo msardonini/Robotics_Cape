@@ -43,7 +43,8 @@ int flyMS::startupRoutine()
     this->loggingModule.createLogFiles();  
 
 	//Initialize the IMU Hardware
-	this->imuModule.initializeImu();
+	if(this->imuModule.initializeImu())
+		return -1;
 
 	//Initialize the client to connect to the PRU handler
 	this->pruClientSender.startPruClient();

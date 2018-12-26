@@ -30,7 +30,8 @@ int main(int argc, char *argv[])
 	// flyMS fly;
 	flyMS fly(configParams);
 	//Initialize the flight hardware
-	fly.startupRoutine();
+	if(fly.startupRoutine())
+		rc_set_state(EXITING);
 
 	//Reload the config file in case changes were made while waiting
 

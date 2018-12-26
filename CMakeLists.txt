@@ -26,6 +26,7 @@ endif()
 #Build the robotics cape library
 include(cmake/px4_add_library.cmake)
 add_subdirectory(lib/librobotcontrol)
+
 include_directories(lib/librobotcontrol/library/include)
 
 # #Build the Yaml-Cpp config file parser

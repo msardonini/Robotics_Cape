@@ -101,9 +101,10 @@ int imu::initializeImu()
 		else
 		{
 			this->loggingModule.flyMS_printf("Error! In order to be in DMP mode, \
-						one of the X,Y,Z vectors on the IMU needs to be parallel with Gravity\n");
+one of the X,Y,Z vectors on the IMU needs to be parallel with Gravity\n");
 			rc_led_set(RC_LED_RED, 1);
 			rc_led_set(RC_LED_GREEN, 0);
+			return -1;
 		}
 
 
