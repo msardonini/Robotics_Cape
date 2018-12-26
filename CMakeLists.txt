@@ -15,6 +15,7 @@ add_compile_options(
 add_definitions(-DFLYMS_ROOT_DIR=\"${CMAKE_CURRENT_SOURCE_DIR}\")
 	
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} ${CMAKE_CURRENT_SOURCE_DIR}/lib/eigen3/cmake)
+set(EIGEN3_INCLUDE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/lib/eigen3)
 find_package(Eigen3 REQUIRED)
 if(EIGEN3_FOUND)
 	include_directories(${EIGEN3_INCLUDE_DIR})
