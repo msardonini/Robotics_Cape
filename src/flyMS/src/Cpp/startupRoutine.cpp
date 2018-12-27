@@ -166,7 +166,7 @@ int flyMS::initializeFilters()
 	// float yaw_den[11] = {1.000000000000000,-6.989417698566569,22.323086726703938,-42.824608705880635,54.570406893265300,-48.208486634295596,29.872790631313180,-12.810698156370698,3.636160614880030,-0.616474419461443,0.047382538704228};
 
 	int i;
-	for (i = 0; i < 2; i++)
+	for (i = 0; i < 3; i++)
 	{
 		this->filters.gyro_lpf[i] = initialize_filter(10, num, den);
 		this->filters.accel_lpf[i] = initialize_filter(10, num, den);
