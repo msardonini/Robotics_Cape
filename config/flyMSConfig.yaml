@@ -4,43 +4,37 @@ flyMSParams:
     enable_gps: 1
     enable_logging: 1
     isDebugMode: false
-    flightMode: 2 # 1 is Stabilized, 2 is ACRO
+    flightMode: 1 # 1 is Stabilized, 2 is ACRO
     enableDMP: true
     enableFusion: false
     enable_autonomy: 0
     isHeadlessMode: false
-    pitchOffsetDegrees: 0.000000
+    pitchOffsetDegrees: 180.000000
     rollOffsetDegrees: 0.000000
-    yawOffsetDegrees: 90.000
+    yawOffsetDegrees: -90.000
     alt_KP: 0.000000
     alt_KD: 0.000000
     alt_KI: 0.000000
-    # roll_KP: 5.000000
-    # roll_KD: 0.500000
-    # roll_KI: 0.175000
-    # Droll_KP: 0.015500
-    # Droll_KI: 0.500000
-    # Droll_KD: 0.001200
-    roll_KP: 0.000000
-    roll_KD: 0.000000
-    roll_KI: 0.000000
-    Droll_KP: 0.00000
-    Droll_KI: 0.00000
-    Droll_KD: 0.00000
+    roll_KP: 4.500000
+    roll_KD: 0.500000
+    roll_KI: 0.300000
+    Droll_KP: 0.020000
+    Droll_KI: 1.00000
+    Droll_KD: 0.00300
     max_roll_setpoint: 0.400000
-    pitch_KP: 5.000000
+    pitch_KP: 4.500000
     pitch_KD: 0.500000
-    pitch_KI: 0.175000
-    Dpitch_KP: 0.00125
-    Dpitch_KI: 0.000000
-    Dpitch_KD: 0.000200
+    pitch_KI: 0.2000
+    Dpitch_KP: 0.0200
+    Dpitch_KI: 1.000
+    Dpitch_KD: 0.000300
     max_pitch_setpoint: 0.400000
     # yaw_KP: 0.0800000
     # yaw_KI: 0.050000
     # yaw_KD: 0.001000
-    yaw_KP: 0.000000
-    yaw_KI: 0.000000
-    yaw_KD: 0.000000
+    yaw_KP: 0.07
+    yaw_KI: 0.100
+    yaw_KD: 0.007
     max_yaw_rate: 3.000000
     idle_speed: 0.300000
     min_throttle: 0.300000

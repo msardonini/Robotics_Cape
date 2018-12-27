@@ -259,9 +259,9 @@ int flyMS::console_print()
 //	this->loggingModule.flyMS_printf("function: %f",rc_get_dsm_ch_normalized(6));
 //	this->loggingModule.flyMS_printf("num wraps %d ",control->num_wraps);
 	// this->loggingModule.flyMS_printf(" Throt %2.2f ", this->setpointData.throttle);
-	// this->loggingModule.flyMS_printf(" Pitch_ref %2.2f ", this->setpointData.euler_ref[0]);
-	// this->loggingModule.flyMS_printf(" Roll_ref %2.2f ", this->setpointData.euler_ref[1]);
-	// this->loggingModule.flyMS_printf(" Yaw_ref %2.2f ", this->setpointData.euler_ref[2]);
+	 this->loggingModule.flyMS_printf(" Roll_ref %2.2f ", this->setpointData.euler_ref[0]);
+	 this->loggingModule.flyMS_printf(" Pitch_ref %2.2f ", this->setpointData.euler_ref[1]);
+	 this->loggingModule.flyMS_printf(" Yaw_ref %2.2f ", this->setpointData.euler_ref[2]);
 	this->loggingModule.flyMS_printf(" Roll %1.2f ", this->imuData.euler[0]);
 	this->loggingModule.flyMS_printf(" Pitch %1.2f ", this->imuData.euler[1]);
 	this->loggingModule.flyMS_printf(" Yaw %2.3f ", this->imuData.euler[2]); 

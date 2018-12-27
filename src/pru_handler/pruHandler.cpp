@@ -179,7 +179,7 @@ int pruHandler::run()
 		if (rv == 0)
 		{
 			#ifdef DEBUG
-			this->logFid<< "Timeout Detected!" << std::endl;
+		//	this->logFid<< "Timeout Detected!" << std::endl;
 			#endif
 		}
 		if (rv > 0)
@@ -207,7 +207,7 @@ int pruHandler::run()
 		{
 			//#ifdef DEBUG
 			//printf("Timeout detected!! \n");
-			this->logFid<< "Timeout Detected!" << std::endl;
+			//this->logFid<< "Timeout Detected!" << std::endl;
 			//#endif
 			for (i = 0; i < PRU_NUM_CHANNELS; i++)
 				rc_servo_send_esc_pulse_normalized(i+1, 0.0);
