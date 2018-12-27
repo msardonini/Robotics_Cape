@@ -115,12 +115,12 @@ int setpoint::handle_rc_data_direct()
 		//DSM2 Receiver is inherently positive to the left
 		if(this->config.flightMode == 1) //Stabilized Flight Mode
 		{
-			this->setpointData.euler_ref[0]= -dsm2_data[1]*MAX_ROLL_RANGE;	
+			this->setpointData.euler_ref[0]= dsm2_data[1]*MAX_ROLL_RANGE;	
 			this->setpointData.euler_ref[1]= -dsm2_data[2]*MAX_PITCH_RANGE;
 		}
 		else if (this->config.flightMode == 2)
 		{
-			this->setpointData.euler_ref[0]= -dsm2_data[1]*MAX_ROLL_RANGE_ACRO;	
+			this->setpointData.euler_ref[0]= dsm2_data[1]*MAX_ROLL_RANGE_ACRO;	
 			this->setpointData.euler_ref[1]= -dsm2_data[2]*MAX_PITCH_RANGE_ACRO;	
 		}
 		//DSM2 Receiver is inherently positive upwards

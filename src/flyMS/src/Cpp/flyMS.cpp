@@ -128,9 +128,9 @@ int flyMS::flightCore()
 		/************************************************************************
 		*                        	Yaw Controller                              *
 		************************************************************************/	
-		// this->control.u_euler[2] = update_filter(this->filters.yaw_rate_PD,this->setpointData.euler_ref[2]-this->imuData.euler[2]);
 		this->imuData.eulerRate[2] = update_filter(this->filters.gyro_lpf[2], this->imuData.eulerRate[2]);
-		this->control.u_euler[2] = update_filter(this->filters.yaw_rate_PD,this->setpointData.yaw_rate_ref[0]-this->imuData.eulerRate[2]);
+		this->control.u_euler[2] = update_filter(this->filters.yaw_rate_PD,this->setpointData.euler_ref[2]-this->imuData.euler[2]);
+		// this->control.u_euler[2] = update_filter(this->filters.yaw_rate_PD,this->setpointData.yaw_rate_ref[0]-this->imuData.eulerRate[2]);
 		
 		/************************************************************************
 		*                   	Apply the Integrators                           *
@@ -175,10 +175,10 @@ int flyMS::flightCore()
 		*                 	  yellow       	    black
 		************************************************************************/
 		
-		this->control.u[0]=this->setpointData.throttle+this->control.u_euler[0]+this->control.u_euler[1]-this->control.u_euler[2];
-		this->control.u[1]=this->setpointData.throttle-this->control.u_euler[0]+this->control.u_euler[1]+this->control.u_euler[2];
-		this->control.u[2]=this->setpointData.throttle+this->control.u_euler[0]-this->control.u_euler[1]+this->control.u_euler[2];
-		this->control.u[3]=this->setpointData.throttle-this->control.u_euler[0]-this->control.u_euler[1]-this->control.u_euler[2];		
+		this->control.u[0]=this->setpointData.throttle-this->control.u_euler[0]+this->control.u_euler[1]-this->control.u_euler[2];
+		this->control.u[1]=this->setpointData.throttle+this->control.u_euler[0]+this->control.u_euler[1]+this->control.u_euler[2];
+		this->control.u[2]=this->setpointData.throttle-this->control.u_euler[0]-this->control.u_euler[1]+this->control.u_euler[2];
+		this->control.u[3]=this->setpointData.throttle+this->control.u_euler[0]-this->control.u_euler[1]-this->control.u_euler[2];		
 
 		/************************************************************************
 		*         		Check Output Ranges, if outside, adjust                 *

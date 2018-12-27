@@ -145,7 +145,7 @@ int flyMS::initializeFilters()
 	// //PD Controller (I is done manually)
 	this->filters.pitch_rate_PD = generatePID(this->config.Dpitch_KP, 0, this->config.Dpitch_KD, 0.15, DT);
 	this->filters.roll_rate_PD  = generatePID(this->config.Droll_KP, 0, this->config.Droll_KD, 0.15, DT);
-	this->filters.yaw_rate_PD   = generatePID(this->config.yaw_KP,		  0, this->config.yaw_KD,	    0.15, DT);
+	this->filters.yaw_rate_PD   = generatePID(this->config.yaw_KP, this->config.yaw_KI, this->config.yaw_KD,	    0.15, DT);
 	
 	// //Gains on Low Pass Filter for raw gyroscope output
 	
@@ -162,18 +162,18 @@ int flyMS::initializeFilters()
 	
 	// //elliptic filter 10th order 0.25 dB passband ripple 80 dB min Cutoff 0.05 cutoff frq
 
-	// float yaw_num[11] = {0.000000138467082,0.000001384670818,0.000006231018679,0.000016616049812,0.000029078087171,0.000034893704605,0.000029078087171,0.000016616049812,0.000006231018679,0.000001384670818,0.000000138467082};
-	// float yaw_den[11] = {1.000000000000000,-6.989417698566569,22.323086726703938,-42.824608705880635,54.570406893265300,-48.208486634295596,29.872790631313180,-12.810698156370698,3.636160614880030,-0.616474419461443,0.047382538704228};
+	float yaw_num[11] = {0.000000138467082,0.000001384670818,0.000006231018679,0.000016616049812,0.000029078087171,0.000034893704605,0.000029078087171,0.000016616049812,0.000006231018679,0.000001384670818,0.000000138467082};
+	float yaw_den[11] = {1.000000000000000,-6.989417698566569,22.323086726703938,-42.824608705880635,54.570406893265300,-48.208486634295596,29.872790631313180,-12.810698156370698,3.636160614880030,-0.616474419461443,0.047382538704228};
 
 	int i;
-	for (i = 0; i < 3; i++)
+	for (i = 0; i < 2; i++)
 	{
 		this->filters.gyro_lpf[i] = initialize_filter(10, num, den);
 		this->filters.accel_lpf[i] = initialize_filter(10, num, den);
 	}
 
-	// filters->gyro_lpf[2] = initialize_filter(10, yaw_num, yaw_den);		
-	// filters->accel_lpf[2] = initialize_filter(10, num, den);	
+	this->filters.gyro_lpf[2] = initialize_filter(10, yaw_num, yaw_den);		
+	this->filters.accel_lpf[2] = initialize_filter(10, num, den);	
 	
 	// //Gains on Low Pass Filter for Yaw Reference		
 	// float num2[4] = {  0.0317,    0.0951,    0.0951,    0.0317};

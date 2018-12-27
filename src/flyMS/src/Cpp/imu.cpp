@@ -228,7 +228,7 @@ void imu::read_transform_imu()
 		{
 			this->stateBody.eulerPrevious(i) 		= this->stateBody.euler(i);	
 			this->stateBody.euler(i)				= this->imu_data.dmp_TaitBryan[i];
-			this->stateBody.eulerRate(i)			= this->imu_data.gyro[i];
+			this->stateBody.eulerRate(i)			= this->imu_data.gyro[i] * D2R_IMU;
 		}
 
 	}
