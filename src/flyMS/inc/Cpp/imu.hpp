@@ -81,7 +81,8 @@ public:
 	int getImuData(state_t* state);
 
 
-
+	void calculateDCM(float pitchOffsetDeg, float rollOffsetDeg, float yawOffsetDeg);
+	
 private:
 	void init_fusion();
 	void updateFusion();
