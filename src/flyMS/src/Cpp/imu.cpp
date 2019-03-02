@@ -23,17 +23,8 @@ imu::imu(config_t _config, logger& _loggingModule) :
 	config(_config),
 	loggingModule(_loggingModule)
 {
-	//Make the Direcion Cosine Matric DCM from the input offsets from the config file
-	float cR1 = cosf(this->config.rollOffsetDegrees * D2R_IMU);
-	float sR1 = sinf(this->config.rollOffsetDegrees * D2R_IMU);
-	float cP1 = cosf(this->config.pitchOffsetDegrees * D2R_IMU);
-	float sP1 = sinf(this->config.pitchOffsetDegrees * D2R_IMU);
-	float cY1 = cosf(this->config.yawOffsetDegrees * D2R_IMU);
-	float sY1 = sinf(this->config.yawOffsetDegrees * D2R_IMU);
-
-	this->imu2Body << cR1*cY1, -cP1*sY1+sP1*sR1*cY1 ,  sP1*sY1+cP1*sR1*cY1
-				, cR1*sY1 ,  cP1*cY1+sP1*sR1*sY1 , -sP1*cY1+cP1*sR1*sY1
-				, -sR1 , sP1*cR1 , cP1*cR1;
+	//Calculate the DCM with out offsets
+	this->calculateDCM(this->config.pitchOffsetDegrees, this->config.rollOffsetDegrees, this->config.yawOffsetDegrees);
 }
 
 
@@ -43,6 +34,23 @@ imu::~imu()
 	rc_mpu_power_off();
 	// this->loggingModule.flyMS_printf("imu Destructor\n");
 }
+
+void imu::calculateDCM(float pitchOffsetDeg, float rollOffsetDeg, float yawOffsetDeg)
+{
+	//Make the Direcion Cosine Matric DCM from the input offsets from the config file
+	float cR1 = cosf(pitchOffsetDeg * D2R_IMU);
+	float sR1 = sinf(pitchOffsetDeg * D2R_IMU);
+	float cP1 = cosf(rollOffsetDeg * D2R_IMU);
+	float sP1 = sinf(rollOffsetDeg * D2R_IMU);
+	float cY1 = cosf(yawOffsetDeg * D2R_IMU);
+	float sY1 = sinf(yawOffsetDeg * D2R_IMU);
+
+	this->imu2Body << cR1*cY1, -cP1*sY1+sP1*sR1*cY1 ,  sP1*sY1+cP1*sR1*cY1
+				, cR1*sY1 ,  cP1*cY1+sP1*sR1*sY1 , -sP1*cY1+cP1*sR1*sY1
+				, -sR1 , sP1*cR1 , cP1*cR1;
+
+}
+
 
 int imu::initializeImu()
 {
@@ -87,17 +95,36 @@ int imu::initializeImu()
 		//Check our DCM for the proper orientation config parameter
 		float thresh = 0.95f;
 		if (this->imu2Body(0,2) > thresh)
+		{	
 			conf.orient = ORIENTATION_X_UP;
+			this->calculateDCM(0.0f, this->config.rollOffsetDegrees, 0.0f);
+		}
 		else if (this->imu2Body(0,2) < -thresh)
+		{	
 			conf.orient = ORIENTATION_X_DOWN;
+			this->calculateDCM(0.0f, this->config.rollOffsetDegrees, 0.0f);
+		}
 		else if (this->imu2Body(1,2) > thresh)
+		{	
 			conf.orient = ORIENTATION_Y_UP;
+			this->calculateDCM(this->config.pitchOffsetDegrees, 0.0f, 0.0f);
+		}
 		else if (this->imu2Body(1,2) < -thresh)
+		{
 			conf.orient = ORIENTATION_Y_DOWN;
+			this->calculateDCM(this->config.pitchOffsetDegrees, 0.0f, 0.0f);
+		}
 		else if (this->imu2Body(2,2) > thresh)
+		{
 			conf.orient = ORIENTATION_Z_UP;
+			this->calculateDCM(0.0f, 0.0f, this->config.yawOffsetDegrees);
+
+		}
 		else if (this->imu2Body(2,2) < -thresh)
+		{	
 			conf.orient = ORIENTATION_Z_DOWN;
+			this->calculateDCM(0.0f, 0.0f, this->config.yawOffsetDegrees);
+		}
 		else
 		{
 			this->loggingModule.flyMS_printf("Error! In order to be in DMP mode, \
