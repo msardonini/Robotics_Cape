@@ -10,7 +10,8 @@
 
 #include "logger.hpp"
 
-logger::logger()
+logger::logger(std::string log_filepath) :
+    log_filepath_(log_filepath)
 {
     //  Determine if this process started from a terminal
     //      If so, have the console output redirected to the terminal
@@ -40,14 +41,14 @@ int logger::createLogFiles()
     struct stat st = {0};
 
     sprintf(nStr,"%03d",nInt);
-    std::string filePath(FLYMS_ROOT_DIR + std::string("/log/run") + std::string(nStr));
+    std::string filePath(this->log_filepath_ + std::string("/log/run") + std::string(nStr));
 
     //Find the next run number folder that isn't in use
     while(!stat(filePath.c_str(), &st))
     {
         nInt++;
         sprintf(nStr,"%03d",nInt);
-        filePath.replace(0, filePath.length(), FLYMS_ROOT_DIR + std::string("/log/run") + std::string(nStr));
+        filePath.replace(0, filePath.length(), this->log_filepath_ + std::string("/log/run") + std::string(nStr));
     }
 
     //Make a new folder to hold the logged data
@@ -64,7 +65,7 @@ int logger::createLogFiles()
 
     //Copy the yaml file over to the log directory to save the config params for this run
     std::string copyConfigstring ("cp ");
-    copyConfigstring.append(FLYMS_ROOT_DIR);
+    copyConfigstring.append(this->log_filepath_);
     copyConfigstring.append("/config/flyMSConfig.yaml ");
     copyConfigstring.append(filePath);
     system(copyConfigstring.c_str());

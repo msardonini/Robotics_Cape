@@ -5,9 +5,11 @@
 #	Like add_library but with PX4 platform dependencies
 #
 function(px4_add_library target)
-	add_library(${target} ${ARGN})
+	add_library(${target} STATIC ${ARGN})
 
 	target_compile_definitions(${target} PRIVATE MODULE_NAME="${target}")
+
+	target_link_libraries(${target} pthread)
 
 	install(TARGETS ${target}
 		DESTINATION /usr/lib

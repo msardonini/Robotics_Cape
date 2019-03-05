@@ -12,7 +12,7 @@
 flyMS::flyMS(flyMSParams &_config) :
 	configModule(_config),
 	firstIteration(true),
-	loggingModule(), 
+	loggingModule(_config.config.log_filepath),
 	config(_config.config),
 	imuModule(_config.config, this->loggingModule),
 	setpointModule(_config.config, this->loggingModule),

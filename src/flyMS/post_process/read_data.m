@@ -1,10 +1,8 @@
- close all;
+%  close all;
 clear all; 
 clc;
  
-% filename = uigetdir('../../../flight_logs/','pick a run for plotting');
 filename = uigetdir('./','pick a run for plotting');
-
 
 nohup=csvread([filename '/logger.txt'],1,0);
 

@@ -14,7 +14,7 @@ set(FILTER_SRCS
 )
 
 
-add_library(filter SHARED ${FILTER_SRCS})
+add_library(filter STATIC ${FILTER_SRCS})
 
 target_include_directories(filter PUBLIC ${FILTER_DIR})
 

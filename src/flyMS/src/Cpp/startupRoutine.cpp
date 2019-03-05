@@ -15,7 +15,6 @@ int flyMS::startupRoutine()
 	if(this->setpointModule.start())
 		std::cerr<<"[flyMS] Error initializing Radio Coms!" << std::endl;
 
-
 	//Pause the program until the user toggles the kill switch
 	if(!this->config.isDebugMode)
 	{	
@@ -28,10 +27,8 @@ int flyMS::startupRoutine()
 	//Tell the system that we are running
 	rc_set_state(RUNNING);
 
-	//Load the config file
-	std::string configFileName(FLYMS_ROOT_DIR);
-	configFileName.append("/config/flyMSConfig.yaml");
-	this->configModule.loadConfigFile(configFileName);
+	if(configModule.isLoaded)
+		this->configModule.loadConfigFile(configModule.config_filepath);
 
 	//Initialize the PID controllers and LP filters
 	this->initializeFilters();
@@ -65,7 +62,6 @@ int flyMS::readyCheck(){
 	printf("Toggle the kill swtich twice and leave up to initialize\n");
 	while(count<6 && rc_get_state()!=EXITING)
 	{
-		
 		//Blink the green LED light to signal that the program is ready
 		reset_toggle++; // Only blink the led 1/100 the time this loop runs
 		if(toggle)

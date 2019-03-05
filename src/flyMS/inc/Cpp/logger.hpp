@@ -73,7 +73,7 @@ class logger
 {
 
 public:
-    logger();
+    logger(std::string log_filepath);
     ~logger();	
     int createLogFiles();
     
@@ -96,6 +96,7 @@ private:
     std::mutex printMutex;
 
     //Objects to handle program output to file
+    std::string log_filepath_;
     std::ofstream dataLogFid;
     std::ofstream errorFid;
     std::ofstream consoleLogFid;

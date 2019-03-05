@@ -14,6 +14,7 @@
 #include "yaml-cpp/yaml.h"
 
 #define CORE_CONFIG_TABLE\
+    X(std::string,  "%d", log_filepath,     "/home/debian/Robotics_Cape/log"       )\
     X(bool,  "%d", enableBarometer,     1       )\
     X(int,  "%d", enable_gps,           1       )\
     X(int,  "%d", flightMode,           1       )\
@@ -71,7 +72,6 @@
 
 typedef struct config_t
 {
-    //defines the config params as public members 
     #define X(type, fmt, name, defaultVal) type name;
     CORE_CONFIG_TABLE
     #undef X
@@ -79,56 +79,24 @@ typedef struct config_t
 
 class flyMSParams
 {
-  public:
+ public:
 
     flyMSParams();
-    ~flyMSParams(); 
+    ~flyMSParams();
+
+    // Copy Constructor
+    flyMSParams(const flyMSParams &obj);
+
     void loadConfigFile(std::string filename);
     int writeConfigFile(std::string filename);
 
     YAML::Node flyMSYamlNode;
     
     config_t config;
+    std::string config_filepath;
+    bool isLoaded;
 
-
-    // bool enableBarometer;
-    // bool enableGPS;
-    // bool enableLogging;
-    // bool enableDebugMode;
-    // bool enableAutonomy;
-    // bool enableHeadlessMode;
-
-    // float pitchOffsetDegrees;
-    // float rollOffsetDegrees;
-    // float yawOffsetDegrees;
-
-    // float  alt_KP;
-    // float  alt_KD;
-    // float  alt_KI;
-
-    // float  roll_KP;
-    // float  roll_KD;
-    // float  roll_KI;
-    // float  Droll_KP;
-    // float  Droll_KI;
-    // float  Droll_KD;
-    // float  max_roll_setpoint;
-
-    // float  pitch_KP;
-    // float  pitch_KD;
-    // float  pitch_KI;
-    // float  Dpitch_KP;
-    // float  Dpitch_KI;
-    // float  Dpitch_KD;
-    // float  max_pitch_setpoint;
-
-    // float  yaw_KP;
-    // float  yaw_KI;
-    // float  yaw_KD;
-
-    // float  maxYawRate;
-    // float  minThrottle;
-    // float  maxThrottle;
+    //defines the config params as public members 
 
 };
 

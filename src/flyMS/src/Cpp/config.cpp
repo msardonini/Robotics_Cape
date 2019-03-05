@@ -4,9 +4,17 @@
 //Default Constructor
 flyMSParams::flyMSParams(){}
 
+//Copy Constructor
+flyMSParams::flyMSParams(const flyMSParams &obj) {
+    // Copy all of the values from the copy to the new object
+    #define X(type, fmt, name, default) this->config.name = obj.config.name;
+    CORE_CONFIG_TABLE
+    #undef X
 
-flyMSParams::~flyMSParams(){}
+}
+
 //Default Destructor
+flyMSParams::~flyMSParams(){}
 
 
 
@@ -63,6 +71,8 @@ void flyMSParams::loadConfigFile(std::string filename)
     CORE_CONFIG_TABLE
     #undef X
 
+    this->config_filepath = filename;
+    this->isLoaded = true;
 }
 
 int flyMSParams::writeConfigFile(std::string filename)
