@@ -6,7 +6,7 @@
  * @date 10/15/2018
  */
 
-#include "setpoint.hpp"
+#include "src/setpoint.hpp"
 
 setpoint::setpoint(config_t _config, logger& _loggingModule) :
 	isInitializing(true),

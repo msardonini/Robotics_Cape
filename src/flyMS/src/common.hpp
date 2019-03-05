@@ -26,9 +26,8 @@
 #define MIN_THROTTLE 0.3
 #define MAX_THROTTLE 0.75
 
-#include "filter.h"
 #include "Eigen/Dense"
-
+#include "filter.h"
 
 
 typedef struct state_t{

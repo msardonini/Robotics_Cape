@@ -6,7 +6,7 @@
  * @date 10/16/2018
  */
 
-#include "imu.hpp"
+#include "src/imu.hpp"
 
 rc_mpu_data_t imuDataShared;
 rc_mpu_data_t imuDataLocal;

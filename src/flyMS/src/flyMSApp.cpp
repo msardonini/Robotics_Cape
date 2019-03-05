@@ -11,7 +11,7 @@
 #include <getopt.h>
 
 //Our Includes
-#include "flyMS.hpp"
+#include "src/flyMS.hpp"
 
 void initSignalHandler();
 void onSignalReceived(int signo);

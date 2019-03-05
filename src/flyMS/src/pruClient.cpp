@@ -7,7 +7,7 @@
  */
 
 
-#include "pruClient.hpp"
+#include "src/pruClient.hpp"
 
 pruClient::pruClient() : u(NUM_CHANNELS)
 {

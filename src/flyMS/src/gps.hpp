@@ -27,8 +27,8 @@
 #include <roboticscape.h>
 
 //Ours
-#include "config.hpp"
-#include "logger.hpp"
+#include "src/config.hpp"
+#include "src/logger.hpp"
 
 
 #define D2R_GPS 0.01744

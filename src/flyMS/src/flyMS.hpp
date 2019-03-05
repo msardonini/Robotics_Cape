@@ -19,14 +19,14 @@
 #include "filter.h"
 
 //Ours
-#include "common.hpp"
-#include "logger.hpp"
-#include "gps.hpp"
-#include "config.hpp"
-#include "imu.hpp"
-#include "pruClient.hpp"
-#include "setpoint.hpp"
-#include "ekf.hpp"
+#include "src/common.hpp"
+#include "src/logger.hpp"
+#include "src/gps.hpp"
+#include "src/config.hpp"
+#include "src/imu.hpp"
+#include "src/pruClient.hpp"
+#include "src/setpoint.hpp"
+#include "src/ekf.hpp"
 
 
 

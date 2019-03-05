@@ -22,8 +22,8 @@
 
 
 //Local Includes
-#include "common.hpp"
-#include "config.hpp"
+#include "src/common.hpp"
+#include "src/config.hpp"
 
 
 #define CORE_LOG_TABLE \

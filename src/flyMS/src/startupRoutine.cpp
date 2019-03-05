@@ -7,7 +7,7 @@
  */
 
 
-#include "flyMS.hpp"
+#include "src/flyMS.hpp"
 
 int flyMS::startupRoutine()
 {

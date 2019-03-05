@@ -30,9 +30,9 @@
 // #include <flyMS.hpp>
 
 //Ours
-#include "common.hpp"
-#include "config.hpp"
-#include "logger.hpp"
+#include "src/common.hpp"
+#include "src/config.hpp"
+#include "src/logger.hpp"
 
 
 typedef enum reference_mode_t
