@@ -1,6 +1,6 @@
 /**
  * @file setpoint.hpp
- * @brief Class for controlling the input reference angle to the inner loop controller 
+ * @brief Class for controlling the input reference angle to the inner loop controller
  *
  * @author Mike Sardonini
  * @date 10/15/2018
@@ -35,56 +35,54 @@
 #include "src/logger.hpp"
 
 
-typedef enum reference_mode_t
-{
-	RC_INITIALIZATION,
-	RC_DIRECT,
-	RC_NAVIGATION
+typedef enum reference_mode_t {
+  RC_INITIALIZATION,
+  RC_DIRECT,
+  RC_NAVIGATION
 
-}reference_mode_t;
-
-
-class setpoint
-{
-public:
-
-	setpoint(config_t _config, logger& _loggingModule);
-
-	//Default Destructor
-	~setpoint();
-	
-	bool getSetpointData(setpoint_t* _setpoint);
+} reference_mode_t;
 
 
-	int start();
+class setpoint {
+ public:
 
-	//Sets the init flag
-	void setInitializationFlag(bool flag);
+  setpoint(config_t _config, logger& _loggingModule);
 
-private:
+  //Default Destructor
+  ~setpoint();
 
-	int setpointManager();
-	int copy_dsm2_data();
-	int handle_rc_data_direct();
-	int rc_err_handler(reference_mode_t setpoint_type);
+  bool getSetpointData(setpoint_t* _setpoint);
 
-	bool isInitializing;
-	enum reference_mode_t setpoint_type;
-	bool isReadyToParse;
-	std::atomic <bool> isReadyToSend;
-	float dsm2_data[MAX_DSM2_CHANNELS];
-	int dsm2_timeout;
 
-	//Variables to control multithreading
-	std::thread setpointThread;
-	std::timed_mutex setpointMutex;
+  int start();
 
-	//All relevant setpoint data goes here
-	setpoint_t setpointData;
+  //Sets the init flag
+  void setInitializationFlag(bool flag);
 
-	config_t config;
+ private:
 
-	logger& loggingModule;
+  int setpointManager();
+  int copy_dsm2_data();
+  int handle_rc_data_direct();
+  int rc_err_handler(reference_mode_t setpoint_type);
+
+  bool isInitializing;
+  enum reference_mode_t setpoint_type;
+  bool isReadyToParse;
+  std::atomic <bool> isReadyToSend;
+  float dsm2_data[MAX_DSM2_CHANNELS];
+  int dsm2_timeout;
+
+  //Variables to control multithreading
+  std::thread setpointThread;
+  std::timed_mutex setpointMutex;
+
+  //All relevant setpoint data goes here
+  setpoint_t setpointData;
+
+  config_t config;
+
+  logger& loggingModule;
 
 };
 

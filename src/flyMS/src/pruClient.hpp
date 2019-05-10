@@ -1,6 +1,6 @@
 /**
  * @file flyMS.cpp
- * @brief flyMS program source code. 
+ * @brief flyMS program source code.
  *
  * @author Mike Sardonini
  * @date 10/15/2018
@@ -36,45 +36,44 @@
 #define NUM_CHANNELS 4
 
 //Struct to send the PRU data over with
-typedef struct pru_client_data_t{
-
- 
-}pru_client_data_t;
+typedef struct pru_client_data_t {
 
 
-class pruClient
-{
+} pru_client_data_t;
 
-public:
-	
-	// Default Constructor
-	pruClient();
 
-	//Default Destructor
-	~pruClient();
+class pruClient {
 
-	int setSendData(std::vector<float> u);
+ public:
 
-	int startPruClient();
+  // Default Constructor
+  pruClient();
 
-private:
+  //Default Destructor
+  ~pruClient();
 
-	int	pruSender();
+  int setSendData(std::vector<float> u);
 
-	//Boolean for the status of the program
-	bool isRunning;
+  int startPruClient();
 
-	//Thread and mutex objects
-	std::thread pruSenderThread;
-	std::mutex pruSenderMutex;
-	//Data we send over the network interface
-	bool send_flag;
-	std::vector<float> u;
+ private:
 
-	//Socket variables
-	int sockfd;
-    char sendBuff[16];
-    struct sockaddr_in serv_addr;
+  int	pruSender();
+
+  //Boolean for the status of the program
+  bool isRunning;
+
+  //Thread and mutex objects
+  std::thread pruSenderThread;
+  std::mutex pruSenderMutex;
+  //Data we send over the network interface
+  bool send_flag;
+  std::vector<float> u;
+
+  //Socket variables
+  int sockfd;
+  char sendBuff[16];
+  struct sockaddr_in serv_addr;
 
 };
 

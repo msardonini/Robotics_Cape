@@ -70,34 +70,32 @@
     X(float,  "%f", aux6,   0   )
 
 
-typedef struct config_t
-{
-    #define X(type, fmt, name, defaultVal) type name;
-    CORE_CONFIG_TABLE
-    #undef X
+typedef struct config_t {
+#define X(type, fmt, name, defaultVal) type name;
+  CORE_CONFIG_TABLE
+#undef X
 } config_t;
 
-class flyMSParams
-{
+class flyMSParams {
  public:
 
-    flyMSParams();
-    ~flyMSParams();
+  flyMSParams();
+  ~flyMSParams();
 
-    // Copy Constructor
-    flyMSParams(const flyMSParams &obj);
+  // Copy Constructor
+  flyMSParams(const flyMSParams &obj);
 
-    void loadConfigFile(std::string filename);
-    int writeConfigFile(std::string filename);
+  void loadConfigFile(std::string filename);
+  int writeConfigFile(std::string filename);
 
-    YAML::Node flyMSYamlNode;
-    
-    config_t config;
-    std::string config_filepath;
-    bool isLoaded;
+  YAML::Node flyMSYamlNode;
 
-    //defines the config params as public members 
+  config_t config;
+  std::string config_filepath;
+  bool isLoaded;
+
+  //defines the config params as public members
 
 };
 
-#endif	//CONFIG_H
+#endif  //CONFIG_H

@@ -1,6 +1,6 @@
 /**
  * @file logger.hpp
- * @brief logging module for the flight controller 
+ * @brief logging module for the flight controller
  *
  * @author Mike Sardonini
  * @date 10/15/2018
@@ -69,39 +69,38 @@
     X(float,  "%f",  droll_setpoint) \
     X(float,  "%f",  dpitch_setpoint)
 
-class logger
-{
+class logger {
 
-public:
-    logger(std::string log_filepath);
-    ~logger();	
-    int createLogFiles();
-    
-    int writeToLog(state_t *bodyState, controller_t *controller, setpoint_t *setpoint);
+ public:
+  logger(std::string log_filepath);
+  ~logger();
+  int createLogFiles();
 
-    //Smart method for print statements. Sends to the terminal if open, also sends to console log file.
-    int flyMS_printf(const char* format, ...);
+  int writeToLog(state_t *bodyState, controller_t *controller, setpoint_t *setpoint);
 
-    //defines the config params as public members 
-    #define X(type, fmt, name) type name;
-    CORE_LOG_TABLE
-    #undef X
+  //Smart method for print statements. Sends to the terminal if open, also sends to console log file.
+  int flyMS_printf(const char* format, ...);
 
-private:
+  //defines the config params as public members
+#define X(type, fmt, name) type name;
+  CORE_LOG_TABLE
+#undef X
 
-    bool fileExists(std::string filename);
-    
-    //Bool to indicate if this process is running as a daemon or from a terminal
-    bool isRunningConsole;
-    std::mutex printMutex;
+ private:
 
-    //Objects to handle program output to file
-    std::string log_filepath_;
-    std::ofstream dataLogFid;
-    std::ofstream errorFid;
-    std::ofstream consoleLogFid;
-    std::ostringstream consoleInitBuffer;
+  bool fileExists(std::string filename);
+
+  //Bool to indicate if this process is running as a daemon or from a terminal
+  bool isRunningConsole;
+  std::mutex printMutex;
+
+  //Objects to handle program output to file
+  std::string log_filepath_;
+  std::ofstream dataLogFid;
+  std::ofstream errorFid;
+  std::ofstream consoleLogFid;
+  std::ostringstream consoleInitBuffer;
 
 };
 
-#endif	//LOGGER_H
+#endif  //LOGGER_H

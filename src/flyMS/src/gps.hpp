@@ -1,6 +1,6 @@
 /**
  * @file gps.hpp
- * @brief Source code to communicate with the trimble copernicus II GPS module 
+ * @brief Source code to communicate with the trimble copernicus II GPS module
  *
  * @author Mike Sardonini
  * @date 10/15/2018
@@ -34,71 +34,70 @@
 #define D2R_GPS 0.01744
 #define BAUDRATE B4800
 #define BAUDRATE2 B57600
-#define MODEMDEVICE "/dev/ttyO1" 
+#define MODEMDEVICE "/dev/ttyO1"
 
 
-typedef struct GPS_data_t{
-	int 	GPS_file;
-	float 	deg_longitude;
-	float 	deg_latitude;
-	float 	gps_altitude;
-	float 	meters_lat;
-	float 	meters_lon;
-	float 	speed;
-	float 	direction;
-	double 	min_longitude;
-	double 	min_latitude;
-	float 	HDOP;
-	int 	GPS_fix;
-	double	pos_lon, pos_lat;
-	int 	GPS_init_check;
-	int 	GPS_fix_check;
-}GPS_data_t;
+typedef struct GPS_data_t {
+  int 	GPS_file;
+  float 	deg_longitude;
+  float 	deg_latitude;
+  float 	gps_altitude;
+  float 	meters_lat;
+  float 	meters_lon;
+  float 	speed;
+  float 	direction;
+  double 	min_longitude;
+  double 	min_latitude;
+  float 	HDOP;
+  int 	GPS_fix;
+  double	pos_lon, pos_lat;
+  int 	GPS_init_check;
+  int 	GPS_fix_check;
+} GPS_data_t;
 
 
-class gps
-{
+class gps {
 
-public:
+ public:
 
-	gps(config_t _config, logger& _loggingModule);
+  gps(config_t _config, logger& _loggingModule);
 
-	//Default Destructor
-	~gps();
+  //Default Destructor
+  ~gps();
 
-	//Main thread which controls the inner loop FCS
-	int	flightCore();
+  //Main thread which controls the inner loop FCS
+  int	flightCore();
 
-	//Initialize the system's hardware
-	int startupRoutine();
+  //Initialize the system's hardware
+  int startupRoutine();
 
-	int getGpsData(GPS_data_t *_gpsData);
+  int getGpsData(GPS_data_t *_gpsData);
 
 
-private:
-	int dataMonitor();
+ private:
+  int dataMonitor();
 
-	float get_NMEA_field(int field, char buf[], int comma[]);
+  float get_NMEA_field(int field, char buf[], int comma[]);
 
-	void read_raw_gps(char *buf, GPS_data_t *GPS_data);
+  void read_raw_gps(char *buf, GPS_data_t *GPS_data);
 
-	GPS_data_t gpsData;
+  GPS_data_t gpsData;
 
-	//Variables to manage the gps threads
-	std::thread gpsThread;
-	std::timed_mutex gpsMutex;
+  //Variables to manage the gps threads
+  std::thread gpsThread;
+  std::timed_mutex gpsMutex;
 
-	//Flags to signal if messages have arrived
-	bool GGA_flag;
-	bool VTG_flag;
-	std::atomic<bool> GPS_data_flag;
+  //Flags to signal if messages have arrived
+  bool GGA_flag;
+  bool VTG_flag;
+  std::atomic<bool> GPS_data_flag;
 
-	//the serial file descriptor
-	int serialFd;
+  //the serial file descriptor
+  int serialFd;
 
-	config_t config;
+  config_t config;
 
-	logger& loggingModule;
+  logger& loggingModule;
 
 };
 

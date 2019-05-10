@@ -1,6 +1,6 @@
 /**
  * @file ekf.hpp
- * @brief Source code to interface with the PX4 EKF & position estimator 
+ * @brief Source code to interface with the PX4 EKF & position estimator
  *
  * @author Mike Sardonini
  * @date 10/15/2018
@@ -9,11 +9,11 @@
 #define EKF_HPP
 
 
-//System includes	
+//System includes
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <unistd.h>	
+#include <unistd.h>
 #include <fcntl.h>
 #include <errno.h>
 #include <math.h>
@@ -32,63 +32,62 @@
 
 
 
-typedef struct ekf_filter_input_t{
-	uint64_t IMU_timestamp;
-	float mag[3];
-	float gyro[3];
-	float accel[3];
-	
-	uint64_t barometer_timestamp; 
-	uint8_t barometer_updated;
-	float barometer_alt;
+typedef struct ekf_filter_input_t {
+  uint64_t IMU_timestamp;
+  float mag[3];
+  float gyro[3];
+  float accel[3];
 
-	uint8_t gps_updated;
-	uint64_t gps_timestamp;
-	double gps_latlon[3];
-	uint8_t gps_fix;
-	uint8_t nsats;
+  uint64_t barometer_timestamp;
+  uint8_t barometer_updated;
+  float barometer_alt;
 
-	uint8_t vehicle_land;
+  uint8_t gps_updated;
+  uint64_t gps_timestamp;
+  double gps_latlon[3];
+  uint8_t gps_fix;
+  uint8_t nsats;
 
-}ekf_filter_input_t;
+  uint8_t vehicle_land;
 
-
-typedef struct ekf_filter_output_t{
-	double ned_pos[3];
-	double ned_vel[3];
-	double ned_acc[3];
-
-	float vertical_time_deriv;
-	float gyro[3];
-
-}ekf_filter_output_t;
-
-typedef struct ekf_filter_t{
-	ekf_filter_input_t input;
-	ekf_filter_output_t output;
-
-}ekf_filter_t;
+} ekf_filter_input_t;
 
 
+typedef struct ekf_filter_output_t {
+  double ned_pos[3];
+  double ned_vel[3];
+  double ned_acc[3];
 
-class ekf2
-{
+  float vertical_time_deriv;
+  float gyro[3];
 
-public:
-	ekf2();
-	~ekf2();
+} ekf_filter_output_t;
 
-	int setInputs(ekf_filter_t *inputFilter);
-	int startEkf();
+typedef struct ekf_filter_t {
+  ekf_filter_input_t input;
+  ekf_filter_output_t output;
 
-private:
-	Ekf _ekf;
+} ekf_filter_t;
 
-	int runEkf();
-	std::thread ekfThread;
-	std::mutex ekfMutex;
 
-	ekf_filter_t ekf_filter;
+
+class ekf2 {
+
+ public:
+  ekf2();
+  ~ekf2();
+
+  int setInputs(ekf_filter_t *inputFilter);
+  int startEkf();
+
+ private:
+  Ekf _ekf;
+
+  int runEkf();
+  std::thread ekfThread;
+  std::mutex ekfMutex;
+
+  ekf_filter_t ekf_filter;
 
 };
 
