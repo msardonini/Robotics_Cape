@@ -42,20 +42,20 @@ bool setpoint::getSetpointData(setpoint_t* _setpoint) {
 }
 
 /*
-	setpoint_manager()
-		Handles the setpoint values for roll/pitch/yaw to be fed into the flight controller
+  setpoint_manager()
+    Handles the setpoint values for roll/pitch/yaw to be fed into the flight controller
 
-		2 Main sources of retreiving values
-			1. Direct from remote flyMSData
-			2. Calculated values from GPS navigation for autonomous flight
+    2 Main sources of retreiving values
+      1. Direct from remote flyMSData
+      2. Calculated values from GPS navigation for autonomous flight
 */
 
 int setpoint::setpointManager() {
 
   while (rc_get_state() != EXITING) {
     /**********************************************************
-    *           If there is new dsm2 data read it in 		  *
-    *			and make a local copy from the driver's data  *
+    *           If there is new dsm2 data read it in       *
+    *      and make a local copy from the driver's data  *
     **********************************************************/
     if (rc_dsm_is_new_data()) {
       this->copy_dsm2_data();

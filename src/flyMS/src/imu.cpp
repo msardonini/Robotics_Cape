@@ -132,7 +132,7 @@ int imu::getImuData(state_t* state) {
 
 int imu::update() {
   /**********************************************************
-  *    		Read and Translate the Raw IMU Data
+  *        Read and Translate the Raw IMU Data
   **********************************************************/
   this->read_transform_imu();
   //Perform the data fusion to calculate pitch, roll, and yaw angles
@@ -140,7 +140,7 @@ int imu::update() {
     this->updateFusion();
 
   /**********************************************************
-  *					Unwrap the Yaw value				  *
+  *          Unwrap the Yaw value          *
   **********************************************************/
   this->stateBody.euler[2] += this->stateBody.num_wraps * 2 * M_PI;
   if (fabs(this->stateBody.euler[2] - this->stateBody.eulerPrevious[2])  > 5) {
@@ -154,7 +154,7 @@ int imu::update() {
   }
 
   /**********************************************************
-  *           Read the Barometer for Altitude				  *
+  *           Read the Barometer for Altitude          *
   **********************************************************/
   static int i1;
   if (this->config.enableBarometer) {
@@ -176,16 +176,16 @@ int imu::update() {
   }
 
   /************************************************************************
-  *                   	Send data to PX4's EKF                          *
+  *                     Send data to PX4's EKF                          *
   ************************************************************************/
   //TODO: enable the EKF again
 
   // int i;
   // for (i = 0; i < 3; i++)
   // {
-  // 	// this->ekfContainer.input.accel[i] = this->transform.accel_drone.d[i];
-  // 	// this->ekfContainer.input.mag[i] = imu_data.mag[i] * MICROTESLA_TO_GAUSS;
-  // 	// this->ekfContainer.input.gyro[i] = this->stateBody.eulerRate[i];
+  //   // this->ekfContainer.input.accel[i] = this->transform.accel_drone.d[i];
+  //   // this->ekfContainer.input.mag[i] = imu_data.mag[i] * MICROTESLA_TO_GAUSS;
+  //   // this->ekfContainer.input.gyro[i] = this->stateBody.eulerRate[i];
   // }
   //TODO implement the EKF and use real timestamps
   // this->ekfContainer.input.IMU_timestamp = this->time_us;
@@ -196,7 +196,7 @@ int imu::update() {
 
 
 /************************************************************************
-*				Transform coordinate system IMU Data
+*        Transform coordinate system IMU Data
 ************************************************************************/
 void imu::read_transform_imu() {
 
@@ -217,14 +217,14 @@ void imu::read_transform_imu() {
 
 
     for (int i = 0; i < 3; i++) {
-      this->stateBody.eulerPrevious(i) 		= this->stateBody.euler(i);
-      this->stateBody.euler(i)				= this->imu_data.dmp_TaitBryan[i];
-      this->stateBody.eulerRate(i)			= this->imu_data.gyro[i] * D2R_IMU;
+      this->stateBody.eulerPrevious(i)     = this->stateBody.euler(i);
+      this->stateBody.euler(i)        = this->imu_data.dmp_TaitBryan[i];
+      this->stateBody.eulerRate(i)      = this->imu_data.gyro[i] * D2R_IMU;
     }
 
   }
   /**********************************************************
-  *		Perform the Coordinate System Transformation	  *
+  *    Perform the Coordinate System Transformation    *
   **********************************************************/
 
   int i;
@@ -244,19 +244,19 @@ void imu::read_transform_imu() {
 
 
 /************************************************************************
-*              		Initialize the IMU Fusion Algorithm					*
+*                  Initialize the IMU Fusion Algorithm          *
 ************************************************************************/
 void imu::init_fusion() {
-  /*	Three params here are:
-  	1. gain -  (<= 0) 0 means to only use gyro data in fusion, greater value use accel / mag more
-  	2. min squared magnetic field, magnetic fields squared less than this will be discarded
-  	3. max squared magnetic field, magnetic fields squared greater than this will be discarded
+  /*  Three params here are:
+    1. gain -  (<= 0) 0 means to only use gyro data in fusion, greater value use accel / mag more
+    2. min squared magnetic field, magnetic fields squared less than this will be discarded
+    3. max squared magnetic field, magnetic fields squared greater than this will be discarded
   */
   FusionAhrsInitialise(&this->fusionAhrs, 0.25f, 0.0f, 120.0f); // valid magnetic field defined as 20 uT to 70 uT
   /*
-  	Two params here are:
-  	1. Min ADC threshold - gyroscope value threshold which means the device is stationary
-  	2. DT - time difference in seconds
+    Two params here are:
+    1. Min ADC threshold - gyroscope value threshold which means the device is stationary
+    2. DT - time difference in seconds
   */
   FusionBiasInitialise(&this->fusionBias, (int)(0.2f / imu_data.gyro_to_degs), DT);
 
@@ -293,7 +293,7 @@ void imu::updateFusion() {
   this->eulerAngles = FusionQuaternionToEulerAngles(this->fusionAhrs.quaternion);
 
   //We want pitch and roll to be relative to the Drone's Local Coordinate Frame, not the NED Frame
-  //	make that conversion here
+  //  make that conversion here
   float mag, theta;
   mag = powf(powf(this->eulerAngles.angle.pitch, 2.0f) + powf(this->eulerAngles.angle.roll, 2.0f), 0.5f);
   theta = atan2f(this->eulerAngles.angle.roll, this->eulerAngles.angle.pitch);
@@ -306,9 +306,9 @@ void imu::updateFusion() {
 
   //Save the output
   for (i = 0; i < 3; i++) {
-    this->stateBody.eulerPrevious(i) 		= this->stateBody.euler(i);
-    this->stateBody.euler(i)				= this->eulerAngles.array[i] * D2R_IMU;
-    this->stateBody.eulerRate(i)			= this->stateBody.gyro(i) * D2R_IMU;
+    this->stateBody.eulerPrevious(i) = this->stateBody.euler(i);
+    this->stateBody.euler(i) = this->eulerAngles.array[i] * D2R_IMU;
+    this->stateBody.eulerRate(i) = this->stateBody.gyro(i) * D2R_IMU;
   }
 
 }

@@ -115,23 +115,23 @@ int flyMS::readyCheck() {
 
 
 /************************************************************************
-*	initialize_filters()
-*	setup of feedback controllers used in flight core
+*  initialize_filters()
+*  setup of feedback controllers used in flight core
 ************************************************************************/
 int flyMS::initializeFilters() {
 
   this->filters.pitch_PD = generatePID(this->config.pitch_KP, this->config.pitch_KI, this->config.pitch_KD, 0.15, DT);
   this->filters.roll_PD  = generatePID(this->config.roll_KP, this->config.roll_KI, this->config.roll_KD, 0.15, DT);
-  this->filters.yaw_PD   = generatePID(this->config.yaw_KP, this->config.yaw_KI, this->config.yaw_KD,	    0.15, 0.005);
+  this->filters.yaw_PD   = generatePID(this->config.yaw_KP, this->config.yaw_KI, this->config.yaw_KD,      0.15, 0.005);
 
   // //PD Controller (I is done manually)
   this->filters.pitch_rate_PD = generatePID(this->config.Dpitch_KP, 0, this->config.Dpitch_KD, 0.15, DT);
   this->filters.roll_rate_PD  = generatePID(this->config.Droll_KP, 0, this->config.Droll_KD, 0.15, DT);
-  this->filters.yaw_rate_PD   = generatePID(this->config.yaw_KP, this->config.yaw_KI, this->config.yaw_KD,	    0.15, DT);
+  this->filters.yaw_rate_PD   = generatePID(this->config.yaw_KP, this->config.yaw_KI, this->config.yaw_KD,      0.15, DT);
 
   // //Gains on Low Pass Filter for raw gyroscope output
 
-  // filters->altitudeHoldPID  = generatePID(.05,		  .005,  .002,	    0.15, DT);
+  // filters->altitudeHoldPID  = generatePID(.05,      .005,  .002,      0.15, DT);
 
   // //elliptic filter 10th order 0.25 dB passband ripple 80 dB min Cutoff 0.4 cutoff frq
   float num[11] = {   0.003316345545497,   0.006003204398448,   0.015890122416480,   0.022341342884745,   0.031426841006402,
@@ -166,12 +166,12 @@ int flyMS::initializeFilters() {
 
   // //ellip filter, 5th order .5 pass 70 stop .05 cutoff
   // float baro_num[6] = {0.000618553374672,  -0.001685890697737,   0.001077182625629,   0.001077182625629,  -0.001685890697737,   0.000618553374672};
-  // float baro_den[6] =	{1.000000000000000,  -4.785739467762915,   9.195509273069447,  -8.866262182166356,   4.289470039368545,  -0.832957971903594};
+  // float baro_den[6] =  {1.000000000000000,  -4.785739467762915,   9.195509273069447,  -8.866262182166356,   4.289470039368545,  -0.832957971903594};
   // filters->LPF_baro_alt = initialize_filter(5, baro_num, baro_den);
   // for (i = 0; i< 3; i++)
   // {
-  // 	zeroFilter(filters->gyro_lpf[i]);
-  // 	zeroFilter(filters->accel_lpf[i]);
+  //   zeroFilter(filters->gyro_lpf[i]);
+  //  hzeroFilter(filters->accel_lpf[i]);
   // }
 
   return 0;

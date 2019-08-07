@@ -65,7 +65,7 @@ int ekf2::setInputs(ekf_filter_t *inputFilter) {
 
 int ekf2::runEkf() {
   Vector3f _vel_body_wind;
-//	float _acc_hor_filt;
+//  float _acc_hor_filt;
 
 
   // Magnetometer Values
@@ -76,7 +76,7 @@ int ekf2::runEkf() {
   float _mag_data_sum[3];
   uint64_t _mag_time_ms_last_used;
 
-//	Baro values
+//  Baro values
   uint64_t _timestamp_balt_us;
   uint64_t _balt_time_sum_ms;
   uint64_t _balt_time_ms_last_used;
@@ -90,17 +90,17 @@ int ekf2::runEkf() {
   {
     this->ekfMutex.lock();
 
-    //	bool gps_updated = false;
-    //	bool magnetomer_updated = false;
-    //	bool barometer_updated = false;
+    //  bool gps_updated = false;
+    //  bool magnetomer_updated = false;
+    //  bool barometer_updated = false;
 
-    //	bool airspeed_updated = false;
+    //  bool airspeed_updated = false;
     bool optical_flow_updated = false;
     bool range_finder_updated = false;
     bool vehicle_land_detected_updated = false;
     bool vision_position_updated = false;
     bool vision_attitude_updated = false;
-//		bool vehicle_status_updated = false;
+//    bool vehicle_status_updated = false;
 
     struct timespec log_time;
     clock_gettime(CLOCK_MONOTONIC, &log_time);
@@ -155,7 +155,7 @@ int ekf2::runEkf() {
 
 
 
-      //		printf("Calc diff %d actual diff %d \n",(int)(timestamp - _mag_time_ms_last_used),MIN_INTERVAL_MS);
+      //    printf("Calc diff %d actual diff %d \n",(int)(timestamp - _mag_time_ms_last_used),MIN_INTERVAL_MS);
 
       // if (mag_time_ms - _mag_time_ms_last_used > _params->sensor_interval_min_ms) {
       if (mag_time_ms - _mag_time_ms_last_used > MIN_INTERVAL_MS) {
@@ -190,12 +190,12 @@ int ekf2::runEkf() {
 
     // if (this->ekf_filter.input.barometer_updated)
     // {
-    // 	float balt_data_avg = this->ekf_filter.input.barometer_pressure;
+    //   float balt_data_avg = this->ekf_filter.input.barometer_pressure;
 
-    // 	// push to estimator
-    // 	this->_ekf.set_air_density(0.001f);
-    // 	this->_ekf.setBaroData( (uint64_t)now, balt_data_avg);
-    // 	this->ekf_filter.input.barometer_updated = 0;
+    //   // push to estimator
+    //   this->_ekf.set_air_density(0.001f);
+    //   this->_ekf.setBaroData( (uint64_t)now, balt_data_avg);
+    //   this->ekf_filter.input.barometer_updated = 0;
     // }
     // read baro data
 
@@ -272,7 +272,7 @@ int ekf2::runEkf() {
 
       // if (PX4_ISFINITE(optical_flow.pixel_flow_y_integral) &&
       //     PX4_ISFINITE(optical_flow.pixel_flow_x_integral)) {
-      // 	this->_ekf.setOpticalFlowData(optical_flow.timestamp, &flow);
+      //   this->_ekf.setOpticalFlowData(optical_flow.timestamp, &flow);
       // }
     }
 
@@ -304,10 +304,10 @@ int ekf2::runEkf() {
 
 
     /* ------------ Run the EKF and Output the data -------- */
-//			printf("Update Successful \n");
+//      printf("Update Successful \n");
     if (this->_ekf.update()) {
 
-      //		printf("Update Successful \n");
+      //    printf("Update Successful \n");
       matrix::Quaternion<float> q;
       this->_ekf.copy_quaternion(q.data());
 
@@ -317,7 +317,7 @@ int ekf2::runEkf() {
       float pos_d_deriv;
       this->_ekf.get_pos_d_deriv(&pos_d_deriv);
 
-      //	float gyro_rad[3];
+      //  float gyro_rad[3];
 
 
       // generate control state data
@@ -334,7 +334,7 @@ int ekf2::runEkf() {
       // Velocity in body frame
       Vector3f v_n(velocity);
       matrix::Dcm<float> R_to_body(q.inversed());
-      //	Vector3f v_b = R_to_body * v_n;
+      //  Vector3f v_b = R_to_body * v_n;
 
 
       // Calculate velocity relative to wind in body frame
@@ -370,7 +370,7 @@ int ekf2::runEkf() {
       // // compute lowpass filtered horizontal acceleration
       // acceleration = R_to_body.transpose() * acceleration;
       // _acc_hor_filt = 0.95f * _acc_hor_filt + 0.05f * sqrtf(acceleration(0) * acceleration(0) +
-      // 		acceleration(1) * acceleration(1));
+      //     acceleration(1) * acceleration(1));
       // ctrl_state.horz_acc_mag = _acc_hor_filt;
     }
 

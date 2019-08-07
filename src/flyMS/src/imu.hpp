@@ -13,11 +13,11 @@
 #define OVERSAMPLE  BMP_OVERSAMPLE_16
 // choice of OFF, 2, 4, 8, 16 filter constants. Here we turn off the filter and
 // opt to use our own 2nd order filter instead.
-#define INTERNAL_FILTER	BMP_FILTER_8
-#define BMP_CHECK_HZ	1
+#define INTERNAL_FILTER  BMP_FILTER_8
+#define BMP_CHECK_HZ  1
 #define MICROTESLA_TO_GAUSS 0.01f
 #define R2D_IMU 57.2958
-#define D2R_IMU	0.01744f
+#define D2R_IMU  0.01744f
 
 //System Includes
 #include <iostream>
@@ -49,19 +49,19 @@ class imu {
   ~imu();
 
   /************************************************************************
-  *							Initialize the IMU                          *
+  *              Initialize the IMU                          *
   ************************************************************************/
   int initializeImu();
 
   /************************************************************************
-  	imu_handler()
-  		Does all the parsing and interpretting of the IMU
-  		5 main tasks
-  			1. Reads the data from the IMU using Robotics_Cape API
-  			2. Performs a coordinate system transformation from imu -> drone
-  			3. Unwraps the yaw value for proper PID control
-  			4. Reads Barometer for altitude measurement
-  			5. Sends data to the EKF for position control
+    imu_handler()
+      Does all the parsing and interpretting of the IMU
+      5 main tasks
+        1. Reads the data from the IMU using Robotics_Cape API
+        2. Performs a coordinate system transformation from imu -> drone
+        3. Unwraps the yaw value for proper PID control
+        4. Reads Barometer for altitude measurement
+        5. Sends data to the EKF for position control
 
   ************************************************************************/
   int update();
@@ -70,12 +70,12 @@ class imu {
 
 
   /************************************************************************
-  *					   Update the EKF with GPS Data                     *
+  *             Update the EKF with GPS Data                     *
   ************************************************************************/
   int update_ekf_gps();
 
   /************************************************************************
-  				Get the Latest IMU data from the Object
+          Get the Latest IMU data from the Object
   ************************************************************************/
   int getImuData(state_t* state);
 

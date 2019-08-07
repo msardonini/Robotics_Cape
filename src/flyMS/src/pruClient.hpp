@@ -58,7 +58,7 @@ class pruClient {
 
  private:
 
-  int	pruSender();
+  int pruSender();
 
   //Boolean for the status of the program
   bool isRunning;

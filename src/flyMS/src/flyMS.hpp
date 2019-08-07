@@ -40,7 +40,7 @@ class flyMS {
   ~flyMS();
 
   //Main thread which controls the inner loop FCS
-  int	flightCore();
+  int flightCore();
 
   //Initialize the system's hardware
   int startupRoutine();

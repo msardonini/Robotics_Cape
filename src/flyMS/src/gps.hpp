@@ -38,21 +38,21 @@
 
 
 typedef struct GPS_data_t {
-  int 	GPS_file;
-  float 	deg_longitude;
-  float 	deg_latitude;
-  float 	gps_altitude;
-  float 	meters_lat;
-  float 	meters_lon;
-  float 	speed;
-  float 	direction;
-  double 	min_longitude;
-  double 	min_latitude;
-  float 	HDOP;
-  int 	GPS_fix;
-  double	pos_lon, pos_lat;
-  int 	GPS_init_check;
-  int 	GPS_fix_check;
+  int GPS_file;
+  float deg_longitude;
+  float deg_latitude;
+  float gps_altitude;
+  float meters_lat;
+  float meters_lon;
+  float speed;
+  float direction;
+  double min_longitude;
+  double min_latitude;
+  float HDOP;
+  int GPS_fix;
+  double pos_lon, pos_lat;
+  int GPS_init_check;
+  int GPS_fix_check;
 } GPS_data_t;
 
 
@@ -66,7 +66,7 @@ class gps {
   ~gps();
 
   //Main thread which controls the inner loop FCS
-  int	flightCore();
+  int  flightCore();
 
   //Initialize the system's hardware
   int startupRoutine();

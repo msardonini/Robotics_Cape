@@ -221,7 +221,7 @@ int gps::dataMonitor() {
           this->gpsMutex.unlock();
         }
 
-    //	this->loggingModule.flyMS_printf("GGA: %d VTG %d Data ready: %d\n\n",GGA_flag,VTG_flag,GPS_data_flag);
+    //  this->loggingModule.flyMS_printf("GGA: %d VTG %d Data ready: %d\n\n",GGA_flag,VTG_flag,GPS_data_flag);
     if (this->GGA_flag && this->VTG_flag) this->GPS_data_flag.store(false); //Flag to note that GPS data is ready
 
   }
