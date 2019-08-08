@@ -75,7 +75,7 @@ class setpoint {
 
   //Variables to control multithreading
   std::thread setpointThread;
-  std::timed_mutex setpointMutex;
+  std::mutex setpointMutex;
 
   //All relevant setpoint data goes here
   setpoint_t setpointData;

@@ -14,8 +14,7 @@ setpoint::setpoint(config_t _config, logger& _loggingModule) :
   isReadyToSend(false),
   setpoint_type(RC_DIRECT),
   config(_config),
-  loggingModule(_loggingModule) {
-}
+  loggingModule(_loggingModule) {}
 
 setpoint::~setpoint() {
   if (this->setpointThread.joinable())
@@ -31,12 +30,11 @@ int setpoint::start() {
 //Gets the data from the local thread. Returns zero if no new data is available
 bool setpoint::getSetpointData(setpoint_t* _setpoint) {
   if (this->isReadyToSend.load()) {
-    if (this->setpointMutex.try_lock_for(std::chrono::milliseconds(5))) {
-      memcpy(_setpoint, &this->setpointData, sizeof(setpoint_t));
-      this->isReadyToSend.store(false);
-      this->setpointMutex.unlock();
-      return true;
-    }
+    this->setpointMutex.lock();
+    memcpy(_setpoint, &this->setpointData, sizeof(setpoint_t));
+    this->isReadyToSend.store(false);
+    this->setpointMutex.unlock();
+    return true;
   }
   return false;
 }

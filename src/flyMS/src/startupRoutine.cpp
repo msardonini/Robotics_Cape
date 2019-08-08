@@ -14,6 +14,7 @@ int flyMS::startupRoutine() {
   if (this->setpointModule.start())
     std::cerr << "[flyMS] Error initializing Radio Coms!" << std::endl;
 
+  std::cout << "[flyMS] Starting ready check!!" << std::endl;
   //Pause the program until the user toggles the kill switch
   if (!this->config.isDebugMode) {
     if (this->readyCheck()) {
@@ -21,6 +22,7 @@ int flyMS::startupRoutine() {
       return -1;
     }
   }
+  std::cout << "[flyMS] Done ready check!!" << std::endl;
 
   //Tell the system that we are running
   rc_set_state(RUNNING);
