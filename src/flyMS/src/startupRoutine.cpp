@@ -127,29 +127,34 @@ int flyMS::initializeFilters() {
   this->filters.yaw_PD   = generatePID(this->config.yaw_KP, this->config.yaw_KI, this->config.yaw_KD,      0.15, 0.005);
 
   // //PD Controller (I is done manually)
-  this->filters.pitch_rate_PD = generatePID(this->config.Dpitch_KP, 0, this->config.Dpitch_KD, 0.15, DT);
-  this->filters.roll_rate_PD  = generatePID(this->config.Droll_KP, 0, this->config.Droll_KD, 0.15, DT);
+  this->filters.pitch_rate_PD = generatePID(this->config.Dpitch_KP, this->config.Dpitch_KI, this->config.Dpitch_KD, 0.15, DT);
+  this->filters.roll_rate_PD  = generatePID(this->config.Droll_KP, this->config.Droll_KI, this->config.Droll_KD, 0.15, DT);
   this->filters.yaw_rate_PD   = generatePID(this->config.yaw_KP, this->config.yaw_KI, this->config.yaw_KD,      0.15, DT);
 
   // //Gains on Low Pass Filter for raw gyroscope output
 
   // filters->altitudeHoldPID  = generatePID(.05,      .005,  .002,      0.15, DT);
 
-  // //elliptic filter 10th order 0.25 dB passband ripple 80 dB min Cutoff 0.4 cutoff frq
-  float num[11] = {   0.003316345545497,   0.006003204398448,   0.015890122416480,   0.022341342884745,   0.031426841006402,
-                      0.032682319166147,   0.031426841006402,  0.022341342884745,   0.015890122416480,   0.006003204398448,
-                      0.003316345545497
-                  };
+  //elliptic filter 10th order 0.25 dB passband ripple 80 dB min Cutoff 0.8 cutoff frq
+  float num[11] = {0.156832694556443,   1.427422676153595,   5.976558883724950,
+    15.145889466394246,  25.712846449561717,  30.545847498393631,
+    25.712846449561738,  15.145889466394268,   5.976558883724963,
+    1.427422676153600,   0.156832694556444};
+  float den[11] = {1.0,   5.633261445575803,  15.452644550671394,
+   26.460962250802702,  31.096445930527029,  26.068432134671180,
+   15.818327061618843,   6.914360323080047,   2.147477269285763,
+   0.453950599328629,   0.058793907152724};
 
-  float den[11] = {   1.000000000000000,  -4.302142513532524,  10.963685193359051, -18.990960386921738,  24.544342262847074,
-                      -24.210021253402012,  18.411553079753368, -10.622846105856944,   4.472385466696109,  -1.251943621469692,
-                      0.182152641224648
-                  };
-
-  // //elliptic filter 10th order 0.25 dB passband ripple 80 dB min Cutoff 0.05 cutoff frq
-
-  float yaw_num[11] = {0.000000138467082, 0.000001384670818, 0.000006231018679, 0.000016616049812, 0.000029078087171, 0.000034893704605, 0.000029078087171, 0.000016616049812, 0.000006231018679, 0.000001384670818, 0.000000138467082};
-  float yaw_den[11] = {1.000000000000000, -6.989417698566569, 22.323086726703938, -42.824608705880635, 54.570406893265300, -48.208486634295596, 29.872790631313180, -12.810698156370698, 3.636160614880030, -0.616474419461443, 0.047382538704228};
+  // elliptic filter 10th order 0.25 dB passband ripple 80 dB min Cutoff
+  // 0.05 cutoff frq
+  float yaw_num[11] = {0.000000138467082, 0.000001384670818, 0.000006231018679,
+    0.000016616049812, 0.000029078087171, 0.000034893704605, 0.000029078087171,
+    0.000016616049812, 0.000006231018679, 0.000001384670818, 0.000000138467082
+    };
+  float yaw_den[11] = {1.000000000000000, -6.989417698566569,
+   22.323086726703938, -42.824608705880635, 54.570406893265300,
+   -48.208486634295596, 29.872790631313180, -12.810698156370698,
+   3.636160614880030, -0.616474419461443, 0.047382538704228};
 
   int i;
   for (i = 0; i < 2; i++) {
