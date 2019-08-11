@@ -6,7 +6,7 @@ After=network.target robotcontrol.service pruHandler.service
 User=root
 Restart=always
 PIDFile=/var/run/flyMS.pid
-ExecStart=/usr/bin/flyMS_C++
+ExecStart=/home/debian/bin/flyMS -c /home/debian/flyMSConfig.yaml
 
 [Install]
 WantedBy=multi-user.target

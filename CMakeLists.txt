@@ -1,17 +1,16 @@
 cmake_minimum_required(VERSION 3.5)
 
-EXECUTE_PROCESS( COMMAND uname -m COMMAND tr -d '\n' OUTPUT_VARIABLE ARCHITECTURE )
+EXECUTE_PROCESS(COMMAND uname -m COMMAND tr -d '\n' OUTPUT_VARIABLE ARCHITECTURE)
 string(COMPARE EQUAL "${ARCHITECTURE}" x86_64 host64bit)
 
 if(host64bit)
-	# Set the location of the toolchain file if needed
-	set(CMAKE_TOOLCHAIN_FILE 
-		"${CMAKE_CURRENT_SOURCE_DIR}/cmake/toolchain.cmake" 
-		CACHE FILEPATH 
-		"toolchain path" FORCE)
+  # Set the location of the toolchain file if needed
+  set(CMAKE_TOOLCHAIN_FILE 
+    "${CMAKE_CURRENT_SOURCE_DIR}/cmake/toolchain.cmake" 
+    CACHE FILEPATH 
+    "toolchain path" FORCE)
 
-	message(STATUS "Cross compiling to ARM   ${CMAKE_TOOLCHAIN_FILE}")
-
+  message(STATUS "Cross compiling to ARM   ${CMAKE_TOOLCHAIN_FILE}")
 endif(host64bit)
 
 project(flyMS LANGUAGES CXX C)
@@ -20,20 +19,25 @@ project(flyMS LANGUAGES CXX C)
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11")
 
 add_compile_options(
-	# -Wall
-	-Wno-deprecated-declarations
-	-Wno-enum-compare
-	-Wno-unused-local-typedefs
-	-Wno-unused-parameter
+  # -Wall
+  -Wno-deprecated-declarations
+  -Wno-enum-compare
+  -Wno-unused-local-typedefs
+  -Wno-unused-parameter
 )
-	
+
+# Set the binary and library directories
+set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
+set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
+set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
+
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} ${CMAKE_CURRENT_SOURCE_DIR}/lib/eigen3/cmake)
 set(EIGEN3_INCLUDE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/lib/eigen3)
 find_package(Eigen3 REQUIRED)
 if(EIGEN3_FOUND)
-	include_directories(${EIGEN3_INCLUDE_DIR})
+  include_directories(${EIGEN3_INCLUDE_DIR})
 else()
-	message(FATAL_ERROR "Cannot Find Eigen3")
+  message(FATAL_ERROR "Cannot Find Eigen3")
 endif()
 
 # Sets variable to a value if variable is unset.
@@ -43,20 +47,20 @@ add_subdirectory(lib/librobotcontrol)
 
 include_directories(lib/librobotcontrol/library/include)
 
-# #Build the Yaml-Cpp config file parser
+# Build the Yaml-Cpp config file parser
 add_subdirectory(lib/yaml-cpp)
 
-# #Build the PX4 estimation control library
+# Build the PX4 estimation control library
 add_subdirectory(lib/ecl)
 
-# #Build the Accel/Gyro Fusion library
+# Build the Accel/Gyro Fusion library
 add_subdirectory(lib/Fusion)
 
-# #Build the Digital Filter Library
+# Build the Digital Filter Library
 add_subdirectory(lib/filter)
 
-# #Get the flyMS sources
-add_subdirectory(src/flyMS)
-
-#Build the pru_handler
+# Build the pru_handler
 add_subdirectory(src/pru_handler)
+
+# Get the flyMS sources
+add_subdirectory(src/flyMS)
