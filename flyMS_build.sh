@@ -103,4 +103,4 @@ fi
 # rsync the files over
 rsync -auv --info=progress2 products/ debian@$ADDRESS:/home/debian/
 
-# rm_output_folder
+rm_output_folder
