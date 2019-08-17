@@ -19,16 +19,16 @@ flyMSParams:
     roll_KP: 6.000000
     roll_KD: 0.00000
     roll_KI: 0.000
-    Droll_KP: 0.0110
-    Droll_KI: 0.001000
-    Droll_KD: 0.001625
+    Droll_KP: 0.01650
+    Droll_KI: 0.000000
+    Droll_KD: 0.003
     max_roll_setpoint: 0.800000
     pitch_KP: 6.000000
     pitch_KD: 0.00000
     pitch_KI: 0.000
-    Dpitch_KP: 0.01100
-    Dpitch_KI: 0.001000
-    Dpitch_KD: 0.001625
+    Dpitch_KP: 0.016500
+    Dpitch_KI: 0.00000
+    Dpitch_KD: 0.003
     max_pitch_setpoint: 0.800000
     yaw_KP: 0.50000
     yaw_KI: 0.050000
