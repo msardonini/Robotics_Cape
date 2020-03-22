@@ -22,8 +22,8 @@
 
 
 //Local Includes
-#include "src/common.hpp"
-#include "src/config.hpp"
+#include "flyMS/common.hpp"
+#include "flyMS/config.hpp"
 
 
 #define CORE_LOG_TABLE \

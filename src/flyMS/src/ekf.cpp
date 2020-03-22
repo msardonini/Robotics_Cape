@@ -39,7 +39,7 @@
  */
 
 
-#include "ekf.hpp"
+#include "flyMS/ekf.hpp"
 
 #define MIN_INTERVAL_MS 20
 

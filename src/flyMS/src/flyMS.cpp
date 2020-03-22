@@ -6,7 +6,7 @@
  * @date 10/15/2018
  */
 
-#include "flyMS.hpp"
+#include "flyMS/flyMS.hpp"
 
 
 flyMS::flyMS(flyMSParams &_config) :

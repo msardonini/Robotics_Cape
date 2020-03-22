@@ -6,7 +6,7 @@
 * @date 10/16/2018
 */
 
-#include "src/imu.hpp"
+#include "flyMS/imu.hpp"
 
 rc_mpu_data_t imuDataShared;
 rc_mpu_data_t imuDataLocal;
@@ -41,15 +41,13 @@ void imu::calculateDCM(float pitchOffsetDeg, float rollOffsetDeg, float yawOffse
   float cY1 = cosf(yawOffsetDeg * D2R_IMU);
   float sY1 = sinf(yawOffsetDeg * D2R_IMU);
 
-  this->imu2Body << cR1*cY1, -cP1*sY1 + sP1*sR1*cY1 ,  sP1*sY1 + cP1*sR1*cY1
-                 , cR1*sY1 ,  cP1*cY1 + sP1*sR1*sY1 , -sP1*cY1 + cP1*sR1*sY1
-                 , -sR1 , sP1*cR1 , cP1*cR1;
-
+  this->imu2Body << cR1*cY1, -cP1*sY1 + sP1*sR1*cY1 ,  sP1*sY1 + cP1*sR1*cY1,
+    cR1*sY1,  cP1*cY1 + sP1*sR1*sY1, -sP1*cY1 + cP1*sR1*sY1, -sR1, sP1*cR1,
+    cP1*cR1;
 }
 
 
 int imu::initializeImu() {
-
   //Start the barometer
   if (this->config.enableBarometer) {
     if (rc_bmp_init(OVERSAMPLE, INTERNAL_FILTER)) {
@@ -111,17 +109,13 @@ one of the X,Y,Z vectors on the IMU needs to be parallel with Gravity\n");
       return -1;
     }
 
-
     if (rc_mpu_initialize_dmp(&imuDataShared, conf)) {
       this->loggingModule.flyMS_printf("rc_mpu_initialize_failed\n");
       return -1;
     }
-
     rc_mpu_set_dmp_callback(&dmpCallback);
   }
-
   return 0;
-
 }
 
 int imu::getImuData(state_t* state) {
@@ -215,13 +209,11 @@ void imu::read_transform_imu() {
     memcpy(&this->imu_data, &imuDataLocal, sizeof(rc_mpu_data_t));
     localMutex.unlock();
 
-
     for (int i = 0; i < 3; i++) {
       this->stateBody.eulerPrevious(i)     = this->stateBody.euler(i);
       this->stateBody.euler(i)        = this->imu_data.dmp_TaitBryan[i];
       this->stateBody.eulerRate(i)      = this->imu_data.gyro[i] * D2R_IMU;
     }
-
   }
   /**********************************************************
   *    Perform the Coordinate System Transformation    *

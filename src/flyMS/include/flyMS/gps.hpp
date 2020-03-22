@@ -27,8 +27,8 @@
 #include <roboticscape.h>
 
 //Ours
-#include "src/config.hpp"
-#include "src/logger.hpp"
+#include "flyMS/config.hpp"
+#include "flyMS/logger.hpp"
 
 
 #define D2R_GPS 0.01744

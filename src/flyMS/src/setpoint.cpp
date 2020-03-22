@@ -6,7 +6,7 @@
  * @date 10/15/2018
  */
 
-#include "src/setpoint.hpp"
+#include "flyMS/setpoint.hpp"
 
 setpoint::setpoint(config_t _config, logger& _loggingModule) :
   isInitializing(true),
@@ -134,13 +134,14 @@ int setpoint::handle_rc_data_direct() {
 
     //Set the throttle
     //TODO: make these values configuarable
-    this->setpointData.throttle = (dsm2_data[0]) *
-                                  (this->config.max_throttle - this->config.min_throttle) + this->config.min_throttle;
+    this->setpointData.throttle = (dsm2_data[0]) * (this->config.max_throttle -
+      this->config.min_throttle) + this->config.min_throttle;
     //Keep the aircraft at a constant height while making manuevers
 
     //Finally Update the integrator on the yaw reference value
     this->setpointData.euler_ref[2] = this->setpointData.euler_ref[2] +
-                                      (this->setpointData.yaw_rate_ref[0] + this->setpointData.yaw_rate_ref[1]) * DT / 2;
+      (this->setpointData.yaw_rate_ref[0] + this->setpointData.yaw_rate_ref[1])
+      * DT / 2;
 
     this->isReadyToParse = false;
     this->isReadyToSend.store(true);

@@ -8,7 +8,7 @@
 
 
 
-#include "src/logger.hpp"
+#include "flyMS/logger.hpp"
 
 logger::logger(std::string log_filepath) :
   log_filepath_(log_filepath) {
@@ -59,7 +59,8 @@ int logger::createLogFiles() {
   this->errorFid.open(filePath + "/errorLog.txt");
   fileExistsCheck &= this->fileExists(filePath + "/errorLog.txt");
 
-  //Copy the yaml file over to the log directory to save the config params for this run
+  // Copy the yaml file over to the log directory to save the config params for
+  // this run
   std::string copyConfigstring ("cp ");
   copyConfigstring.append(this->log_filepath_);
   copyConfigstring.append("/config/flyMSConfig.yaml ");
@@ -87,7 +88,7 @@ int logger::createLogFiles() {
   return 0;
 }
 
-int logger::flyMS_printf ( const char * format, ... ) {
+int logger::flyMS_printf( const char* format, ...) {
   //Add a lock in case other threads try printing stuff at the same time
   std::lock_guard<std::mutex> lock(this->printMutex);
 
@@ -145,8 +146,6 @@ int logger::writeToLog(state_t *bodyState, controller_t *controller, setpoint_t 
   this->Aux = setpoint->Aux[0];
   this->droll_setpoint = setpoint->droll_setpoint;
   this->dpitch_setpoint = setpoint->dpitch_setpoint;
-
-
 
   // std::ofstream configfile(filename);
 

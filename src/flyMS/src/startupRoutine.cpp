@@ -7,7 +7,7 @@
  */
 
 
-#include "src/flyMS.hpp"
+#include "flyMS/flyMS.hpp"
 
 int flyMS::startupRoutine() {
   //Initialize the remote controller through the setpoint object

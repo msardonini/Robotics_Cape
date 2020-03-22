@@ -6,7 +6,7 @@
  * @date 10/15/2018
  */
 
-#include "src/gps.hpp"
+#include "flyMS/gps.hpp"
 
 //TODO take our the hardware inits outside of the class constructor
 //Default Constructor

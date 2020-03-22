@@ -19,16 +19,14 @@
 #include "filter.h"
 
 //Ours
-#include "src/common.hpp"
-#include "src/logger.hpp"
-#include "src/gps.hpp"
-#include "src/config.hpp"
-#include "src/imu.hpp"
-#include "src/pruClient.hpp"
-#include "src/setpoint.hpp"
-#include "src/ekf.hpp"
-
-
+#include "flyMS/common.hpp"
+#include "flyMS/logger.hpp"
+#include "flyMS/gps.hpp"
+#include "flyMS/config.hpp"
+#include "flyMS/imu.hpp"
+#include "flyMS/pruClient.hpp"
+#include "flyMS/setpoint.hpp"
+#include "flyMS/ekf.hpp"
 
 class flyMS {
 

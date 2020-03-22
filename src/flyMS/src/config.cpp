@@ -1,4 +1,4 @@
-#include "src/config.hpp"
+#include "flyMS/config.hpp"
 
 
 //Default Constructor

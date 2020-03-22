@@ -7,7 +7,7 @@
  */
 
 
-#include "src/pruClient.hpp"
+#include "flyMS/pruClient.hpp"
 
 pruClient::pruClient() : u(NUM_CHANNELS) {
 
