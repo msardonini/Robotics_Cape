@@ -31,8 +31,8 @@ set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
 set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
 
-set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} ${CMAKE_CURRENT_SOURCE_DIR}/lib/eigen3/cmake)
-set(EIGEN3_INCLUDE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/lib/eigen3)
+set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} ${CMAKE_CURRENT_SOURCE_DIR}/external/eigen3/cmake)
+set(EIGEN3_INCLUDE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/external/eigen3)
 find_package(Eigen3 REQUIRED)
 if(EIGEN3_FOUND)
   include_directories(${EIGEN3_INCLUDE_DIR})
@@ -43,18 +43,18 @@ endif()
 # Sets variable to a value if variable is unset.
 #Build the robotics cape library
 include(cmake/px4_add_library.cmake)
-add_subdirectory(lib/librobotcontrol)
+add_subdirectory(external/librobotcontrol)
 
-include_directories(lib/librobotcontrol/library/include)
+include_directories(external/librobotcontrol/library/include)
 
 # Build the Yaml-Cpp config file parser
-add_subdirectory(lib/yaml-cpp)
+add_subdirectory(external/yaml-cpp)
 
 # Build the PX4 estimation control library
-add_subdirectory(lib/ecl)
+add_subdirectory(external/ecl)
 
 # Build the Accel/Gyro Fusion library
-add_subdirectory(lib/Fusion)
+add_subdirectory(external/Fusion)
 
 # Build the Digital Filter Library
 add_subdirectory(lib/filter)

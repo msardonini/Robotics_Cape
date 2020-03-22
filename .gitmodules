@@ -1,12 +1,15 @@
-[submodule "libraries/ecl"]
-	path = lib/ecl
-	url = git@github.com:msardonini/ecl.git
-[submodule "lib/Fusion"]
-	path = lib/Fusion
+[submodule "external/Fusion"]
+	path = external/Fusion
 	url = git@github.com:msardonini/Fusion.git
-[submodule "lib/librobotcontrol"]
-	path = lib/librobotcontrol
-	url = git@github.com:StrawsonDesign/librobotcontrol.git
-[submodule "lib/eigen3"]
-	path = lib/eigen3
+[submodule "external/ecl"]
+	path = external/ecl
+	url = git@github.com:msardonini/ecl.git
+[submodule "external/eigen3"]
+	path = external/eigen3
 	url = git@github.com:OPM/eigen3.git
+[submodule "external/librobotcontrol"]
+	path = external/librobotcontrol
+	url = git@github.com:StrawsonDesign/librobotcontrol.git
+[submodule "external/yaml-cpp"]
+	path = external/yaml-cpp
+	url = git@github.com:jbeder/yaml-cpp.git
