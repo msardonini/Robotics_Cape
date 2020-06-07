@@ -1,6 +1,5 @@
 #!/bin/bash
 
-# TODO: add option to copy config file too
 # TODO: clean up other scripts in this directory
 
 function print_usage {

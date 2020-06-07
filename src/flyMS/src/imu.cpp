@@ -8,6 +8,12 @@
 
 #include "flyMS/imu.hpp"
 
+#include "flyMS/mavlink/common/mavlink.h"
+
+#include <termios.h>
+#include <unistd.h>
+#include <fcntl.h>
+
 rc_mpu_data_t imuDataShared;
 rc_mpu_data_t imuDataLocal;
 std::mutex localMutex;
@@ -18,11 +24,66 @@ static void dmpCallback(void) {
 }
 
 imu::imu(config_t _config, logger& _loggingModule) :
+  is_running_(true),
   isInitializingFusion(true),
   config(_config),
   loggingModule(_loggingModule) {
   //Calculate the DCM with out offsets
   this->calculateDCM(this->config.pitchOffsetDegrees, this->config.rollOffsetDegrees, this->config.yawOffsetDegrees);
+
+
+  // Open the serial port to send messages to
+  // Open the device
+  serial_dev_ = open("/dev/ttyS5", O_RDWR | O_NOCTTY | O_NDELAY);
+  if(serial_dev_ == -1) {
+   std::cerr << "Failed to open the serial device" << std::endl;
+   return;
+  }
+
+  struct termios  config;
+  //
+  // Get the current configuration of the serial interface
+  //
+  if(tcgetattr(serial_dev_, &config) < 0) {
+   std::cerr << "Failed to get the serial device attributes" << std::endl;
+   return;
+  }
+
+  // Set the serial device configs
+  config.c_iflag &= ~(IGNBRK | BRKINT | ICRNL | INLCR | PARMRK | INPCK | ISTRIP
+   | IXON);
+  config.c_oflag = 0;
+  config.c_lflag &= ~(ECHO | ECHONL | ICANON | IEXTEN | ISIG);
+  config.c_cflag &= ~(CSIZE | PARENB);
+  config.c_cflag |= CS8;
+  //
+  // One input byte is enough to return from read()
+  // Inter-character timer off
+  //
+  config.c_cc[VMIN]  = 1;
+  config.c_cc[VTIME] = 0;
+
+  //
+  // Communication speed (simple version, using the predefined
+  // constants)
+  //
+  if(cfsetispeed(&config, B115200) < 0 || cfsetospeed(&config, B115200) < 0) {
+   std::cerr << "Failed to set the baudrate on the serial port!" << std::endl;
+   return;
+  }
+
+  //
+  // Finally, apply the configuration
+  //
+  if(tcsetattr(serial_dev_, TCSAFLUSH, &config) < 0) {
+   std::cerr << "Failed to set the baudrate on the serial port!" << std::endl;
+   return;
+  }
+
+  // Register the GPIO pin that will tell us when images are being captured
+  rc_gpio_init_event(1, 25, 0, GPIOEVENT_REQUEST_FALLING_EDGE);
+
+  gpioThread = std::thread(&imu::GpioThread, this);
 }
 
 
@@ -132,6 +193,8 @@ int imu::update() {
   //Perform the data fusion to calculate pitch, roll, and yaw angles
   if (this->config.enableFusion)
     this->updateFusion();
+
+  send_mavlink();
 
   /**********************************************************
   *          Unwrap the Yaw value          *
@@ -304,3 +367,46 @@ void imu::updateFusion() {
   }
 
 }
+
+void imu::send_mavlink() {
+  mavlink_message_t msg;
+  mavlink_attitude_t attitude;
+  uint8_t buf[1024];
+
+  attitude.roll = this->stateBody.euler(0);
+  attitude.pitch = this->stateBody.euler(1);
+  attitude.yaw = this->stateBody.euler(2);
+
+  attitude.rollspeed = this->stateBody.eulerRate(0);
+  attitude.pitchspeed = this->stateBody.eulerRate(1);
+  attitude.yawspeed = this->stateBody.eulerRate(1);
+
+  uint16_t len = mavlink_msg_attitude_encode(1, 200, &msg, &attitude);
+
+  len = mavlink_msg_to_send_buffer(buf, &msg);
+
+  write(serial_dev_, buf, len);
+
+}
+
+void imu::GpioThread() {
+  int timeout_ms = 10000;
+  uint64_t event_time;
+
+  while(is_running_.load()) {
+    int ret = rc_gpio_poll(1,25, timeout_ms, &event_time);
+
+    if (ret == RC_GPIOEVENT_FALLING_EDGE)
+      loggingModule.flyMS_printf("Falling edge detected, time %llu\n", event_time);
+    else if (ret == RC_GPIOEVENT_RISING_EDGE)
+      loggingModule.flyMS_printf("Rising edge detected, time %llu\n", event_time);
+    else if (ret == RC_GPIOEVENT_TIMEOUT)
+      loggingModule.flyMS_printf("GPIO timeout");
+    else if (ret == RC_GPIOEVENT_ERROR)
+      loggingModule.flyMS_printf("GPIO error");
+  }
+
+
+}
+
+

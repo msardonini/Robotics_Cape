@@ -23,6 +23,7 @@
 #include <iostream>
 #include <thread>
 #include <mutex>
+#include <atomic>
 #include <string>
 #include <vector>
 
@@ -87,7 +88,11 @@ class imu {
   void updateFusion();
   void read_transform_imu();
 
+  std::atmonic<bool> is_running_;
+
   //Variables to control the imu thread
+  std::mutex gpioMutex;
+  std::thread gpioThread;
   std::thread imuThread;
   std::mutex imuMutex;
 

@@ -23,6 +23,7 @@
 #include <iostream>
 #include <thread>
 #include <mutex>
+#include <atomic>
 #include <string>
 #include <vector>
 
@@ -83,11 +84,17 @@ class imu {
   void calculateDCM(float pitchOffsetDeg, float rollOffsetDeg, float yawOffsetDeg);
 
  private:
+  void GpioThread();
   void init_fusion();
   void updateFusion();
   void read_transform_imu();
+  void send_mavlink();
+
+  std::atomic<bool> is_running_;
 
   //Variables to control the imu thread
+  std::mutex gpioMutex;
+  std::thread gpioThread;
   std::thread imuThread;
   std::mutex imuMutex;
 
@@ -122,6 +129,8 @@ class imu {
 
   //Mainly for flyMS_printf
   logger &loggingModule;
+
+  int serial_dev_;
 };
 
 #endif //IMU_H
