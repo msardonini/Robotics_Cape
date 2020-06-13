@@ -70,7 +70,7 @@ class setpoint {
   enum reference_mode_t setpoint_type;
   bool isReadyToParse;
   std::atomic <bool> isReadyToSend;
-  float dsm2_data[MAX_DSM2_CHANNELS];
+  float dsm2_data[RC_MAX_DSM_CHANNELS];
   int dsm2_timeout;
 
   //Variables to control multithreading

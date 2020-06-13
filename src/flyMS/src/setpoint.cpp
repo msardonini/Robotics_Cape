@@ -81,7 +81,7 @@ int setpoint::setpointManager() {
       this->loggingModule.flyMS_printf("Error, invalid reference mode! \n");
     }
     this->setpointMutex.unlock();
-    usleep(DT_US); //Run at the control frequency
+    usleep(static_cast<uint64_t>(DT*1.0E6)); //Run at the control frequency
   }
   return 0;
 }
@@ -95,18 +95,18 @@ int setpoint::handle_rc_data_direct() {
     //Set roll reference value
     //DSM2 Receiver is inherently positive to the left
     if (this->config.flightMode == 1) { //Stabilized Flight Mode
-      this->setpointData.euler_ref[0] = dsm2_data[1] * MAX_ROLL_RANGE;
-      this->setpointData.euler_ref[1] = -dsm2_data[2] * MAX_PITCH_RANGE;
+      this->setpointData.euler_ref[0] = dsm2_data[1] * config.max_roll_setpoint;
+      this->setpointData.euler_ref[1] = -dsm2_data[2] * config.max_pitch_setpoint;
     } else if (this->config.flightMode == 2) {
-      this->setpointData.euler_ref[0] = dsm2_data[1] * MAX_ROLL_RANGE_ACRO;
-      this->setpointData.euler_ref[1] = -dsm2_data[2] * MAX_PITCH_RANGE_ACRO;
+      this->setpointData.euler_ref[0] = dsm2_data[1] * config.max_roll_setpoint_acro;
+      this->setpointData.euler_ref[1] = -dsm2_data[2] * config.max_pitch_setpoint_acro;
     }
     //DSM2 Receiver is inherently positive upwards
 
     //Set Yaw, RC Controller acts on Yaw velocity, save a history for integration
     //Apply the integration outside of current if statement, needs to run at 200Hz
     this->setpointData.yaw_rate_ref[1] = this->setpointData.yaw_rate_ref[0];
-    this->setpointData.yaw_rate_ref[0] = dsm2_data[3] * MAX_YAW_RATE;
+    this->setpointData.yaw_rate_ref[0] = dsm2_data[3] * config.max_yaw_rate;
 
     //If Specified by the config file, convert from Drone Coordinate System to User Coordinate System
     if (this->config.isHeadlessMode) {
@@ -152,7 +152,7 @@ int setpoint::handle_rc_data_direct() {
 
 int setpoint::copy_dsm2_data() {
   int i;
-  for (i = 0; i < MAX_DSM2_CHANNELS; i++)\
+  for (i = 0; i < RC_MAX_DSM_CHANNELS; i++)\
   {
     dsm2_data[i] = rc_dsm_ch_normalized(i + 1);
   }

@@ -23,13 +23,13 @@ static void dmpCallback(void) {
   memcpy(&imuDataLocal, &imuDataShared, sizeof(rc_mpu_data_t));
 }
 
-imu::imu(config_t _config, logger& _loggingModule) :
+imu::imu(config_t _config, logger& logger) :
   is_running_(true),
-  isInitializingFusion(true),
-  config(_config),
-  loggingModule(_loggingModule) {
+  is_initializing_fusion_(true),
+  config_(config_),
+  logger_(logger) {
   //Calculate the DCM with out offsets
-  this->calculateDCM(this->config.pitchOffsetDegrees, this->config.rollOffsetDegrees, this->config.yawOffsetDegrees);
+  calculateDCM(config_.pitchOffsetDegrees, config_.rollOffsetDegrees, config_.yawOffsetDegrees);
 
 
   // Open the serial port to send messages to
@@ -90,19 +90,19 @@ imu::imu(config_t _config, logger& _loggingModule) :
 //Default Destructor
 imu::~imu() {
   rc_mpu_power_off();
-  // this->loggingModule.flyMS_printf("imu Destructor\n");
+  // logger_.flyMS_printf("imu Destructor\n");
 }
 
 void imu::calculateDCM(float pitchOffsetDeg, float rollOffsetDeg, float yawOffsetDeg) {
   //Make the Direcion Cosine Matric DCM from the input offsets from the config file
-  float cR1 = cosf(pitchOffsetDeg * D2R_IMU);
-  float sR1 = sinf(pitchOffsetDeg * D2R_IMU);
-  float cP1 = cosf(rollOffsetDeg * D2R_IMU);
-  float sP1 = sinf(rollOffsetDeg * D2R_IMU);
-  float cY1 = cosf(yawOffsetDeg * D2R_IMU);
-  float sY1 = sinf(yawOffsetDeg * D2R_IMU);
+  float cR1 = cosf(pitchOffsetDeg * D2Rf);
+  float sR1 = sinf(pitchOffsetDeg * D2Rf);
+  float cP1 = cosf(rollOffsetDeg * D2Rf);
+  float sP1 = sinf(rollOffsetDeg * D2Rf);
+  float cY1 = cosf(yawOffsetDeg * D2Rf);
+  float sY1 = sinf(yawOffsetDeg * D2Rf);
 
-  this->imu2Body << cR1*cY1, -cP1*sY1 + sP1*sR1*cY1 ,  sP1*sY1 + cP1*sR1*cY1,
+  imu_to_body_ << cR1*cY1, -cP1*sY1 + sP1*sR1*cY1 ,  sP1*sY1 + cP1*sR1*cY1,
     cR1*sY1,  cP1*cY1 + sP1*sR1*sY1, -sP1*cY1 + cP1*sR1*sY1, -sR1, sP1*cR1,
     cP1*cR1;
 }
@@ -110,28 +110,28 @@ void imu::calculateDCM(float pitchOffsetDeg, float rollOffsetDeg, float yawOffse
 
 int imu::initializeImu() {
   //Start the barometer
-  if (this->config.enableBarometer) {
+  if (config_.enableBarometer) {
     if (rc_bmp_init(OVERSAMPLE, INTERNAL_FILTER)) {
-      this->loggingModule.flyMS_printf("initialize_barometer failed\n");
+      logger_.flyMS_printf("initialize_barometer failed\n");
       return -1;
     }
   }
 
-  if (this->config.enableFusion) {
+  if (config_.enableFusion) {
     rc_mpu_config_t conf = rc_mpu_default_config();
     conf.i2c_bus = 2;
     conf.enable_magnetometer = 1;
     conf.show_warnings = 0;
-    if (rc_mpu_initialize(&this->imu_data, conf)) {
-      this->loggingModule.flyMS_printf("ERROR: can't talk to IMU, all hope is lost\n");
+    if (rc_mpu_initialize(&imu_data_, conf)) {
+      logger_.flyMS_printf("ERROR: can't talk to IMU, all hope is lost\n");
       rc_led_set(RC_LED_RED, 1);
       rc_led_set(RC_LED_GREEN, 0);
       return -1;
     }
 
     //Initialize the fusion library which converts raw IMU data to Euler angles
-    this->init_fusion();
-  } else if (this->config.enableDMP) {
+    init_fusion();
+  } else if (config_.enableDMP) {
     rc_mpu_config_t conf = rc_mpu_default_config();
     conf.i2c_bus = 2;
     conf.gpio_interrupt_pin_chip = 3;
@@ -143,27 +143,27 @@ int imu::initializeImu() {
 
     //Check our DCM for the proper orientation config parameter
     float thresh = 0.95f;
-    if (this->imu2Body(0, 2) > thresh) {
+    if (imu_to_body_(0, 2) > thresh) {
       conf.orient = ORIENTATION_X_UP;
-      this->calculateDCM(0.0f, this->config.rollOffsetDegrees, 0.0f);
-    } else if (this->imu2Body(0, 2) < -thresh) {
+      calculateDCM(0.0f, config_.rollOffsetDegrees, 0.0f);
+    } else if (imu_to_body_(0, 2) < -thresh) {
       conf.orient = ORIENTATION_X_DOWN;
-      this->calculateDCM(0.0f, this->config.rollOffsetDegrees, 0.0f);
-    } else if (this->imu2Body(1, 2) > thresh) {
+      calculateDCM(0.0f, config_.rollOffsetDegrees, 0.0f);
+    } else if (imu_to_body_(1, 2) > thresh) {
       conf.orient = ORIENTATION_Y_UP;
-      this->calculateDCM(this->config.pitchOffsetDegrees, 0.0f, 0.0f);
-    } else if (this->imu2Body(1, 2) < -thresh) {
+      calculateDCM(config_.pitchOffsetDegrees, 0.0f, 0.0f);
+    } else if (imu_to_body_(1, 2) < -thresh) {
       conf.orient = ORIENTATION_Y_DOWN;
-      this->calculateDCM(this->config.pitchOffsetDegrees, 0.0f, 0.0f);
-    } else if (this->imu2Body(2, 2) > thresh) {
+      calculateDCM(config_.pitchOffsetDegrees, 0.0f, 0.0f);
+    } else if (imu_to_body_(2, 2) > thresh) {
       conf.orient = ORIENTATION_Z_UP;
-      this->calculateDCM(0.0f, 0.0f, this->config.yawOffsetDegrees);
+      calculateDCM(0.0f, 0.0f, config_.yawOffsetDegrees);
 
-    } else if (this->imu2Body(2, 2) < -thresh) {
+    } else if (imu_to_body_(2, 2) < -thresh) {
       conf.orient = ORIENTATION_Z_DOWN;
-      this->calculateDCM(0.0f, 0.0f, this->config.yawOffsetDegrees);
+      calculateDCM(0.0f, 0.0f, config_.yawOffsetDegrees);
     } else {
-      this->loggingModule.flyMS_printf("Error! In order to be in DMP mode, \
+      logger_.flyMS_printf("Error! In order to be in DMP mode, \
 one of the X,Y,Z vectors on the IMU needs to be parallel with Gravity\n");
       rc_led_set(RC_LED_RED, 1);
       rc_led_set(RC_LED_GREEN, 0);
@@ -171,7 +171,7 @@ one of the X,Y,Z vectors on the IMU needs to be parallel with Gravity\n");
     }
 
     if (rc_mpu_initialize_dmp(&imuDataShared, conf)) {
-      this->loggingModule.flyMS_printf("rc_mpu_initialize_failed\n");
+      logger_.flyMS_printf("rc_mpu_initialize_failed\n");
       return -1;
     }
     rc_mpu_set_dmp_callback(&dmpCallback);
@@ -180,7 +180,7 @@ one of the X,Y,Z vectors on the IMU needs to be parallel with Gravity\n");
 }
 
 int imu::getImuData(state_t* state) {
-  memcpy(state, &this->stateBody, sizeof(state_t));
+  memcpy(state, &state_body_, sizeof(state_t));
   return 0;
 }
 
@@ -189,24 +189,24 @@ int imu::update() {
   /**********************************************************
   *        Read and Translate the Raw IMU Data
   **********************************************************/
-  this->read_transform_imu();
+  read_transform_imu();
   //Perform the data fusion to calculate pitch, roll, and yaw angles
-  if (this->config.enableFusion)
-    this->updateFusion();
+  if (config_.enableFusion)
+    updateFusion();
 
   send_mavlink();
 
   /**********************************************************
   *          Unwrap the Yaw value          *
   **********************************************************/
-  this->stateBody.euler[2] += this->stateBody.num_wraps * 2 * M_PI;
-  if (fabs(this->stateBody.euler[2] - this->stateBody.eulerPrevious[2])  > 5) {
-    if (this->stateBody.euler[2] > this->stateBody.eulerPrevious[2]) {
-      this->stateBody.num_wraps--;
-      this->stateBody.euler[2] -= 2 * M_PI;
+  state_body_.euler[2] += state_body_.num_wraps * 2 * M_PI;
+  if (fabs(state_body_.euler[2] - state_body_.eulerPrevious[2])  > 5) {
+    if (state_body_.euler[2] > state_body_.eulerPrevious[2]) {
+      state_body_.num_wraps--;
+      state_body_.euler[2] -= 2 * M_PI;
     } else {
-      this->stateBody.num_wraps++;
-      this->stateBody.euler[2] += 2 * M_PI;
+      state_body_.num_wraps++;
+      state_body_.euler[2] += 2 * M_PI;
     }
   }
 
@@ -214,22 +214,22 @@ int imu::update() {
   *           Read the Barometer for Altitude          *
   **********************************************************/
   static int i1;
-  if (this->config.enableBarometer) {
+  if (config_.enableBarometer) {
     i1++;
     if (i1 == 10) { // Only read the barometer at 25Hz
       // perform the i2c reads to the sensor, this takes a bit of time
-      if (rc_bmp_read(&bmp_data) < 0) {
-        this->loggingModule.flyMS_printf("\rERROR: Can't read Barometer");
+      if (rc_bmp_read(&bmp_data_) < 0) {
+        logger_.flyMS_printf("\rERROR: Can't read Barometer");
         fflush(stdout);
       }
       i1 = 0;
     }
-    // this->baro_alt = update_filter(filters.LPF_baro_alt,rc_bmp_get_altitude_m() - initial_alt);
+    // baro_alt = update_filter(filters.LPF_baro_alt,rc_bmp_get_altitude_m() - initial_alt);
 
     //TODO: Interface with the barometer data
-    // this->stateBody.barometerAltitude = rc_bmp_get_altitude_m();
-    // this->ekfContainer.input.barometer_updated = 1;
-    // this->ekfContainer.input.barometer_alt = this->stateBody.barometerAltitude;
+    // state_body_.barometerAltitude = rc_bmp_get_altitude_m();
+    // ekfContainer.input.barometer_updated = 1;
+    // ekfContainer.input.barometer_alt = state_body_.barometerAltitude;
   }
 
   /************************************************************************
@@ -240,12 +240,12 @@ int imu::update() {
   // int i;
   // for (i = 0; i < 3; i++)
   // {
-  //   // this->ekfContainer.input.accel[i] = this->transform.accel_drone.d[i];
-  //   // this->ekfContainer.input.mag[i] = imu_data.mag[i] * MICROTESLA_TO_GAUSS;
-  //   // this->ekfContainer.input.gyro[i] = this->stateBody.eulerRate[i];
+  //   // ekfContainer.input.accel[i] = transform.accel_drone.d[i];
+  //   // ekfContainer.input.mag[i] = imu_data_.mag[i] * MICROTESLA_TO_GAUSS;
+  //   // ekfContainer.input.gyro[i] = state_body_.eulerRate[i];
   // }
   //TODO implement the EKF and use real timestamps
-  // this->ekfContainer.input.IMU_timestamp = this->time_us;
+  // ekfContainer.input.IMU_timestamp = time_us;
 
   return 0;
 }
@@ -257,25 +257,25 @@ int imu::update() {
 ************************************************************************/
 void imu::read_transform_imu() {
 
-  if (this->config.enableFusion) {
-    if (rc_mpu_read_accel(&this->imu_data) < 0) {
-      this->loggingModule.flyMS_printf("read accel data failed\n");
+  if (config_.enableFusion) {
+    if (rc_mpu_read_accel(&imu_data_) < 0) {
+      logger_.flyMS_printf("read accel data failed\n");
     }
-    if (rc_mpu_read_gyro(&this->imu_data) < 0) {
-      this->loggingModule.flyMS_printf("read gyro data failed\n");
+    if (rc_mpu_read_gyro(&imu_data_) < 0) {
+      logger_.flyMS_printf("read gyro data failed\n");
     }
-    if (rc_mpu_read_mag(&this->imu_data)) {
-      this->loggingModule.flyMS_printf("read mag data failed\n");
+    if (rc_mpu_read_mag(&imu_data_)) {
+      logger_.flyMS_printf("read mag data failed\n");
     }
-  } else if (this->config.enableDMP) {
+  } else if (config_.enableDMP) {
     localMutex.lock();
-    memcpy(&this->imu_data, &imuDataLocal, sizeof(rc_mpu_data_t));
+    memcpy(&imu_data_, &imuDataLocal, sizeof(rc_mpu_data_t));
     localMutex.unlock();
 
     for (int i = 0; i < 3; i++) {
-      this->stateBody.eulerPrevious(i)     = this->stateBody.euler(i);
-      this->stateBody.euler(i)        = this->imu_data.dmp_TaitBryan[i];
-      this->stateBody.eulerRate(i)      = this->imu_data.gyro[i] * D2R_IMU;
+      state_body_.eulerPrevious(i)     = state_body_.euler(i);
+      state_body_.euler(i)        = imu_data_.dmp_TaitBryan[i];
+      state_body_.eulerRate(i)      = imu_data_.gyro[i] * D2Rf;
     }
   }
   /**********************************************************
@@ -284,17 +284,17 @@ void imu::read_transform_imu() {
 
   int i;
   for (i = 0; i < 3; i++) {
-    this->stateIMU.mag(i) = this->imu_data.mag[i];
-    this->stateIMU.gyro(i) = this->imu_data.gyro[i];
-    this->stateIMU.accel(i) = this->imu_data.accel[i];
+    state_imu_.mag(i) = imu_data_.mag[i];
+    state_imu_.gyro(i) = imu_data_.gyro[i];
+    state_imu_.accel(i) = imu_data_.accel[i];
   }
 
   //Convert from IMU frame to body Frame
-  this->stateBody.mag = this->imu2Body * this->stateIMU.mag;
-  this->stateBody.gyro = this->imu2Body * this->stateIMU.gyro;
-  this->stateBody.accel = this->imu2Body * this->stateIMU.accel;
-  this->stateBody.euler = this->imu2Body * this->stateBody.euler;
-  this->stateBody.eulerRate = this->imu2Body * this->stateBody.eulerRate;
+  state_body_.mag = imu_to_body_ * state_imu_.mag;
+  state_body_.gyro = imu_to_body_ * state_imu_.gyro;
+  state_body_.accel = imu_to_body_ * state_imu_.accel;
+  state_body_.euler = imu_to_body_ * state_body_.euler;
+  state_body_.eulerRate = imu_to_body_ * state_body_.eulerRate;
 }
 
 
@@ -307,22 +307,22 @@ void imu::init_fusion() {
     2. min squared magnetic field, magnetic fields squared less than this will be discarded
     3. max squared magnetic field, magnetic fields squared greater than this will be discarded
   */
-  FusionAhrsInitialise(&this->fusionAhrs, 0.25f, 0.0f, 120.0f); // valid magnetic field defined as 20 uT to 70 uT
+  FusionAhrsInitialise(&fusion_ahrs_, 0.25f, 0.0f, 120.0f); // valid magnetic field defined as 20 uT to 70 uT
   /*
     Two params here are:
     1. Min ADC threshold - gyroscope value threshold which means the device is stationary
     2. DT - time difference in seconds
   */
-  FusionBiasInitialise(&this->fusionBias, (int)(0.2f / imu_data.gyro_to_degs), DT);
+  FusionBiasInitialise(&fusion_bias_, (int)(0.2f / imu_data_.gyro_to_degs), DT);
 
   //Give Imu data to the fusion alg for initialization purposes
-  while (FusionAhrsIsInitialising(&this->fusionAhrs) || FusionBiasIsActive(&this->fusionBias)) {
+  while (FusionAhrsIsInitialising(&fusion_ahrs_) || FusionBiasIsActive(&fusion_bias_)) {
     read_transform_imu();
 
-    this->updateFusion();
-    rc_usleep(DT_US);
+    updateFusion();
+    rc_usleep(static_cast<uint64_t>(DT*1.0E6));
   }
-  this->isInitializingFusion = false;
+  is_initializing_fusion_ = false;
 }
 
 /************************************************************************
@@ -336,34 +336,35 @@ void imu::updateFusion() {
 
   int i;
   for (i = 0; i < 3; i++) {
-    gyroscope.array[i] = this->stateBody.gyro(i);
-    accelerometer.array[i] = this->stateBody.accel(i) / 9.81f;
-    magnetometer.array[i] = this->stateBody.mag(i);
-    if (!this->isInitializingFusion)
-      gyroscope.array[i] -= this->fusionBias.gyroscopeBias.array[i] * imu_data.gyro_to_degs;
+    gyroscope.array[i] = state_body_.gyro(i);
+    accelerometer.array[i] = state_body_.accel(i) / 9.81f;
+    magnetometer.array[i] = state_body_.mag(i);
+    if (!is_initializing_fusion_)
+      gyroscope.array[i] -= fusion_bias_.gyroscopeBias.array[i] * imu_data_.gyro_to_degs;
   }
 
-  FusionBiasUpdate(&this->fusionBias, imu_data.raw_gyro[0], imu_data.raw_gyro[1], imu_data.raw_gyro[2]);
-  FusionAhrsUpdate(&this->fusionAhrs, gyroscope, accelerometer, magnetometer, DT);
-  this->eulerAngles = FusionQuaternionToEulerAngles(this->fusionAhrs.quaternion);
+  FusionBiasUpdate(&fusion_bias_, imu_data_.raw_gyro[0], imu_data_.raw_gyro[1], imu_data_.raw_gyro[2]);
+  FusionAhrsUpdate(&fusion_ahrs_, gyroscope, accelerometer, magnetometer, DT);
+  euler_angles_ = FusionQuaternionToEulerAngles(fusion_ahrs_.quaternion);
+  Eigen::Vector3f w1; w1 << euler_angles_.angle.roll , euler_angles_.angle.pitch , euler_angles_.angle.yaw;
 
   //We want pitch and roll to be relative to the Drone's Local Coordinate Frame, not the NED Frame
   //  make that conversion here
   float mag, theta;
-  mag = powf(powf(this->eulerAngles.angle.pitch, 2.0f) + powf(this->eulerAngles.angle.roll, 2.0f), 0.5f);
-  theta = atan2f(this->eulerAngles.angle.roll, this->eulerAngles.angle.pitch);
+  mag = powf(powf(euler_angles_.angle.pitch, 2.0f) + powf(euler_angles_.angle.roll, 2.0f), 0.5f);
+  theta = atan2f(euler_angles_.angle.roll, euler_angles_.angle.pitch);
 
-  this->eulerAngles.angle.roll = mag * sinf(theta - this->eulerAngles.angle.yaw * D2R_IMU);
-  this->eulerAngles.angle.pitch = mag * cosf(theta - this->eulerAngles.angle.yaw * D2R_IMU);
+  euler_angles_.angle.roll = mag * sinf(theta - euler_angles_.angle.yaw * D2Rf);
+  euler_angles_.angle.pitch = mag * cosf(theta - euler_angles_.angle.yaw * D2Rf);
 
   for (i = 0; i < 3; i++)
     this->eulerAngles.array[i] *= -1.0f;
 
   //Save the output
   for (i = 0; i < 3; i++) {
-    this->stateBody.eulerPrevious(i) = this->stateBody.euler(i);
-    this->stateBody.euler(i) = this->eulerAngles.array[i] * D2R_IMU;
-    this->stateBody.eulerRate(i) = this->stateBody.gyro(i) * D2R_IMU;
+    state_body_.eulerPrevious(i) = state_body_.euler(i);
+    state_body_.euler(i) = euler_angles_.array[i] * D2Rf;
+    state_body_.eulerRate(i) = state_body_.gyro(i) * D2Rf;
   }
 
 }

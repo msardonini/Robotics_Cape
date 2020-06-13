@@ -15,9 +15,6 @@
 // opt to use our own 2nd order filter instead.
 #define INTERNAL_FILTER  BMP_FILTER_8
 #define BMP_CHECK_HZ  1
-#define MICROTESLA_TO_GAUSS 0.01f
-#define R2D_IMU 57.2958
-#define D2R_IMU  0.01744f
 
 //System Includes
 #include <iostream>
@@ -34,11 +31,65 @@
 #include "ekf.hpp"
 #include <rc/led.h>
 
-
 //Ours
 #include "flyMS/config.hpp"
 #include "flyMS/logger.hpp"
 
+
+
+/**
+ * @brief      This class describes a position/velocity/acceletaion state.
+ *
+ * @tparam     T     The data type used to store data
+ */
+template <typename T> class pva_state {
+ public:
+  pva_state(int history_len) :
+    index_(0),
+    data(history_len) {}
+
+    Eigen::Matrix<T, 3, 1> get_position() const {
+      Eigen::Matrix<T, 3, 1> return_mat;
+      return_mat << data[index_](0), data[index_](1), data[index_](2);
+    }
+
+    Eigen::Matrix<T, 3, 1> get_velocity() const {
+      Eigen::Matrix<T, 3, 1> return_mat;
+      return_mat << data[index_](3), data[index_](4), data[index_](5);
+    }
+
+    Eigen::Matrix<T, 3, 1> get_acceleration() const {
+      Eigen::Matrix<T, 3, 1> return_mat;
+      return_mat << data[index_](7), data[index_](8), data[index_](9);
+    }
+
+    void set_pva(const T pos[3], const T vel[3], const T acc[3]) {
+      index_ = ++index_ % data.size();
+
+      data[index] << pos[0], pos[1], pos[2], vel[0], vel[1], vel[2], acc[0],
+        acc[1], acc[2];
+    }
+
+    void set_pva(const T pva[9]) {
+      data[index] << pva[0], pva[1], pva[2], pva[3], pva[4], pva[5], pva[6], pva[7], pva[8];
+    }
+
+    void set_pva(const Eigen::Matrix<T, 3, 1> &pos,
+      const Eigen::Matrix<T, 3, 1> &vel,
+      const Eigen::Matrix<T, 3, 1> &acc) {
+      data(index) << pos(0), pos(1), pos(2), vel(0), vel(1), vel(2), acc(0),
+        acc(1), acc(2);
+    }
+
+    void set_pva(const Eigen::Matrix<T, 9, 1> &pva) {
+      data(index) << pva(0), pva(1), pva(2), pva(3), pva(4), pva(5), pva(6), pva(7), pva(8);
+    }
+
+
+ private:
+  int index_;
+  std::vector<Eigen::Matrix<T, 9, 1> > data; 
+};
 
 
 class imu {
@@ -93,44 +144,39 @@ class imu {
   std::atomic<bool> is_running_;
 
   //Variables to control the imu thread
-  std::mutex gpioMutex;
-  std::thread gpioThread;
-  std::thread imuThread;
-  std::mutex imuMutex;
+  std::mutex gpio_mutex_;
+  std::thread gpio_thread_;
+  std::thread imu_thread_;
+  std::mutex imu_mutex_;
 
   //Boolean to indicate if we are currently initializing the fusion algorithm
-  bool isInitializingFusion;
+  bool is_initializing_fusion_;
 
   //Struct to hold all of the configurable parameters
-  config_t config;
+  config_t config_;
 
-  ekf_filter_t ekfContainer;
+  ekf_filter_t ekf_container_;
 
   //Struct to keep all the state information of the aircraft in the body frame
-  state_t stateBody;
-  state_t stateIMU;
+  state_t state_body_;
+  state_t state_imu_;
 
   //3x3 DCM for converting between imu and body frame
-  Eigen::Matrix3f imu2Body;
+  Eigen::Matrix3f imu_to_body_;
 
   //Struct to get passed to the roboticsCape API for interfacing with the imu
-  rc_mpu_data_t imu_data;
+  rc_mpu_data_t imu_data_;
 
   //Struct to get passed to the roboticsCape API for interfacing with the bmp
-  rc_bmp_data_t bmp_data;
+  rc_bmp_data_t bmp_data_;
 
   //Variables which control the Fusion of IMU data for Euler Angle estimation
-  FusionVector3 gyroscope;
-  FusionVector3 accelerometer;
-  FusionVector3 magnetometer;
-  FusionAhrs fusionAhrs;
-  FusionEulerAngles eulerAngles;
-  FusionBias fusionBias;
+  FusionAhrs fusion_ahrs_;
+  FusionEulerAngles euler_angles_;
+  FusionBias fusion_bias_;
 
   //Mainly for flyMS_printf
-  logger &loggingModule;
-
-  int serial_dev_;
+  logger &logger_;
 };
 
 #endif //IMU_H

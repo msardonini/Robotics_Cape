@@ -19,15 +19,19 @@
     X(int,  "%d", enable_gps,           1       )\
     X(int,  "%d", flightMode,           1       )\
     X(int,  "%d", enable_logging,       1       )\
-    X(bool,  "%d", isDebugMode      ,    false       )\
+    X(bool,  "%d", isDebugMode      ,    false  )\
     X(int,  "%d", enable_autonomy,      0       )\
-    X(bool,  "%d", isHeadlessMode,        false       )\
-    X(bool,  "%d", enableDMP,           true       )\
-    X(bool,  "%d", enableFusion,        false       )\
+    X(bool,  "%d", isHeadlessMode,        false )\
+    X(bool,  "%d", enableDMP,           true    )\
+    X(bool,  "%d", enableFusion,        false   )\
                                                 \
-    X(float,  "%f", pitchOffsetDegrees,   0.0f    )\
-    X(float,  "%f", rollOffsetDegrees,    0.0f    )\
-    X(float,  "%f", yawOffsetDegrees,     0.0f    )\
+    X(float,  "%f", max_roll_effort,    0.25f   )\
+    X(float,  "%f", max_pitch_effort,   0.25f   )\
+    X(float,  "%f", max_yaw_effort,     0.25f   )\
+                                                \
+    X(float,  "%f", pitchOffsetDegrees,   0.0f  )\
+    X(float,  "%f", rollOffsetDegrees,    0.0f  )\
+    X(float,  "%f", yawOffsetDegrees,     0.0f  )\
                                                 \
     X(float,  "%f", alt_KP,             0.0f    )\
     X(float,  "%f", alt_KD,             0.0f    )\
@@ -41,6 +45,7 @@
     X(float,  "%f", Droll_KI,           0.5f    )\
     X(float,  "%f", Droll_KD,           0.0012f )\
     X(float,  "%f", max_roll_setpoint,  0.4f    )\
+    X(float,  "%f", max_roll_setpoint_acro,  0.4f    )\
                                                 \
     X(float,  "%f", pitch_KP,           5.0f    )\
     X(float,  "%f", pitch_KD,           0.5f    )\
@@ -49,6 +54,7 @@
     X(float,  "%f", Dpitch_KI,          0.5f    )\
     X(float,  "%f", Dpitch_KD,          0.0012f )\
     X(float,  "%f", max_pitch_setpoint, 0.4f    )\
+    X(float,  "%f", max_pitch_setpoint_acro, 0.4f    )\
                                                 \
     X(float,  "%f", yaw_KP,             0.5f    )\
     X(float,  "%f", yaw_KI,             0.05f   )\

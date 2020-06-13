@@ -104,7 +104,7 @@ int flyMS::flightCore() {
 
     this->imuData.eulerRate[0] = update_filter(this->filters.gyro_lpf[0], this->imuData.eulerRate[0]);
     this->control.u_euler[0] = update_filter(this->filters.roll_rate_PD, this->setpointData.droll_setpoint - this->imuData.eulerRate[0]);
-    this->control.u_euler[0] = saturateFilter(this->control.u_euler[0], -MAX_ROLL_COMPONENT, MAX_ROLL_COMPONENT);
+    this->control.u_euler[0] = saturateFilter(this->control.u_euler[0], -config.max_roll_effort, config.max_roll_effort);
 
     /************************************************************************
     *                         Pitch Controller                          *
@@ -117,7 +117,7 @@ int flyMS::flightCore() {
 
     this->imuData.eulerRate[1] = update_filter(this->filters.gyro_lpf[1], this->imuData.eulerRate[1]);
     this->control.u_euler[1] = update_filter(this->filters.pitch_rate_PD, this->setpointData.dpitch_setpoint - this->imuData.eulerRate[1]);
-    this->control.u_euler[1] = saturateFilter(this->control.u_euler[1], -MAX_PITCH_COMPONENT, MAX_PITCH_COMPONENT);
+    this->control.u_euler[1] = saturateFilter(this->control.u_euler[1], -config.max_pitch_effort, config.max_pitch_effort);
 
     /************************************************************************
     *                          Yaw Controller                              *
@@ -157,7 +157,7 @@ int flyMS::flightCore() {
     // }
 
     //Apply a saturation filter
-    this->control.u_euler[2] = saturateFilter(this->control.u_euler[2], -MAX_YAW_COMPONENT, MAX_YAW_COMPONENT);
+    this->control.u_euler[2] = saturateFilter(this->control.u_euler[2], -config.max_yaw_effort, config.max_yaw_effort);
 
     /************************************************************************
     *  Mixing
@@ -216,14 +216,11 @@ int flyMS::flightCore() {
     this->loggingModule.writeToLog(&this->imuData, &this->control, &this->setpointData);
 
     timeFinish = this->getTimeMicroseconds();
-    // printf("time diff finish %" PRIu64 "\n", (this->getTimeMicroseconds() - timeStart));
-
-    // if (timeFinish - timeStart > 1E5) flyMS_Error_Log("Error timeout detected! Control Loop backed up\n");
-    uint64_t sleep_time = DT_US - (timeFinish - timeStart);
+    uint64_t sleep_time = static_cast<uint64_t>(DT*1.0E6) - (timeFinish - timeStart);
 
     //Check to make sure the elapsed time wasn't greater than time allowed. If so don't sleep at all
-    if (sleep_time < DT_US)  rc_usleep(sleep_time);
-    else this->loggingModule.flyMS_printf("[flyMS] Error! Control thread too slow! time in milliseconds: %u \n", (timeFinish - timeStart) / 1000);
+    if (sleep_time < static_cast<uint64_t>(DT*1.0E6))  rc_usleep(sleep_time);
+    else this->loggingModule.flyMS_printf("[flyMS] Error! Control thread too slow! time in micro seconds: %u \n", (timeFinish - timeStart));
 
   }
   return 0;
@@ -250,9 +247,9 @@ int flyMS::console_print() {
 //  this->loggingModule.flyMS_printf("function: %f",rc_get_dsm_ch_normalized(6));
 //  this->loggingModule.flyMS_printf("num wraps %d ",control->num_wraps);
   // this->loggingModule.flyMS_printf(" Throt %2.2f ", this->setpointData.throttle);
-  this->loggingModule.flyMS_printf(" Roll_ref %2.2f ", this->setpointData.euler_ref[0]);
-  this->loggingModule.flyMS_printf(" Pitch_ref %2.2f ", this->setpointData.euler_ref[1]);
-  this->loggingModule.flyMS_printf(" Yaw_ref %2.2f ", this->setpointData.euler_ref[2]);
+  // this->loggingModule.flyMS_printf(" Roll_ref %2.2f ", this->setpointData.euler_ref[0]);
+  // this->loggingModule.flyMS_printf(" Pitch_ref %2.2f ", this->setpointData.euler_ref[1]);
+  // this->loggingModule.flyMS_printf(" Yaw_ref %2.2f ", this->setpointData.euler_ref[2]);
   this->loggingModule.flyMS_printf(" Roll %1.2f ", this->imuData.euler[0]);
   this->loggingModule.flyMS_printf(" Pitch %1.2f ", this->imuData.euler[1]);
   this->loggingModule.flyMS_printf(" Yaw %2.3f ", this->imuData.euler[2]);

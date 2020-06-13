@@ -6,28 +6,19 @@
  * @date 10/15/2018
  */
 
-#ifndef COMMON_H
-#define COMMON_H
-
-#define DT_US 10000
-#define DT 0.01
-#define MAX_PITCH_COMPONENT 0.25
-#define MAX_ROLL_COMPONENT 0.25
-#define MAX_YAW_COMPONENT 0.25
-#define MIN_THROTTLE 0.3
-#define MAX_THROTTLE 0.75
-#define MAX_PITCH_RANGE 0.666 // in radians
-#define MAX_ROLL_RANGE 0.666 // in radians
-#define MAX_ROLL_RANGE_ACRO 0.861799 // in radians/sec
-#define MAX_PITCH_RANGE_ACRO 0.861799 // in radians/sec
-
-#define MAX_DSM2_CHANNELS 8
-#define MAX_YAW_RATE 2.0 //in Radians per second
-#define MIN_THROTTLE 0.3
-#define MAX_THROTTLE 0.75
+#ifndef SRC_FLYMS_INCLUDE_FLYMS_COMMON_H_
+#define SRC_FLYMS_INCLUDE_FLYMS_COMMON_H_
 
 #include "Eigen/Dense"
 #include "filter.h"
+
+constexpr float MICROTESLA_TO_GAUSSf = 0.01f;
+constexpr double MICROTESLA_TO_GAUSS = 0.01;
+constexpr float R2Df =  57.295779513f;
+constexpr float D2Rf =  0.0174532925199f;
+constexpr double R2D =  57.295779513;
+constexpr double D2R =  0.0174532925199;
+constexpr double DT = 0.01;
 
 
 typedef struct state_t {
@@ -55,8 +46,6 @@ typedef struct controller_t {
   float  standing_throttle, alt_error;
 } controller_t;
 
-
-
 typedef struct filters_t {
   digital_filter_t *pitch_rate_PD;
   digital_filter_t *roll_rate_PD;
@@ -83,8 +72,6 @@ typedef struct filters_t {
 
 } filters_t;
 
-
-
 typedef struct setpoint_t {
   float euler_ref[3];  // Reference (Desired) Position
   float euler_ref_previous[3];  // Reference (Desired) Position
@@ -101,5 +88,4 @@ typedef struct setpoint_t {
   float kill_switch[2];
 } setpoint_t;
 
-
-#endif //COMMON_H
+#endif  // SRC_FLYMS_INCLUDE_FLYMS_COMMON_H_
