@@ -25,17 +25,15 @@
 #include <vector>
 
 //Package Includes
-#include <Eigen/Dense>
+#include "Eigen/Dense"
 #include "Fusion.h"
-#include <rc/mpu.h>
-#include "ekf.hpp"
-#include <rc/led.h>
+#include "rc/mpu.h"
+#include "rc/led.h"
+#include "rc/bmp.h"
 
 //Ours
 #include "flyMS/config.hpp"
 #include "flyMS/logger.hpp"
-
-
 
 /**
  * @brief      This class describes a position/velocity/acceletaion state.
@@ -60,7 +58,7 @@ template <typename T> class pva_state {
 
     Eigen::Matrix<T, 3, 1> get_acceleration() const {
       Eigen::Matrix<T, 3, 1> return_mat;
-      return_mat << data[index_](7), data[index_](8), data[index_](9);
+      return_mat << data[index_](6), data[index_](7), data[index_](8);
     }
 
     void set_pva(const T pos[3], const T vel[3], const T acc[3]) {
@@ -77,12 +75,12 @@ template <typename T> class pva_state {
     void set_pva(const Eigen::Matrix<T, 3, 1> &pos,
       const Eigen::Matrix<T, 3, 1> &vel,
       const Eigen::Matrix<T, 3, 1> &acc) {
-      data(index) << pos(0), pos(1), pos(2), vel(0), vel(1), vel(2), acc(0),
+      data[index] << pos(0), pos(1), pos(2), vel(0), vel(1), vel(2), acc(0),
         acc(1), acc(2);
     }
 
     void set_pva(const Eigen::Matrix<T, 9, 1> &pva) {
-      data(index) << pva(0), pva(1), pva(2), pva(3), pva(4), pva(5), pva(6), pva(7), pva(8);
+      data[index] << pva(0), pva(1), pva(2), pva(3), pva(4), pva(5), pva(6), pva(7), pva(8);
     }
 
 
@@ -119,13 +117,6 @@ class imu {
   int update();
 
 
-
-
-  /************************************************************************
-  *             Update the EKF with GPS Data                     *
-  ************************************************************************/
-  int update_ekf_gps();
-
   /************************************************************************
           Get the Latest IMU data from the Object
   ************************************************************************/
@@ -135,6 +126,7 @@ class imu {
   void calculateDCM(float pitchOffsetDeg, float rollOffsetDeg, float yawOffsetDeg);
 
  private:
+  void SerialReadThread();
   void GpioThread();
   void init_fusion();
   void updateFusion();
@@ -146,16 +138,23 @@ class imu {
   //Variables to control the imu thread
   std::mutex gpio_mutex_;
   std::thread gpio_thread_;
+  std::thread serial_read_thread_;
   std::thread imu_thread_;
   std::mutex imu_mutex_;
+
+  // The recorded time of the pulse
+  uint64_t trigger_time_;
+  uint32_t trigger_count_;
+  std::mutex trigger_time_mutex_;
+
+  // file descriptor for the serial port
+  int serial_dev_;
 
   //Boolean to indicate if we are currently initializing the fusion algorithm
   bool is_initializing_fusion_;
 
   //Struct to hold all of the configurable parameters
   config_t config_;
-
-  ekf_filter_t ekf_container_;
 
   //Struct to keep all the state information of the aircraft in the body frame
   state_t state_body_;

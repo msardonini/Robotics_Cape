@@ -8,13 +8,15 @@
 
 #include "flyMS/imu.hpp"
 
-#include "flyMS/mavlink/common/mavlink.h"
-
 #include <termios.h>
 #include <unistd.h>
 #include <fcntl.h>
 
-rc_mpu_data_t imuDataShared;
+#include "rc/gpio.h"
+#include "rc/time.h"
+#include "flyMS/mavlink/fly_stereo/mavlink.h"
+
+static rc_mpu_data_t imuDataShared;
 rc_mpu_data_t imuDataLocal;
 std::mutex localMutex;
 
@@ -23,73 +25,76 @@ static void dmpCallback(void) {
   memcpy(&imuDataLocal, &imuDataShared, sizeof(rc_mpu_data_t));
 }
 
-imu::imu(config_t _config, logger& logger) :
+imu::imu(config_t config, logger& logger) :
   is_running_(true),
   is_initializing_fusion_(true),
-  config_(config_),
+  config_(config),
   logger_(logger) {
   //Calculate the DCM with out offsets
   calculateDCM(config_.pitchOffsetDegrees, config_.rollOffsetDegrees, config_.yawOffsetDegrees);
 
-
-  // Open the serial port to send messages to
-  // Open the device
+  // Open the serial port to send messages to the Nano
   serial_dev_ = open("/dev/ttyS5", O_RDWR | O_NOCTTY | O_NDELAY);
-  if(serial_dev_ == -1) {
-   std::cerr << "Failed to open the serial device" << std::endl;
-   return;
+  if (serial_dev_ == -1) {
+    std::cerr << "Failed to open the serial device" << std::endl;
+    return;
   }
 
-  struct termios  config;
-  //
+  fcntl(serial_dev_, F_SETFL, fcntl(serial_dev_, F_GETFL) & ~O_NONBLOCK);
+
   // Get the current configuration of the serial interface
-  //
-  if(tcgetattr(serial_dev_, &config) < 0) {
-   std::cerr << "Failed to get the serial device attributes" << std::endl;
-   return;
+  struct termios serial_config;
+  if (tcgetattr(serial_dev_, &serial_config) < 0) {
+    std::cerr << "Failed to get the serial device attributes" << std::endl;
+    return;
   }
 
   // Set the serial device configs
-  config.c_iflag &= ~(IGNBRK | BRKINT | ICRNL | INLCR | PARMRK | INPCK | ISTRIP
-   | IXON);
-  config.c_oflag = 0;
-  config.c_lflag &= ~(ECHO | ECHONL | ICANON | IEXTEN | ISIG);
-  config.c_cflag &= ~(CSIZE | PARENB);
-  config.c_cflag |= CS8;
-  //
-  // One input byte is enough to return from read()
-  // Inter-character timer off
-  //
-  config.c_cc[VMIN]  = 1;
-  config.c_cc[VTIME] = 0;
+  serial_config.c_iflag &= ~(IGNBRK | BRKINT | ICRNL | INLCR | PARMRK | INPCK | ISTRIP
+    | IXON);
+  serial_config.c_oflag = 0;
+  serial_config.c_lflag &= ~(ECHO | ECHONL | ICANON | IEXTEN | ISIG);
+  serial_config.c_cflag &= ~(CSIZE | PARENB);
+  serial_config.c_cflag |= CS8;
 
-  //
-  // Communication speed (simple version, using the predefined
-  // constants)
-  //
-  if(cfsetispeed(&config, B115200) < 0 || cfsetospeed(&config, B115200) < 0) {
-   std::cerr << "Failed to set the baudrate on the serial port!" << std::endl;
-   return;
+  // One input byte is enough to return from read() Inter-character timer off
+  serial_config.c_cc[VMIN]  = 1;
+  serial_config.c_cc[VTIME] = 0;
+
+  // Communication speed (simple version, using the predefined constants)
+  if (cfsetispeed(&serial_config, B115200) < 0 || cfsetospeed(&serial_config, B115200) < 0) {
+    std::cerr << "Failed to set the baudrate on the serial port!" << std::endl;
+    return;
   }
 
-  //
   // Finally, apply the configuration
-  //
-  if(tcsetattr(serial_dev_, TCSAFLUSH, &config) < 0) {
-   std::cerr << "Failed to set the baudrate on the serial port!" << std::endl;
-   return;
+  if (tcsetattr(serial_dev_, TCSAFLUSH, &serial_config) < 0) {
+    std::cerr << "Failed to set the baudrate on the serial port!" << std::endl;
+    return;
   }
 
   // Register the GPIO pin that will tell us when images are being captured
   rc_gpio_init_event(1, 25, 0, GPIOEVENT_REQUEST_FALLING_EDGE);
 
-  gpioThread = std::thread(&imu::GpioThread, this);
+  gpio_thread_ = std::thread(&imu::GpioThread, this);
+  serial_read_thread_ = std::thread(&imu::SerialReadThread, this);
 }
 
 
 //Default Destructor
 imu::~imu() {
   rc_mpu_power_off();
+
+  // Shut down the gpio thread
+  is_running_.store(false);
+  if (gpio_thread_.joinable()) {
+    gpio_thread_.join();
+  }
+  // Shut down the serial read
+  is_running_.store(false);
+  if (serial_read_thread_.joinable()) {
+    serial_read_thread_.join();
+  }
   // logger_.flyMS_printf("imu Destructor\n");
 }
 
@@ -121,7 +126,11 @@ int imu::initializeImu() {
     rc_mpu_config_t conf = rc_mpu_default_config();
     conf.i2c_bus = 2;
     conf.enable_magnetometer = 1;
-    conf.show_warnings = 0;
+    conf.show_warnings = 1;
+
+    conf.gpio_interrupt_pin_chip = 3;
+    conf.gpio_interrupt_pin = 21;
+
     if (rc_mpu_initialize(&imu_data_, conf)) {
       logger_.flyMS_printf("ERROR: can't talk to IMU, all hope is lost\n");
       rc_led_set(RC_LED_RED, 1);
@@ -163,8 +172,8 @@ int imu::initializeImu() {
       conf.orient = ORIENTATION_Z_DOWN;
       calculateDCM(0.0f, 0.0f, config_.yawOffsetDegrees);
     } else {
-      logger_.flyMS_printf("Error! In order to be in DMP mode, \
-one of the X,Y,Z vectors on the IMU needs to be parallel with Gravity\n");
+      logger_.flyMS_printf("Error! In order to be in DMP mode, "
+        "one of the X,Y,Z vectors on the IMU needs to be parallel with Gravity\n");
       rc_led_set(RC_LED_RED, 1);
       rc_led_set(RC_LED_GREEN, 0);
       return -1;
@@ -224,33 +233,9 @@ int imu::update() {
       }
       i1 = 0;
     }
-    // baro_alt = update_filter(filters.LPF_baro_alt,rc_bmp_get_altitude_m() - initial_alt);
-
-    //TODO: Interface with the barometer data
-    // state_body_.barometerAltitude = rc_bmp_get_altitude_m();
-    // ekfContainer.input.barometer_updated = 1;
-    // ekfContainer.input.barometer_alt = state_body_.barometerAltitude;
   }
-
-  /************************************************************************
-  *                     Send data to PX4's EKF                          *
-  ************************************************************************/
-  //TODO: enable the EKF again
-
-  // int i;
-  // for (i = 0; i < 3; i++)
-  // {
-  //   // ekfContainer.input.accel[i] = transform.accel_drone.d[i];
-  //   // ekfContainer.input.mag[i] = imu_data_.mag[i] * MICROTESLA_TO_GAUSS;
-  //   // ekfContainer.input.gyro[i] = state_body_.eulerRate[i];
-  // }
-  //TODO implement the EKF and use real timestamps
-  // ekfContainer.input.IMU_timestamp = time_us;
-
   return 0;
 }
-
-
 
 /************************************************************************
 *        Transform coordinate system IMU Data
@@ -278,6 +263,7 @@ void imu::read_transform_imu() {
       state_body_.eulerRate(i)      = imu_data_.gyro[i] * D2Rf;
     }
   }
+
   /**********************************************************
   *    Perform the Coordinate System Transformation    *
   **********************************************************/
@@ -358,7 +344,7 @@ void imu::updateFusion() {
   euler_angles_.angle.pitch = mag * cosf(theta - euler_angles_.angle.yaw * D2Rf);
 
   for (i = 0; i < 3; i++)
-    this->eulerAngles.array[i] *= -1.0f;
+    euler_angles_.array[i] *= -1.0f;
 
   //Save the output
   for (i = 0; i < 3; i++) {
@@ -371,43 +357,104 @@ void imu::updateFusion() {
 
 void imu::send_mavlink() {
   mavlink_message_t msg;
-  mavlink_attitude_t attitude;
+  mavlink_imu_t attitude;
   uint8_t buf[1024];
 
-  attitude.roll = this->stateBody.euler(0);
-  attitude.pitch = this->stateBody.euler(1);
-  attitude.yaw = this->stateBody.euler(2);
+  attitude.roll = state_body_.euler(0);
+  attitude.pitch = state_body_.euler(1);
+  attitude.yaw = state_body_.euler(2);
 
-  attitude.rollspeed = this->stateBody.eulerRate(0);
-  attitude.pitchspeed = this->stateBody.eulerRate(1);
-  attitude.yawspeed = this->stateBody.eulerRate(1);
+  for (int i = 0; i < 3; i++) {
+    attitude.gyroXYZ[i] = state_body_.eulerRate(i);
+    attitude.accelXYZ[i] = state_body_.accel(i);
+  }
 
-  uint16_t len = mavlink_msg_attitude_encode(1, 200, &msg, &attitude);
+  uint64_t imu_time = std::chrono::duration_cast<std::chrono::nanoseconds>(std::chrono::
+    system_clock::now().time_since_epoch()).count();
+  std::lock_guard<std::mutex> lock(trigger_time_mutex_);
+  attitude.timestamp_us = static_cast<uint32_t>((imu_time - trigger_time_) / 1.0E3);
+  attitude.trigger_count = trigger_count_;
 
-  len = mavlink_msg_to_send_buffer(buf, &msg);
+  mavlink_msg_imu_encode(1, 200, &msg, &attitude);
+  uint16_t len = mavlink_msg_to_send_buffer(buf, &msg);
 
   write(serial_dev_, buf, len);
-
 }
 
 void imu::GpioThread() {
-  int timeout_ms = 10000;
+  int timeout_ms = 1000;
   uint64_t event_time;
 
+  trigger_time_mutex_.lock();
+  trigger_time_ = std::chrono::duration_cast<std::chrono::nanoseconds>(std::chrono::system_clock::
+    now().time_since_epoch()).count();
+  trigger_count_ = 0;
+  trigger_time_mutex_.unlock();
+
   while(is_running_.load()) {
-    int ret = rc_gpio_poll(1,25, timeout_ms, &event_time);
+    int ret = rc_gpio_poll(1, 25, timeout_ms, &event_time);
 
-    if (ret == RC_GPIOEVENT_FALLING_EDGE)
-      loggingModule.flyMS_printf("Falling edge detected, time %llu\n", event_time);
-    else if (ret == RC_GPIOEVENT_RISING_EDGE)
-      loggingModule.flyMS_printf("Rising edge detected, time %llu\n", event_time);
-    else if (ret == RC_GPIOEVENT_TIMEOUT)
-      loggingModule.flyMS_printf("GPIO timeout");
-    else if (ret == RC_GPIOEVENT_ERROR)
-      loggingModule.flyMS_printf("GPIO error");
+    if (ret == RC_GPIOEVENT_FALLING_EDGE) {
+      std::lock_guard<std::mutex> lock(trigger_time_mutex_);
+      trigger_time_ = event_time;
+      trigger_count_++;
+      // logger_.flyMS_printf("Falling edge detected, time %llu\n", event_time);
+    } else if (ret == RC_GPIOEVENT_RISING_EDGE) {
+      logger_.flyMS_printf("Error! Rising edge detected, should only be returning on falling "
+        "edge");
+    } else if (ret == RC_GPIOEVENT_TIMEOUT) {
+      // logger_.flyMS_printf("GPIO timeout");
+    } else if (ret == RC_GPIOEVENT_ERROR) {
+      logger_.flyMS_printf("GPIO error");
+    }
   }
-
-
 }
 
+void imu::SerialReadThread() {
+  unsigned char buf[1024];
+  size_t buf_size = 1024;
+  std::cout << "starting serial read thread!\n\n";
 
+  while (is_running_.load()) {
+    ssize_t ret = read(serial_dev_, buf, buf_size);
+
+    if (ret < 0) {
+      std::cerr << "Error on read(), errno: " << strerror(errno) << std::endl;
+    }
+
+    for (int i = 0; i < ret; i++) {
+      mavlink_status_t mav_status;
+      mavlink_message_t mav_message;
+      uint8_t msg_received = mavlink_parse_char(MAVLINK_COMM_1, buf[i],
+        &mav_message, &mav_status);
+    
+      if (msg_received) {
+        switch(mav_message.msgid) {
+          case MAVLINK_MSG_ID_IMU: {
+            mavlink_imu_t attitude_msg;
+            mavlink_msg_imu_decode(&mav_message, &attitude_msg);
+            break;
+          }
+          case MAVLINK_MSG_ID_RESET_COUNTERS: {
+            mavlink_reset_counters_t reset_msg;
+            mavlink_msg_reset_counters_decode(&mav_message, &reset_msg);
+            std::lock_guard<std::mutex> lock(trigger_time_mutex_);
+            trigger_count_ = 0;
+            trigger_time_ = 0;
+            std::cout << "Received counter reset msg!\n\n";
+            break;
+          }
+          default:
+            std::cerr << "Unrecognized message with ID:" << static_cast<int>(
+              mav_message.msgid) << std::endl;
+            break;
+        }
+      }
+    }
+    // Sleep so we don't overload the CPU. This isn't an ideal method, but if
+    // use a blocking call on read(), we can't break out of it on the 
+    // destruction of this object. It will hang forever until bytes are read,
+    // which is not always the case
+    std::this_thread::sleep_for(std::chrono::microseconds(100));
+  }
+}
