@@ -5,6 +5,7 @@ project(flyMS VERSION 1.0.0)
 add_definitions(-DDEBUG)
 
 file(GLOB SRCS_FLYMS PATTERN src/*.cpp)
+list(APPEND SRCS_FLYMS src/ulog/ulog.cc)
 
 # Link statically to all libaries
 set(CMAKE_EXE_LINKER_FLAGS "-static")

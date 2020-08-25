@@ -58,7 +58,7 @@ imu::imu(config_t config, logger& logger) :
   serial_config.c_cflag |= CS8;
 
   // One input byte is enough to return from read() Inter-character timer off
-  serial_config.c_cc[VMIN]  = 1;
+  serial_config.c_cc[VMIN]  = 0;
   serial_config.c_cc[VTIME] = 0;
 
   // Communication speed (simple version, using the predefined constants)
@@ -369,10 +369,12 @@ void imu::send_mavlink() {
     attitude.accelXYZ[i] = state_body_.accel(i);
   }
 
-  uint64_t imu_time = std::chrono::duration_cast<std::chrono::nanoseconds>(std::chrono::
+  uint64_t imu_time = std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::
     system_clock::now().time_since_epoch()).count();
   std::lock_guard<std::mutex> lock(trigger_time_mutex_);
-  attitude.timestamp_us = static_cast<uint32_t>((imu_time - trigger_time_) / 1.0E3);
+  attitude.timestamp_us = imu_time;
+  attitude.time_since_trigger_us = static_cast<uint32_t>((imu_time - (trigger_time_ / 1E3)));
+  // std::cout << "time_since_trig " << attitude.time_since_trigger_us << std::endl;
   attitude.trigger_count = trigger_count_;
 
   mavlink_msg_imu_encode(1, 200, &msg, &attitude);

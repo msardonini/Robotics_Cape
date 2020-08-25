@@ -19,6 +19,7 @@
 #include "filter.h"
 
 //Ours
+#include "flyMS/ulog/ulog.h"
 #include "flyMS/common.hpp"
 #include "flyMS/logger.hpp"
 #include "flyMS/gps.hpp"
@@ -50,7 +51,6 @@ class flyMS {
   int initializeHardware();
 
  private:
-
   //Get the current time in microseconds
   uint64_t getTimeMicroseconds();
 
@@ -73,6 +73,7 @@ class flyMS {
 
   //Class to handle and write to the log file
   logger loggingModule;
+  ULog ulog_;
 
   //Object and Data struct from the imu manager
   imu imuModule;
@@ -97,14 +98,8 @@ class flyMS {
   controller_t control;
   filters_t filters;
 
-
-
   int integrator_reset;
   int integrator_start;
-
-
 };
-
-
 
 #endif // FLYMS_H

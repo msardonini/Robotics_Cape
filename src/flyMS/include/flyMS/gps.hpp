@@ -8,6 +8,7 @@
 #ifndef GPS_H
 #define GPS_H
 
+#include "flyMS/logger.hpp"
 
 //System Includes
 #include <iostream>
@@ -25,10 +26,7 @@
 
 //Package Includes
 #include <roboticscape.h>
-
-//Ours
 #include "flyMS/config.hpp"
-#include "flyMS/logger.hpp"
 
 
 #define D2R_GPS 0.01744

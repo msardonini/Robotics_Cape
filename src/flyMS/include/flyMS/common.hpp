@@ -21,8 +21,25 @@ constexpr double D2R =  0.0174532925199;
 constexpr double DT = 0.01;
 
 
+typedef struct setpoint_t {
+  float euler_ref[3];  // Reference (Desired) Position
+  float euler_ref_previous[3];  // Reference (Desired) Position
+  float yaw_rate_ref[2];
+  float Aux[2];
+  double lat_setpoint;
+  double lon_setpoint;      // Controller Variables for Autonomous Flight
+  float altitudeSetpointRate;
+  float altitudeSetpoint;
+  float dpitch_setpoint; // Desired attitude
+  float droll_setpoint;  // Desired attitude
+  float throttle;
+  float yaw_ref_offset;
+  float kill_switch[2];
+} setpoint_t;
+
+
 typedef struct state_t {
-  Eigen::Vector3f  euler;          // Euler angles of aircraft (in roll, pitch, yaw)
+  Eigen::Vector3f euler;          // Euler angles of aircraft (in roll, pitch, yaw)
   Eigen::Vector3f eulerPrevious;      // 1 Timestampe previousEuler angles of aircraft (in roll, pitch, yaw)
   Eigen::Vector3f  eulerRate;        // First derivative of euler angles (in roll/s, pitch/s, yaw/s)
 
@@ -71,21 +88,5 @@ typedef struct filters_t {
   digital_filter_t *accel_lpf[3];
 
 } filters_t;
-
-typedef struct setpoint_t {
-  float euler_ref[3];  // Reference (Desired) Position
-  float euler_ref_previous[3];  // Reference (Desired) Position
-  float yaw_rate_ref[2];
-  float Aux[2];
-  double lat_setpoint;
-  double  lon_setpoint;      // Controller Variables for Autonomous Flight
-  float altitudeSetpointRate;
-  float altitudeSetpoint;
-  float dpitch_setpoint; // Desired attitude
-  float droll_setpoint;  // Desired attitude
-  float throttle;
-  float yaw_ref_offset;
-  float kill_switch[2];
-} setpoint_t;
 
 #endif  // SRC_FLYMS_INCLUDE_FLYMS_COMMON_H_

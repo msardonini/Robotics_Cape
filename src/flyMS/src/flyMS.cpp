@@ -13,6 +13,7 @@ flyMS::flyMS(flyMSParams &_config) :
   configModule(_config),
   firstIteration(true),
   loggingModule(_config.config.log_filepath),
+  ulog_(_config.config.log_filepath),
   config(_config.config),
   imuModule(_config.config, this->loggingModule),
   setpointModule(_config.config, this->loggingModule),
@@ -169,10 +170,14 @@ int flyMS::flightCore() {
     *                     yellow             black
     ************************************************************************/
 
-    this->control.u[0] = this->setpointData.throttle - this->control.u_euler[0] + this->control.u_euler[1] - this->control.u_euler[2];
-    this->control.u[1] = this->setpointData.throttle + this->control.u_euler[0] + this->control.u_euler[1] + this->control.u_euler[2];
-    this->control.u[2] = this->setpointData.throttle - this->control.u_euler[0] - this->control.u_euler[1] + this->control.u_euler[2];
-    this->control.u[3] = this->setpointData.throttle + this->control.u_euler[0] - this->control.u_euler[1] - this->control.u_euler[2];
+    this->control.u[0] = this->setpointData.throttle - this->control.u_euler[0] + this->control.
+      u_euler[1] - this->control.u_euler[2];
+    this->control.u[1] = this->setpointData.throttle + this->control.u_euler[0] + this->control.
+      u_euler[1] + this->control.u_euler[2];
+    this->control.u[2] = this->setpointData.throttle - this->control.u_euler[0] - this->control.
+      u_euler[1] + this->control.u_euler[2];
+    this->control.u[3] = this->setpointData.throttle + this->control.u_euler[0] - this->control.
+      u_euler[1] - this->control.u_euler[2];
 
     /************************************************************************
     *             Check Output Ranges, if outside, adjust                 *
@@ -213,7 +218,8 @@ int flyMS::flightCore() {
     /************************************************************************
     *               Log Important Flight Data For Analysis              *
     ************************************************************************/
-    this->loggingModule.writeToLog(&this->imuData, &this->control, &this->setpointData);
+    struct ULogFlightMsg flight_msg(getTimeMicroseconds(), imuData, setpointData, control);
+    ulog_.WriteFlightData<struct ULogFlightMsg>(flight_msg, FLIGHT_MSG_ID);
 
     timeFinish = this->getTimeMicroseconds();
     uint64_t sleep_time = static_cast<uint64_t>(DT*1.0E6) - (timeFinish - timeStart);

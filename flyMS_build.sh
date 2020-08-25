@@ -18,6 +18,7 @@ function print_usage {
 }
 
 function prep_output_folder {
+  [ -d "build" ] && rm -rf products
   mkdir products
   cp -r build/bin products
   cp -r scripts/* products/bin
@@ -75,8 +76,20 @@ done
 [ ! -d "build" ] && mkdir build
 cd build
 cmake ..
+if [ $? -ne 0 ]; then
+  echo "Prebuild failed"
+  exit 1
+fi
+
 make -j$('nproc')
+if [ $? -ne 0 ]; then
+  echo "Build failed"
+  exit 1
+fi
+
 cd ../
+
+
 
 # Make a folder to store things to send
 prep_output_folder $CONFIG_FILE
@@ -88,7 +101,7 @@ if [ $ARCH == "x86_64" ]; then
   if [ -z $ADDRESS ]; then
     RED='\033[0;31m'
     NC='\033[0m' # No Color
-    printf "${RED}Error!${NC} Invalid beaglebone address given!\n"
+    printf "${RED}Error!${NC} Provide beaglebone IP address to copy to device!\n"
     exit 1
   fi
   DESTINATION="debian@$ADDRESS:/home/debian"

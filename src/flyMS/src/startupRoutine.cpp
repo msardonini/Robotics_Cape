@@ -36,9 +36,6 @@ int flyMS::startupRoutine() {
   //Tell the setpoint manager we are no longer waiting to initialize
   this->setpointModule.setInitializationFlag(false);
 
-  //Initialize the logger
-  this->loggingModule.createLogFiles();
-
   //Initialize the IMU Hardware
   if (this->imuModule.initializeImu())
     return -1;
