@@ -9,32 +9,43 @@
 //System Includes
 #include <signal.h>
 #include <getopt.h>
+#include <string>
+#include <memory>
 
 //Our Includes
+#include "yaml-cpp/yaml.h"
 #include "flyMS/flyMS.hpp"
 
-void initSignalHandler();
-void onSignalReceived(int signo);
+void onSignalReceived(int signo) {
+  switch (signo) {
+  case SIGHUP:
+    break;
+  default:
+    rc_set_state(EXITING);
+  }
+}
 
+void initSignalHandler() {
+  signal(SIGINT, onSignalReceived);
+  signal(SIGKILL, onSignalReceived);
+  signal(SIGHUP, onSignalReceived);
+}
 
 int main(int argc, char *argv[]) {
   //Enable the signal handler so we can exit cleanly on SIGINT
   initSignalHandler();
 
-  // Read the command line arguments and config file inputs
-  flyMSParams configParams;
-
-  bool isDebugMode = false;
-  std::string configFilepath;
+  bool is_debug_mode = false;
+  std::string config_filepath;
   //Parse the command line arguments
   int in;
   while ((in = getopt(argc, argv, "c:dr:h")) != -1) {
     switch (in) {
     case 'c':
-      configFilepath = std::string(optarg);
+      config_filepath = std::string(optarg);
       break;
     case 'd':
-      isDebugMode = true;
+      is_debug_mode = true;
       printf("Running in Debug mode \n");
       break;
     case 'r':
@@ -54,19 +65,22 @@ int main(int argc, char *argv[]) {
   }
 
   // Make sure the user provided a path to a confile file
-  if (configFilepath.empty()) {
+  if (config_filepath.empty()) {
     std::cout << "Reqired parameter: -c" << std::endl;
     return -1;
   }
 
-  configParams.loadConfigFile(configFilepath);
+  // Load the Yaml Node
+  YAML::Node config_params = YAML::LoadFile(config_filepath)["flyMSParams"];
 
-  //Merge the common parameters between the config file and the command line inputs
-  configParams.config.isDebugMode |= isDebugMode;
+  // Override the debug flag if requested at the command line
+  if (is_debug_mode) {
+    config_params["debug_mode"] = "true";
+  }
 
   rc_set_state(UNINITIALIZED);
-  // flyMS fly;
-  flyMS fly(configParams);
+
+  flyMS fly(config_params);
   //Initialize the flight hardware
   if (fly.startupRoutine())
     rc_set_state(EXITING);
@@ -81,17 +95,3 @@ int main(int argc, char *argv[]) {
   return 0;
 }
 
-void onSignalReceived(int signo) {
-  switch (signo) {
-  case SIGHUP:
-    break;
-  default:
-    rc_set_state(EXITING);
-  }
-}
-
-void initSignalHandler() {
-  signal(SIGINT, onSignalReceived);
-  signal(SIGKILL, onSignalReceived);
-  signal(SIGHUP, onSignalReceived);
-}

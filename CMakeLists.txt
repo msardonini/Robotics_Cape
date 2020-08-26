@@ -50,6 +50,9 @@ include_directories(external/librobotcontrol/library/include)
 # Build the Yaml-Cpp config file parser
 add_subdirectory(external/yaml-cpp)
 
+# Build the Yaml-Cpp config file parser
+add_subdirectory(external/spdlog)
+
 # Build the PX4 estimation control library
 add_subdirectory(external/ecl)
 

@@ -15,6 +15,10 @@
 #include "rc/gpio.h"
 #include "rc/time.h"
 #include "flyMS/mavlink/fly_stereo/mavlink.h"
+#include "spdlog/spdlog.h"
+
+constexpr float R2Df =  57.295779513f;
+constexpr float D2Rf =  0.0174532925199f;
 
 static rc_mpu_data_t imuDataShared;
 rc_mpu_data_t imuDataLocal;
@@ -25,13 +29,22 @@ static void dmpCallback(void) {
   memcpy(&imuDataLocal, &imuDataShared, sizeof(rc_mpu_data_t));
 }
 
-imu::imu(config_t config, logger& logger) :
+imu::imu(const YAML::Node &input_params) :
   is_running_(true),
-  is_initializing_fusion_(true),
-  config_(config),
-  logger_(logger) {
+  is_initializing_fusion_(true) {
+  delta_t_ = input_params["delta_t"].as<float>();
+  // Parse the config parameters
+  YAML::Node imu_params = input_params["imu_params"];
+  pitch_offset_deg_ = imu_params["pitch_offset_deg"].as<float>();
+  roll_offset_deg_ = imu_params["roll_offset_deg"].as<float>();
+  yaw_offset_deg_ = imu_params["yaw_offset_deg"].as<float>();
+
+  enable_dmp_ = imu_params["enable_dmp"].as<bool>();
+  enable_fusion_ = imu_params["enable_fusion"].as<bool>();
+  enable_barometer_ = imu_params["enable_barometer"].as<bool>();
+
   //Calculate the DCM with out offsets
-  calculateDCM(config_.pitchOffsetDegrees, config_.rollOffsetDegrees, config_.yawOffsetDegrees);
+  calculateDCM(pitch_offset_deg_, roll_offset_deg_, yaw_offset_deg_);
 
   // Open the serial port to send messages to the Nano
   serial_dev_ = open("/dev/ttyS5", O_RDWR | O_NOCTTY | O_NDELAY);
@@ -95,7 +108,7 @@ imu::~imu() {
   if (serial_read_thread_.joinable()) {
     serial_read_thread_.join();
   }
-  // logger_.flyMS_printf("imu Destructor\n");
+  // spdlog::info("imu Destructor\n");
 }
 
 void imu::calculateDCM(float pitchOffsetDeg, float rollOffsetDeg, float yawOffsetDeg) {
@@ -115,14 +128,14 @@ void imu::calculateDCM(float pitchOffsetDeg, float rollOffsetDeg, float yawOffse
 
 int imu::initializeImu() {
   //Start the barometer
-  if (config_.enableBarometer) {
+  if (enable_barometer_) {
     if (rc_bmp_init(OVERSAMPLE, INTERNAL_FILTER)) {
-      logger_.flyMS_printf("initialize_barometer failed\n");
+      spdlog::error("initialize_barometer failed\n");
       return -1;
     }
   }
 
-  if (config_.enableFusion) {
+  if (enable_fusion_) {
     rc_mpu_config_t conf = rc_mpu_default_config();
     conf.i2c_bus = 2;
     conf.enable_magnetometer = 1;
@@ -132,7 +145,7 @@ int imu::initializeImu() {
     conf.gpio_interrupt_pin = 21;
 
     if (rc_mpu_initialize(&imu_data_, conf)) {
-      logger_.flyMS_printf("ERROR: can't talk to IMU, all hope is lost\n");
+      spdlog::error("ERROR: can't talk to IMU, all hope is lost\n");
       rc_led_set(RC_LED_RED, 1);
       rc_led_set(RC_LED_GREEN, 0);
       return -1;
@@ -140,7 +153,7 @@ int imu::initializeImu() {
 
     //Initialize the fusion library which converts raw IMU data to Euler angles
     init_fusion();
-  } else if (config_.enableDMP) {
+  } else if (enable_dmp_) {
     rc_mpu_config_t conf = rc_mpu_default_config();
     conf.i2c_bus = 2;
     conf.gpio_interrupt_pin_chip = 3;
@@ -154,25 +167,24 @@ int imu::initializeImu() {
     float thresh = 0.95f;
     if (imu_to_body_(0, 2) > thresh) {
       conf.orient = ORIENTATION_X_UP;
-      calculateDCM(0.0f, config_.rollOffsetDegrees, 0.0f);
+      calculateDCM(0.0f, roll_offset_deg_, 0.0f);
     } else if (imu_to_body_(0, 2) < -thresh) {
       conf.orient = ORIENTATION_X_DOWN;
-      calculateDCM(0.0f, config_.rollOffsetDegrees, 0.0f);
+      calculateDCM(0.0f, roll_offset_deg_, 0.0f);
     } else if (imu_to_body_(1, 2) > thresh) {
       conf.orient = ORIENTATION_Y_UP;
-      calculateDCM(config_.pitchOffsetDegrees, 0.0f, 0.0f);
+      calculateDCM(pitch_offset_deg_, 0.0f, 0.0f);
     } else if (imu_to_body_(1, 2) < -thresh) {
       conf.orient = ORIENTATION_Y_DOWN;
-      calculateDCM(config_.pitchOffsetDegrees, 0.0f, 0.0f);
+      calculateDCM(pitch_offset_deg_, 0.0f, 0.0f);
     } else if (imu_to_body_(2, 2) > thresh) {
       conf.orient = ORIENTATION_Z_UP;
-      calculateDCM(0.0f, 0.0f, config_.yawOffsetDegrees);
-
+      calculateDCM(0.0f, 0.0f, yaw_offset_deg_);
     } else if (imu_to_body_(2, 2) < -thresh) {
       conf.orient = ORIENTATION_Z_DOWN;
-      calculateDCM(0.0f, 0.0f, config_.yawOffsetDegrees);
+      calculateDCM(0.0f, 0.0f, yaw_offset_deg_);
     } else {
-      logger_.flyMS_printf("Error! In order to be in DMP mode, "
+      spdlog::error("Error! In order to be in DMP mode, "
         "one of the X,Y,Z vectors on the IMU needs to be parallel with Gravity\n");
       rc_led_set(RC_LED_RED, 1);
       rc_led_set(RC_LED_GREEN, 0);
@@ -180,7 +192,7 @@ int imu::initializeImu() {
     }
 
     if (rc_mpu_initialize_dmp(&imuDataShared, conf)) {
-      logger_.flyMS_printf("rc_mpu_initialize_failed\n");
+      spdlog::error("rc_mpu_initialize_failed\n");
       return -1;
     }
     rc_mpu_set_dmp_callback(&dmpCallback);
@@ -200,7 +212,7 @@ int imu::update() {
   **********************************************************/
   read_transform_imu();
   //Perform the data fusion to calculate pitch, roll, and yaw angles
-  if (config_.enableFusion)
+  if (enable_fusion_)
     updateFusion();
 
   send_mavlink();
@@ -223,12 +235,12 @@ int imu::update() {
   *           Read the Barometer for Altitude          *
   **********************************************************/
   static int i1;
-  if (config_.enableBarometer) {
+  if (enable_barometer_) {
     i1++;
     if (i1 == 10) { // Only read the barometer at 25Hz
       // perform the i2c reads to the sensor, this takes a bit of time
       if (rc_bmp_read(&bmp_data_) < 0) {
-        logger_.flyMS_printf("\rERROR: Can't read Barometer");
+        spdlog::error("\rERROR: Can't read Barometer");
         fflush(stdout);
       }
       i1 = 0;
@@ -242,17 +254,17 @@ int imu::update() {
 ************************************************************************/
 void imu::read_transform_imu() {
 
-  if (config_.enableFusion) {
+  if (enable_fusion_) {
     if (rc_mpu_read_accel(&imu_data_) < 0) {
-      logger_.flyMS_printf("read accel data failed\n");
+      spdlog::error("read accel data failed\n");
     }
     if (rc_mpu_read_gyro(&imu_data_) < 0) {
-      logger_.flyMS_printf("read gyro data failed\n");
+      spdlog::error("read gyro data failed\n");
     }
     if (rc_mpu_read_mag(&imu_data_)) {
-      logger_.flyMS_printf("read mag data failed\n");
+      spdlog::error("read mag data failed\n");
     }
-  } else if (config_.enableDMP) {
+  } else if (enable_dmp_) {
     localMutex.lock();
     memcpy(&imu_data_, &imuDataLocal, sizeof(rc_mpu_data_t));
     localMutex.unlock();
@@ -297,16 +309,16 @@ void imu::init_fusion() {
   /*
     Two params here are:
     1. Min ADC threshold - gyroscope value threshold which means the device is stationary
-    2. DT - time difference in seconds
+    2. delta_t_ - time difference in seconds
   */
-  FusionBiasInitialise(&fusion_bias_, (int)(0.2f / imu_data_.gyro_to_degs), DT);
+  FusionBiasInitialise(&fusion_bias_, (int)(0.2f / imu_data_.gyro_to_degs), delta_t_);
 
   //Give Imu data to the fusion alg for initialization purposes
   while (FusionAhrsIsInitialising(&fusion_ahrs_) || FusionBiasIsActive(&fusion_bias_)) {
     read_transform_imu();
 
     updateFusion();
-    rc_usleep(static_cast<uint64_t>(DT*1.0E6));
+    rc_usleep(static_cast<uint64_t>(delta_t_*1.0E6));
   }
   is_initializing_fusion_ = false;
 }
@@ -330,7 +342,7 @@ void imu::updateFusion() {
   }
 
   FusionBiasUpdate(&fusion_bias_, imu_data_.raw_gyro[0], imu_data_.raw_gyro[1], imu_data_.raw_gyro[2]);
-  FusionAhrsUpdate(&fusion_ahrs_, gyroscope, accelerometer, magnetometer, DT);
+  FusionAhrsUpdate(&fusion_ahrs_, gyroscope, accelerometer, magnetometer, delta_t_);
   euler_angles_ = FusionQuaternionToEulerAngles(fusion_ahrs_.quaternion);
   Eigen::Vector3f w1; w1 << euler_angles_.angle.roll , euler_angles_.angle.pitch , euler_angles_.angle.yaw;
 
@@ -400,14 +412,14 @@ void imu::GpioThread() {
       std::lock_guard<std::mutex> lock(trigger_time_mutex_);
       trigger_time_ = event_time;
       trigger_count_++;
-      // logger_.flyMS_printf("Falling edge detected, time %llu\n", event_time);
+      // spdlog::error("Falling edge detected, time %llu\n", event_time);
     } else if (ret == RC_GPIOEVENT_RISING_EDGE) {
-      logger_.flyMS_printf("Error! Rising edge detected, should only be returning on falling "
+      spdlog::warn("Error! Rising edge detected, should only be returning on falling "
         "edge");
     } else if (ret == RC_GPIOEVENT_TIMEOUT) {
-      // logger_.flyMS_printf("GPIO timeout");
+      // spdlog::warn("GPIO timeout");
     } else if (ret == RC_GPIOEVENT_ERROR) {
-      logger_.flyMS_printf("GPIO error");
+      spdlog::warn("GPIO error");
     }
   }
 }

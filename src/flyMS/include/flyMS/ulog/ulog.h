@@ -37,21 +37,18 @@
 #include <fstream>
 
 #include "flyMS/setpoint.hpp"
-#include "flyMS/common.hpp"
-
-
+#include "flyMS/imu.hpp"
 
 struct ULogFlightMsg {
   ULogFlightMsg() {}
 
-  ULogFlightMsg(uint64_t _timestamp_us, const state_t &state, const setpoint_t &setpoint, const controller_t &controller) :
+  ULogFlightMsg(uint64_t _timestamp_us, const state_t &state, const setpoint_t &setpoint, const float u[4], const float u_euler[3]) :
   timestamp_us(_timestamp_us),
   RPY{state.euler(0), state.euler(1), state.euler(2)},
   gyro{state.gyro(0), state.gyro(1), state.gyro(2)},
   accel{state.accel(0), state.accel(1), state.accel(2)},
-  motor_cmds{controller.u[0], controller.u[1], controller.u[2], controller.u[3]},
-  u{controller.u_euler[0], controller.u_euler[1], controller.u_euler[2],
-      setpoint.throttle},
+  motor_cmds{u[0], u[1], u[2], u[3]},
+  u{u_euler[0], u_euler[1], u_euler[2], setpoint.throttle},
   RPY_ref{setpoint.euler_ref[0], setpoint.euler_ref[1],
       setpoint.euler_ref[2]} {}
 
@@ -175,7 +172,7 @@ struct ulog_message_flag_bits_s {
 
 class ULog {
  public:
-  ULog(const std::string &filename);
+  ULog();
 
   ~ULog();
 

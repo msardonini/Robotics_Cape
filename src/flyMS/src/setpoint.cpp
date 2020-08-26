@@ -8,12 +8,23 @@
 
 #include "flyMS/setpoint.hpp"
 
-setpoint::setpoint(config_t config, logger& loggingModule) :
+#include "spdlog/spdlog.h"
+
+
+setpoint::setpoint(const YAML::Node &config_params) :
   is_initializing_(true),
   ready_to_send_(false),
-  setpoint_mode_(SetpointMode::Stabilized),
-  config_(config),
-  logging_module_(loggingModule) {}
+  setpoint_mode_(SetpointMode::Stabilized) {
+    is_debug_mode_ = config_params["debug_mode"].as<bool>();
+    flight_mode_ = config_params["flight_mode"].as<int>();
+
+    YAML::Node setpoint_params = config_params["setpoint"];
+    max_setpoints_stabilized_ = setpoint_params["max_setpoints_stabilized"].as<
+      std::array<float, 3> >();
+    max_setpoints_acro_ = setpoint_params["max_setpoints_acro"].as<std::array<float, 3> >();
+    is_headless_mode_ = setpoint_params["headless_mode"].as<bool>();
+    throttle_limits_ = setpoint_params["throttle_limits"].as<std::array<float, 2> >();
+  }
 
 setpoint::~setpoint() {
   if (setpoint_thread_.joinable()) {
@@ -61,7 +72,7 @@ int setpoint::SetpointManager() {
       }
       dsm2_timeout_ = 0;
     } else {
-      if (!config_.isDebugMode) {
+      if (!is_debug_mode_) {
         //check to make sure too much time hasn't gone by since hearing the RC
         RcErrHandler();
         return 0;
@@ -77,7 +88,7 @@ int setpoint::SetpointManager() {
 
       break;
     default:
-      logging_module_.flyMS_printf("Error, invalid reference mode! \n");
+      spdlog::error("Error, invalid reference mode! \n");
     }
     setpoint_mutex_.unlock();
     usleep(static_cast<uint64_t>(DT*1.0E6)); //Run at the control frequency
@@ -92,22 +103,22 @@ int setpoint::HandleRcData() {
   **********************************************************/
   // Set roll/pitch reference value
   // DSM2 Receiver is inherently positive to the left
-  if (config_.flightMode == 1) { // Stabilized Flight Mode
-    setpoint_data_.euler_ref[0] = dsm2_data_[1] * config_.max_roll_setpoint;
-    setpoint_data_.euler_ref[1] = -dsm2_data_[2] * config_.max_pitch_setpoint;
-  } else if (config_.flightMode == 2) {
-    setpoint_data_.euler_ref[0] = dsm2_data_[1] * config_.max_roll_setpoint_acro;
-    setpoint_data_.euler_ref[1] = -dsm2_data_[2] * config_.max_pitch_setpoint_acro;
+  if (flight_mode_ == 1) { // Stabilized Flight Mode
+    setpoint_data_.euler_ref[0] = dsm2_data_[1] * max_setpoints_stabilized_[0];
+    setpoint_data_.euler_ref[1] = -dsm2_data_[2] * max_setpoints_stabilized_[1];
+  } else if (flight_mode_ == 2) {
+    setpoint_data_.euler_ref[0] = dsm2_data_[1] * max_setpoints_acro_[0];
+    setpoint_data_.euler_ref[1] = -dsm2_data_[2] * max_setpoints_acro_[1];
   }
   // DSM2 Receiver is inherently positive upwards
 
   // Set Yaw, RC Controller acts on Yaw velocity, save a history for integration
   // Apply the integration outside of current if statement, needs to run at 200Hz
   setpoint_data_.yaw_rate_ref[1] = setpoint_data_.yaw_rate_ref[0];
-  setpoint_data_.yaw_rate_ref[0] = dsm2_data_[3] * config_.max_yaw_rate;
+  setpoint_data_.yaw_rate_ref[0] = dsm2_data_[3] * max_setpoints_stabilized_[2];
 
   //If Specified by the config file, convert from Drone Coordinate System to User Coordinate System
-  if (config_.isHeadlessMode) {
+  if (is_headless_mode_) {
     //TODO: Give this thread access to state information so it can fly in headless mode
 
     // float P_R_MAG=pow(pow(setpoint_data_.euler_ref[0],2)+pow(setpoint_data_.euler_ref[1],2),0.5);
@@ -131,7 +142,7 @@ int setpoint::HandleRcData() {
   setpoint_data_.Aux[0] = dsm2_data_[5];
 
   // Set the throttle
-  setpoint_data_.throttle = (dsm2_data_[0]) * (config_.max_throttle - config_.min_throttle) + config_.min_throttle;
+  setpoint_data_.throttle = (dsm2_data_[0]) * (throttle_limits_[0] - throttle_limits_[1]) + throttle_limits_[0];
 
   // Finally Update the integrator on the yaw reference value
   setpoint_data_.euler_ref[2] = setpoint_data_.euler_ref[2] + (setpoint_data_.yaw_rate_ref[0] +
@@ -149,7 +160,7 @@ int setpoint::RcErrHandler() {
 
   dsm2_timeout_++;
   if (dsm2_timeout_ > 1.5 / DT) { //If packet hasn't been received for 1.5 seconds
-    logging_module_.flyMS_printf("\nLost Connection with Remote!! Shutting Down Immediately \n");
+    spdlog::info("\nLost Connection with Remote!! Shutting Down Immediately \n");
     rc_set_state(EXITING);
     return -1;
   }

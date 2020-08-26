@@ -30,10 +30,7 @@
 #include "rc/mpu.h"
 #include "rc/led.h"
 #include "rc/bmp.h"
-
-//Ours
-#include "flyMS/config.hpp"
-#include "flyMS/logger.hpp"
+#include "yaml-cpp/yaml.h"
 
 /**
  * @brief      This class describes a position/velocity/acceletaion state.
@@ -90,10 +87,28 @@ template <typename T> class pva_state {
 };
 
 
+typedef struct state_t {
+  Eigen::Vector3f euler;          // Euler angles of aircraft (in roll, pitch, yaw)
+  Eigen::Vector3f eulerPrevious;      // 1 Timestampe previousEuler angles of aircraft (in roll, pitch, yaw)
+  Eigen::Vector3f  eulerRate;        // First derivative of euler angles (in roll/s, pitch/s, yaw/s)
+
+  Eigen::Vector3f accel;
+  Eigen::Vector3f gyro;
+  Eigen::Vector3f mag;
+
+  float barometerAltitude;
+  float compassHeading;
+
+  int    num_wraps;        // Number of spins in Yaw
+  float  initialYaw;
+} state_t;
+
+
+
 class imu {
  public:
 
-  imu(config_t _config, logger &loggingModule);
+  imu(const YAML::Node &input_params);
 
   //Default Descructor
   ~imu();
@@ -153,8 +168,14 @@ class imu {
   //Boolean to indicate if we are currently initializing the fusion algorithm
   bool is_initializing_fusion_;
 
-  //Struct to hold all of the configurable parameters
-  config_t config_;
+  // All of the configurable parameters
+  float pitch_offset_deg_;
+  float roll_offset_deg_;
+  float yaw_offset_deg_;
+  bool enable_dmp_ = false;
+  bool enable_fusion_ = false;
+  bool enable_barometer_ = false;
+  float delta_t_;
 
   //Struct to keep all the state information of the aircraft in the body frame
   state_t state_body_;
@@ -173,9 +194,6 @@ class imu {
   FusionAhrs fusion_ahrs_;
   FusionEulerAngles euler_angles_;
   FusionBias fusion_bias_;
-
-  //Mainly for flyMS_printf
-  logger &logger_;
 };
 
 #endif //IMU_H

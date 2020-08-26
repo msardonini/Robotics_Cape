@@ -31,8 +31,7 @@
 
 //Ours
 #include "flyMS/common.hpp"
-#include "flyMS/config.hpp"
-#include "flyMS/logger.hpp"
+#include "yaml-cpp/yaml.h"
 
 
 /**
@@ -45,11 +44,28 @@ enum class SetpointMode {
   Navigation = 3
 };
 
+typedef struct setpoint_t {
+  float euler_ref[3];  // Reference (Desired) Position
+  float euler_ref_previous[3];  // Reference (Desired) Position
+  float yaw_rate_ref[2];
+  float Aux[2];
+  double lat_setpoint;
+  double lon_setpoint;      // Controller Variables for Autonomous Flight
+  float altitudeSetpointRate;
+  float altitudeSetpoint;
+  float dpitch_setpoint; // Desired attitude
+  float droll_setpoint;  // Desired attitude
+  float throttle;
+  float yaw_ref_offset;
+  float kill_switch[2];
+} setpoint_t;
+
+
 
 class setpoint {
  public:
 
-  setpoint(config_t _config, logger& _loggingModule);
+  setpoint(const YAML::Node &config_params);
 
   //Default Destructor
   ~setpoint();
@@ -92,10 +108,13 @@ class setpoint {
   //All relevant setpoint data goes here
   setpoint_t setpoint_data_;
 
-  config_t config_;
-
-  logger& logging_module_;
-
+  // All configurable parameters
+  bool is_debug_mode_;
+  std::array<float, 3> max_setpoints_stabilized_;
+  std::array<float, 3> max_setpoints_acro_;
+  std::array<float, 2> throttle_limits_;
+  bool is_headless_mode_;
+  int flight_mode_;
 };
 
 

@@ -1,0 +1,26 @@
+flyMSParams:
+    log_filepath: "/home/debian/log" 
+    debug_mode: false
+    enable_gps: 1
+    flight_mode: 1
+    enable_logging: 1
+    delta_t: 0.01
+    imu_params:
+        enable_barometer: false
+        enable_dmp: true
+        enable_fusion: false
+        roll_offset_deg: 0.000000
+        pitch_offset_deg: 0.000000
+        yaw_offset_deg: 90.000000
+    controller:
+        roll_PID_outer: [6.0, 0.0, 0.0]
+        roll_PID_inner: [0.01650, 0.000000, 0.003]
+        pitch_PID_outer: [6.0, 0.0, 0.0]
+        pitch_PID_inner: [0.01650, 0.000000, 0.003]
+        yaw_PID: [0.50000, 0.050000, 0.050000]
+        max_control_effort: [0.25, 0.25, 0.25]
+    setpoint:
+        headless_mode: false
+        max_setpoints_stabilized: [0.8, 0.8, 3.000000]
+        max_setpoints_acro: [0.8, 0.8, 3.000000]
+        throttle_limits: [0.300000, 0.750000]

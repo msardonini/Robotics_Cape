@@ -8,8 +8,6 @@
 #ifndef GPS_H
 #define GPS_H
 
-#include "flyMS/logger.hpp"
-
 //System Includes
 #include <iostream>
 #include <thread>
@@ -26,8 +24,7 @@
 
 //Package Includes
 #include <roboticscape.h>
-#include "flyMS/config.hpp"
-
+#include "yaml-cpp/yaml.h"
 
 #define D2R_GPS 0.01744
 #define BAUDRATE B4800
@@ -58,7 +55,7 @@ class gps {
 
  public:
 
-  gps(config_t _config, logger& _loggingModule);
+  gps(const YAML::Node input_params);
 
   //Default Destructor
   ~gps();
@@ -92,11 +89,6 @@ class gps {
 
   //the serial file descriptor
   int serialFd;
-
-  config_t config;
-
-  logger& loggingModule;
-
 };
 
 

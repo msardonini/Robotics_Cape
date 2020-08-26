@@ -10,29 +10,15 @@
 #include <iostream>
 
 
-ULog::ULog(const std::string &log_folder) {
-  InitUlog(log_folder);
-}
+ULog::ULog() {}
 
 ULog::~ULog() {
   fd_.close();
 }
 
 int ULog::InitUlog(const std::string &log_folder) {
-  int run_number = 1;
-  std::string run_folder(log_folder + std::string("/run") + std::to_string(run_number));
-
-  //Find the next run number folder that isn't in use
-  struct stat st = {0};
-  while (!stat(run_folder.c_str(), &st)) {
-    run_folder = (log_folder + std::string("/run") + std::to_string(++run_number));
-  }
-
-  //Make a new folder to hold the logged data
-  mkdir(run_folder.c_str(), S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
-
   // Create the log file
-  fd_ = std::ofstream(run_folder + "/logger.ulg", std::ios::binary);
+  fd_ = std::ofstream(log_folder + "/logger.ulg", std::ios::binary);
   if (!fd_.is_open()) {
     std::cerr << "Error! Could not open file" << std::endl;
     return -1;
@@ -40,7 +26,6 @@ int ULog::InitUlog(const std::string &log_folder) {
 
   // Writes the header to the file
   WriteHeader();
-
 
   std::string flight_msg_format("flight:uint64_t timestamp;float[3] RPY;float[3] gyro;float[3]"
     " accel;float[4] motor_cmds;float[4] u;float[3] RPY_ref;");
