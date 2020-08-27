@@ -16,11 +16,11 @@
 #include "spdlog/sinks/rotating_file_sink.h"
 
 flyMS::flyMS(const YAML::Node &config_params) :
-  firstIteration(true),
+  first_iteration_(true),
   ulog_(),
-  imuModule(config_params),
-  setpointModule(config_params),
-  gpsModule(config_params) {
+  imu_module_(config_params),
+  setpoint_module_(config_params),
+  gps_module_(config_params) {
     // Flight mode, 1 = stabilized, 2 = acro
     flight_mode_ = config_params["flight_mode"].as<int>();
     is_debug_mode_ = config_params["debug_mode"].as<bool>();
@@ -44,7 +44,7 @@ flyMS::flyMS(const YAML::Node &config_params) :
     imu_lpf_den_ = filters["imu_lpf_den"].as<std::vector<float> >();
 }
 
-//Default Destructor
+// Default Destructor
 flyMS::~flyMS() {
   // Free all the memory used in our digital filters
   if (roll_inner_PID_) {
@@ -66,13 +66,12 @@ flyMS::~flyMS() {
   }
 
   //Join the thread if executing
-  if (this->flightcoreThread.joinable())
-    this->flightcoreThread.join();
+  if (flightcore_thread_.joinable())
+    flightcore_thread_.join();
 }
 
-int flyMS::flightCore() {
-  //Local Variables
-  int i = 0;
+int flyMS::FlightCore() {
+  // Local Variables
   uint64_t timeStart;
   uint64_t timeFinish;
 
@@ -82,111 +81,113 @@ int flyMS::flightCore() {
     /******************************************************************
     *           Grab the time for Periphal Apps and Logs              *
     ******************************************************************/
-    timeStart = this->getTimeMicroseconds();
-    // printf("time diff start %" PRIu64 "\n", (this->getTimeMicroseconds() - timeStart));
+    timeStart = GetTimeMicroseconds();
+    // printf("time diff start %" PRIu64 "\n", (GetTimeMicroseconds() - timeStart));
 
     /******************************************************************
     *         Read, Parse, and Translate IMU data for Flight          *
     ******************************************************************/
-    this->imuModule.update();
-    this->imuModule.getImuData(&this->imuData);
+    imu_module_.update();
+    imu_module_.getImuData(&imu_data_);
 
-    // printf("time diff imu %" PRIu64 "\n", (this->getTimeMicroseconds() - timeStart));
+    // printf("time diff imu %" PRIu64 "\n", (GetTimeMicroseconds() - timeStart));
 
     /******************************************************************
     *             Take Care of Some Initialization Tasks              *
     ******************************************************************/
-
-    if (this->firstIteration) {
-      this->setpointData.euler_ref[2] = this->imuData.euler[2];
-      this->setpointData.yaw_ref_offset = this->imuData.euler[2];
-      this->firstIteration = false;
+    if (first_iteration_) {
+      setpoint_.euler_ref[2] = imu_data_.euler[2];
+      setpoint_.yaw_ref_offset = imu_data_.euler[2];
+      first_iteration_ = false;
     }
 
     /************************************************************************
     *                          Get Setpoint Data                            *
     ************************************************************************/
-    this->setpointModule.getSetpointData(&this->setpointData);
+    setpoint_module_.getSetpointData(&setpoint_);
 
     /************************************************************************
     *                       Throttle Controller                             *
     ************************************************************************/
 
-    //  float throttle_compensation = 1 / cos(this->imuData.euler[0]);
-    //  throttle_compensation *= 1 / cos(this->imuData.euler[1]);
+    //  float throttle_compensation = 1 / cos(imu_data_.euler[0]);
+    //  throttle_compensation *= 1 / cos(imu_data_.euler[1]);
 
     // if(function_control.altitudeHold)
     // {
-    //   if(function_control.altitudeHoldFirstIteration)
+    //   if(function_control.altitudeHoldfirst_iteration_)
     //   {
-    //     // this->control.standing_throttle = this->setpointData.throttle;
-    //     // this->setpointData.altitudeSetpoint = flyMSData.imu.baro_alt;
-    //     // function_control.altitudeHoldFirstIteration = 0;
+    //     // this->control.standing_throttle = setpoint_.throttle;
+    //     // setpoint_.altitudeSetpoint = flyMSData.imu.baro_alt;
+    //     // function_control.altitudeHoldfirst_iteration_ = 0;
     //   }
-    //       // this->setpointData.altitudeSetpoint=this->setpointData.altitudeSetpoint+(this->setpointData.altitudeSetpointRate)*DT;
+    //       // setpoint_.altitudeSetpoint=setpoint_.altitudeSetpoint+(setpoint_.altitudeSetpointRate)*DT;
 
-    //   //this->control.uthrottle = update_filter(this->filters.altitudeHoldPID, this->setpointData.altitudeSetpoint - flyMSData.baro_alt);
-    //   //this->setpointData.throttle = this->control.uthrottle + flyMSData.standing_throttle;
+    //   //u_throttle = update_filter(this->filters.altitudeHoldPID, setpoint_.altitudeSetpoint - flyMSData.baro_alt);
+    //   //setpoint_.throttle = u_throttle + flyMSData.standing_throttle;
     // }
 
     /************************************************************************
-    *                         Roll Controller                            *
+    *                         Roll Controller                               *
     ************************************************************************/
-    if (flight_mode_ == 1) // Stabilized Flight Mode
-      this->setpointData.droll_setpoint = update_filter(roll_outer_PID_, this->setpointData.euler_ref[0] - this->imuData.euler[0]);
-    else if (flight_mode_ == 2) // Acro mode
-      this->setpointData.droll_setpoint = this->setpointData.euler_ref[0];
-    else {
+    if (flight_mode_ == 1) {  // Stabilized Flight Mode
+      setpoint_.droll_setpoint = update_filter(roll_outer_PID_,
+        setpoint_.euler_ref[0] - imu_data_.euler[0]);
+    } else if (flight_mode_ == 2) {  // Acro mode
+      setpoint_.droll_setpoint = setpoint_.euler_ref[0];
+    } else {
       spdlog::error("[flyMS] Error! Invalid flight mode. Shutting down now");
       rc_set_state(EXITING);
       return -1;
     }
 
-    this->imuData.eulerRate[0] = update_filter(gyro_lpf_[0], this->imuData.eulerRate[0]);
-    this->control.u_euler[0] = update_filter(roll_inner_PID_, this->setpointData.droll_setpoint - this->imuData.eulerRate[0]);
-    this->control.u_euler[0] = saturateFilter(this->control.u_euler[0], -max_control_effort_[0], max_control_effort_[0]);
+    imu_data_.eulerRate[0] = update_filter(gyro_lpf_[0], imu_data_.eulerRate[0]);
+    u_euler_[0] = update_filter(roll_inner_PID_, setpoint_.droll_setpoint -
+      imu_data_.eulerRate[0]);
+    u_euler_[0] = saturateFilter(u_euler_[0], -max_control_effort_[0], max_control_effort_[0]);
 
     /************************************************************************
-    *                         Pitch Controller                          *
+    *                         Pitch Controller                              *
     ************************************************************************/
-    if (flight_mode_ == 1) // Stabilized Flight Mode
-      this->setpointData.dpitch_setpoint = update_filter(pitch_outer_PID_, this->setpointData.euler_ref[1] - this->imuData.euler[1]);
-    else if (flight_mode_ == 2) // Acro mode
-      this->setpointData.dpitch_setpoint = this->setpointData.euler_ref[1];
+    if (flight_mode_ == 1) {  // Stabilized Flight Mode
+      setpoint_.dpitch_setpoint = update_filter(pitch_outer_PID_,
+        setpoint_.euler_ref[1] - imu_data_.euler[1]);
+    } else if (flight_mode_ == 2) {  // Acro mode
+      setpoint_.dpitch_setpoint = setpoint_.euler_ref[1];
+    }
 
-
-    this->imuData.eulerRate[1] = update_filter(gyro_lpf_[1], this->imuData.eulerRate[1]);
-    this->control.u_euler[1] = update_filter(pitch_inner_PID_, this->setpointData.dpitch_setpoint - this->imuData.eulerRate[1]);
-    this->control.u_euler[1] = saturateFilter(this->control.u_euler[1], -max_control_effort_[1], max_control_effort_[1]);
+    imu_data_.eulerRate[1] = update_filter(gyro_lpf_[1], imu_data_.eulerRate[1]);
+    u_euler_[1] = update_filter(pitch_inner_PID_, setpoint_.dpitch_setpoint - 
+      imu_data_.eulerRate[1]);
+    u_euler_[1] = saturateFilter(u_euler_[1], -max_control_effort_[1], max_control_effort_[1]);
 
     /************************************************************************
     *                          Yaw Controller                              *
     ************************************************************************/
-    this->imuData.eulerRate[2] = update_filter(gyro_lpf_[2], this->imuData.eulerRate[2]);
-    this->control.u_euler[2] = update_filter(yaw_PID_, this->setpointData.euler_ref[2] - this->imuData.euler[2]);
+    imu_data_.eulerRate[2] = update_filter(gyro_lpf_[2], imu_data_.eulerRate[2]);
+    u_euler_[2] = update_filter(yaw_PID_, setpoint_.euler_ref[2] - imu_data_.euler[2]);
+    //Apply a saturation filter
+    u_euler_[2] = saturateFilter(u_euler_[2], -max_control_effort_[2],
+      max_control_effort_[2]);
 
     /************************************************************************
-    *                     Apply the Integrators                           *
+    *                  Reset the Integrators if Landed                      *
     ************************************************************************/
-    if(this->setpointData.throttle < min_throttle_ + .01){
+    if (setpoint_.throttle < min_throttle_ + .01) {
       integrator_reset_++;
-    }else{
+    } else {
       integrator_reset_ = 0;
     }
 
     // if landed for 4 seconds, reset integrators and Yaw error
     if (integrator_reset_ > 4 / delta_t_) {
-      this->setpointData.euler_ref[2]=this->imuData.euler[2];
+      setpoint_.euler_ref[2]=imu_data_.euler[2];
       zeroFilter(roll_inner_PID_);
       zeroFilter(roll_outer_PID_);
       zeroFilter(pitch_inner_PID_);
       zeroFilter(pitch_outer_PID_);
       zeroFilter(yaw_PID_);
     }
-
-    //Apply a saturation filter
-    this->control.u_euler[2] = saturateFilter(this->control.u_euler[2], -max_control_effort_[2],
-      max_control_effort_[2]);
 
     /************************************************************************
     *  Mixing
@@ -197,59 +198,48 @@ int flyMS::flightCore() {
     *                           CW 3   4 CCW
     *
     ************************************************************************/
-
-    this->control.u[0] = this->setpointData.throttle - this->control.u_euler[0] + this->control.
-      u_euler[1] - this->control.u_euler[2];
-    this->control.u[1] = this->setpointData.throttle + this->control.u_euler[0] + this->control.
-      u_euler[1] + this->control.u_euler[2];
-    this->control.u[2] = this->setpointData.throttle - this->control.u_euler[0] - this->control.
-      u_euler[1] + this->control.u_euler[2];
-    this->control.u[3] = this->setpointData.throttle + this->control.u_euler[0] - this->control.
-      u_euler[1] - this->control.u_euler[2];
+    u_[0] = setpoint_.throttle - u_euler_[0] + u_euler_[1] - u_euler_[2];
+    u_[1] = setpoint_.throttle + u_euler_[0] + u_euler_[1] + u_euler_[2];
+    u_[2] = setpoint_.throttle - u_euler_[0] - u_euler_[1] + u_euler_[2];
+    u_[3] = setpoint_.throttle + u_euler_[0] - u_euler_[1] - u_euler_[2];
 
     /************************************************************************
     *             Check Output Ranges, if outside, adjust                 *
     ************************************************************************/
-    this->check_output_range(this->control.u);
+    CheckOutputRange(u_);
 
-    // printf("time diff control %" PRIu64 "\n", (this->getTimeMicroseconds() - timeStart));
     /************************************************************************
     *                  Send Commands to ESCs                         *
     ************************************************************************/
     if (!is_debug_mode_) {
-      std::vector<float> sendVec(4, 0.0);
-      //Send Commands to Motors
-      for (i = 0; i < 4; i++) {
-        sendVec[i] = this->control.u[i];
-      }
-      pruClientSender.setSendData(sendVec);
+      pru_client_.setSendData(u_);
     }
 
     /************************************************************************
     *             Check the kill Switch and Shutdown if set               *
     ************************************************************************/
-    if (this->setpointData.kill_switch[0] < 0.5 && !is_debug_mode_) {
+    if (setpoint_.kill_switch[0] < 0.5 && !is_debug_mode_) {
       spdlog::info("\nKill Switch Hit! Shutting Down\n");
       rc_set_state(EXITING);
     }
 
     //Print some stuff to the console in debug mode
     if (is_debug_mode_) {
-      this->console_print();
+      ConsolePrint();
     }
     /************************************************************************
     *             Check for GPS Data and Handle Accordingly               *
     ************************************************************************/
-    this->gpsModule.getGpsData(&this->gpsData);
+    gps_module_.getGpsData(&gps_);
 
     /************************************************************************
     *               Log Important Flight Data For Analysis              *
     ************************************************************************/
-    struct ULogFlightMsg flight_msg(getTimeMicroseconds(), imuData, setpointData, control.u,
-      control.u_euler);
+    struct ULogFlightMsg flight_msg(GetTimeMicroseconds(), imu_data_, setpoint_, u_,
+      u_euler_);
     ulog_.WriteFlightData<struct ULogFlightMsg>(flight_msg, FLIGHT_MSG_ID);
 
-    timeFinish = this->getTimeMicroseconds();
+    timeFinish = GetTimeMicroseconds();
     uint64_t sleep_time = static_cast<uint64_t>(delta_t_*1.0E6) - (timeFinish - timeStart);
 
     // Check to make sure the elapsed time wasn't greater than time allowed.
@@ -262,15 +252,14 @@ int flyMS::flightCore() {
   return 0;
 }
 
-
-uint64_t flyMS::getTimeMicroseconds() {
+uint64_t flyMS::GetTimeMicroseconds() {
   struct timespec tv;
   clock_gettime(CLOCK_MONOTONIC, &tv);
   return (uint64_t)tv.tv_sec * 1E6 + (uint64_t)tv.tv_nsec / 1E3;
 }
 
 
-int flyMS::console_print() {
+int flyMS::ConsolePrint() {
 //  spdlog::info("time {:3.3f} ", control->time);
 //  spdlog::info("Alt_ref {:3.1f} ",control->alt_ref);
 //  spdlog::info(" U1:  {:2.2f} ",control->u[0]);
@@ -280,12 +269,12 @@ int flyMS::console_print() {
 //  spdlog::info("Aux %2.1f ", control->setpoint.Aux[0]);
 //  spdlog::info("function: {}",rc_get_dsm_ch_normalized(6));
 //  spdlog::info("num wraps {} ",control->num_wraps);
-  // spdlog::info(" Throt {:2.2f} ", this->setpointData.throttle);
-  // spdlog::info(" Roll_ref {:2.2f} ", this->setpointData.euler_ref[0]);
-  // spdlog::info(" Pitch_ref {:2.2f} ", this->setpointData.euler_ref[1]);
-  // spdlog::info(" Yaw_ref {:2.2f} ", this->setpointData.euler_ref[2]);
-  spdlog::info("Roll {:1.2f}, Pitch {:1.2f}, Yaw {:2.3f}", this->imuData.euler[0],
-    this->imuData.euler[1], this->imuData.euler[2]);
+  // spdlog::info(" Throt {:2.2f} ", setpoint_.throttle);
+  // spdlog::info(" Roll_ref {:2.2f} ", setpoint_.euler_ref[0]);
+  // spdlog::info(" Pitch_ref {:2.2f} ", setpoint_.euler_ref[1]);
+  // spdlog::info(" Yaw_ref {:2.2f} ", setpoint_.euler_ref[2]);
+  spdlog::info("Roll {:1.2f}, Pitch {:1.2f}, Yaw {:2.3f}", imu_data_.euler[0],
+    imu_data_.euler[1], imu_data_.euler[2]);
 //  spdlog::info(" Mag X {:4.2f}",control->mag[0]);
 //  spdlog::info(" Mag Y {:4.2f}",control->mag[1]);
 //  spdlog::info(" Mag Z {:4.2f}",control->mag[2]);
@@ -308,12 +297,11 @@ int flyMS::console_print() {
   return 0;
 }
 
-int flyMS::check_output_range(float u[4]) {
-  int i;
+int flyMS::CheckOutputRange(std::array<float, 4> &u) {
   float largest_value = 1;
   float smallest_value = 0;
 
-  for (i = 0; i < 4; i++) {
+  for (int i = 0; i < 4; i++) {
     if (u[i] > largest_value) largest_value = u[i];
 
     if (u[i] < smallest_value) u[i] = 0;
@@ -322,7 +310,7 @@ int flyMS::check_output_range(float u[4]) {
   // if upper saturation would have occurred, reduce all outputs evenly
   if (largest_value > 1) {
     float offset = largest_value - 1;
-    for (i = 0; i < 4; i++) u[i] -= offset;
+    for (int i = 0; i < 4; i++) u[i] -= offset;
   }
   return 0;
 }
@@ -363,20 +351,20 @@ int flyMS::InitializeSpdlog(const std::string &log_dir) {
   spdlog::set_default_logger(flyMS_log);
 }
 
-int flyMS::startupRoutine() {
+int flyMS::StartupRoutine() {
   //Initialize the remote controller through the setpoint object
-  if (this->setpointModule.start())
-    std::cerr << "[flyMS] Error initializing Radio Coms!" << std::endl;
+  if (setpoint_module_.start())
+    spdlog::error("[flyMS] Error initializing Radio Coms!");
 
-  std::cout << "[flyMS] Starting ready check!!" << std::endl;
+  spdlog::debug("[flyMS] Starting ready check!!");
   //Pause the program until the user toggles the kill switch
   if (!is_debug_mode_) {
-    if (this->readyCheck()) {
-      printf("Exiting Program \n");
+    if (ReadyCheck()) {
+      spdlog::error("[flyMS] Ready Check Failed!");
       return -1;
     }
   }
-  std::cout << "[flyMS] Done ready check!!" << std::endl;
+  spdlog::debug("[flyMS] Done ready check!!");
 
   //Tell the system that we are running
   rc_set_state(RUNNING);
@@ -387,26 +375,26 @@ int flyMS::startupRoutine() {
   ulog_.InitUlog(log_dir);
 
   //Initialize the PID controllers and LP filters
-  this->initializeFilters();
+  InitializeFilters();
 
   //Tell the setpoint manager we are no longer waiting to initialize
-  this->setpointModule.setInitializationFlag(false);
+  setpoint_module_.setInitializationFlag(false);
 
   //Initialize the IMU Hardware
-  if (this->imuModule.initializeImu())
+  if (imu_module_.initializeImu())
     return -1;
 
   //Initialize the client to connect to the PRU handler
-  this->pruClientSender.startPruClient();
+  pru_client_.startPruClient();
 
   //Start the flight program
-  this->flightcoreThread = std::thread(&flyMS::flightCore, this);
+  flightcore_thread_ = std::thread(&flyMS::FlightCore, this);
 
   return 0;
 }
 
 
-int flyMS::readyCheck() {
+int flyMS::ReadyCheck() {
   //Toggle the kill switch to get going, to ensure controlled take-off
   //Keep kill switch down to remain operational
   int count = 1, toggle = 0, reset_toggle = 0;
@@ -430,14 +418,14 @@ int flyMS::readyCheck() {
       }
     }
 
-    if (this->setpointModule.getSetpointData(&this->setpointData)) {
+    if (setpoint_module_.getSetpointData(&setpoint_)) {
       //Skip the first run to let data history fill up
       if (firstRun) {
         firstRun = false;
         continue;
       }
-      val[1] = this->setpointData.kill_switch[1];
-      val[0] = this->setpointData.kill_switch[0];
+      val[1] = setpoint_.kill_switch[1];
+      val[0] = setpoint_.kill_switch[0];
 
       if (val[0] < 0.25 && val[1] > 0.25)
         count++;
@@ -449,9 +437,9 @@ int flyMS::readyCheck() {
 
   //make sure the kill switch is in the position to fly before starting
   while (val[0] < 0.25 && rc_get_state() != EXITING) {
-    if (this->setpointModule.getSetpointData(&this->setpointData)) {
-      val[1] = this->setpointData.kill_switch[1];
-      val[0] = this->setpointData.kill_switch[0];
+    if (setpoint_module_.getSetpointData(&setpoint_)) {
+      val[1] = setpoint_.kill_switch[1];
+      val[0] = setpoint_.kill_switch[0];
     }
     usleep(10000);
   }
@@ -471,7 +459,7 @@ int flyMS::readyCheck() {
 *  initialize_filters()
 *  setup of feedback controllers used in flight core
 ************************************************************************/
-int flyMS::initializeFilters() {
+int flyMS::InitializeFilters() {
   roll_outer_PID_  = generatePID(roll_PID_outer_coeff_[0], roll_PID_outer_coeff_[1],
     roll_PID_outer_coeff_[2], 0.15, delta_t_);
   pitch_outer_PID_ = generatePID(pitch_PID_outer_coeff_[0], pitch_PID_outer_coeff_[1],

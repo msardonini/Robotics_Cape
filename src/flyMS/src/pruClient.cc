@@ -9,9 +9,7 @@
 
 #include "flyMS/pruClient.hpp"
 
-pruClient::pruClient() : u(NUM_CHANNELS) {
-
-}
+pruClient::pruClient() {}
 
 pruClient::~pruClient() {
   //Join the thread if executing
@@ -59,7 +57,7 @@ int pruClient::startPruClient() {
   return 0;
 }
 
-int pruClient::setSendData(std::vector<float> _u) {
+int pruClient::setSendData(std::array<float, 4> _u) {
   //Gain access to shared memory
   this->pruSenderMutex.lock();
 

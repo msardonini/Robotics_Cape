@@ -42,7 +42,8 @@
 struct ULogFlightMsg {
   ULogFlightMsg() {}
 
-  ULogFlightMsg(uint64_t _timestamp_us, const state_t &state, const setpoint_t &setpoint, const float u[4], const float u_euler[3]) :
+  ULogFlightMsg(uint64_t _timestamp_us, const state_t &state, const setpoint_t &setpoint,
+    const std::array<float, 4> &u, const std::array<float, 4> u_euler) :
   timestamp_us(_timestamp_us),
   RPY{state.euler(0), state.euler(1), state.euler(2)},
   gyro{state.gyro(0), state.gyro(1), state.gyro(2)},

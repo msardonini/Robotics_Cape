@@ -52,7 +52,7 @@ class pruClient {
   //Default Destructor
   ~pruClient();
 
-  int setSendData(std::vector<float> u);
+  int setSendData(std::array<float, 4> u);
 
   int startPruClient();
 
@@ -68,7 +68,7 @@ class pruClient {
   std::mutex pruSenderMutex;
   //Data we send over the network interface
   bool send_flag;
-  std::vector<float> u;
+  std::array<float, 4> u;
 
   //Socket variables
   int sockfd;

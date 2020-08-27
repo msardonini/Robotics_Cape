@@ -14,11 +14,9 @@
 #include <mutex>
 #include <string>
 #include <vector>
+#include <array>
 
-//Package Includes
 #include "filter.h"
-
-//Ours
 #include "yaml-cpp/yaml.h"
 #include "flyMS/ulog/ulog.h"
 #include "flyMS/gps.hpp"
@@ -28,77 +26,68 @@
 #include "spdlog/spdlog.h"
 #include "spdlog/sinks/basic_file_sink.h"
 
-typedef struct controller_t {
-  float  droll_err_integrator;
-  float  dpitch_err_integrator;
-  float  dyaw_err_integrator;
-  float  u_euler[3];          // Controller output for roll, pitch, yaw
-  float  u[4];                 // Duty Cycle to send to each motor
-  float  standing_throttle, alt_error;
-} controller_t;
-
 class flyMS {
-
  public:
-
   flyMS(const YAML::Node &input_params);
 
   //Default Destructor
   ~flyMS();
 
   //Main thread which controls the inner loop FCS
-  int flightCore();
+  int FlightCore();
 
   //Initialize the system's hardware
-  int startupRoutine();
-
-  int check_output_range(float u[4]);
-
-  int console_print();
-
-  int initializeHardware();
+  int StartupRoutine();
 
  private:
   //Get the current time in microseconds
-  uint64_t getTimeMicroseconds();
+  inline uint64_t GetTimeMicroseconds();
+
+  int CheckOutputRange(std::array<float, 4> &u);
+
+  int InitializeHardware();
 
   //Get input from the user to start the flight program
-  int readyCheck();
+  int ReadyCheck();
 
-  int initializeFilters();
+  int InitializeFilters();
 
   int InitializeSpdlog(const std::string &log_dir);
 
   std::string GetLogDir(const std::string &log_location);
 
+  int ConsolePrint();
+
   //Boolean for the status of the program
-  bool isRunning;
-  std::thread flightcoreThread;
-  std::mutex flightcoreMutex;
+  std::thread flightcore_thread_;
+  std::mutex flightcore_mutex_;
 
-  //Boolean for running in debug mode
-  bool firstIteration;
+  // Flag for the first iteration
+  bool first_iteration_;
 
-  //Class to handle and write to the log file
+  // Counter for number of timestamps at min throttle, used to detect landing
+  // and reset the integrators in the PID controllers
+  int integrator_reset_;
+
+  // Class to handle and write to the log file
   ULog ulog_;
 
-  //Object and Data struct from the imu manager
-  imu imuModule;
-  state_t imuData;
+  // Object and Data struct from the imu manager
+  imu imu_module_;
+  state_t imu_data_;
 
-  //Classes for all the functions of the program
-  pruClient pruClientSender;
+  // Classes for all the functions of the program
+  pruClient pru_client_;
 
-  //Object and Data struct from the setpoint manager
-  setpoint setpointModule;
-  setpoint_t setpointData;
+  // Object and Data struct from the setpoint manager
+  setpoint setpoint_module_;
+  setpoint_t setpoint_;
 
-  //Object and Data struct from the gps manager
-  gps gpsModule;
-  GPS_data_t gpsData;
+  // Object and Data struct from the gps manager
+  gps gps_module_;
+  GPS_data_t gps_;
 
-  //Struct for the control inputs
-  controller_t control;
+  // Struct for the control inputs
   digital_filter_t *roll_inner_PID_ = nullptr;
   digital_filter_t *roll_outer_PID_ = nullptr;
   digital_filter_t *pitch_outer_PID_ = nullptr;
@@ -106,7 +95,9 @@ class flyMS {
   digital_filter_t *yaw_PID_ = nullptr;
   digital_filter_t *gyro_lpf_[3] = {nullptr, nullptr, nullptr};
 
-  int integrator_reset_;
+  // Containers for controller's output
+  std::array<float, 4> u_euler_;
+  std::array<float, 4> u_;
 
   // Configurable parameters
   int flight_mode_;

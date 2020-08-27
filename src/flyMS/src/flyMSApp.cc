@@ -82,7 +82,7 @@ int main(int argc, char *argv[]) {
 
   flyMS fly(config_params);
   //Initialize the flight hardware
-  if (fly.startupRoutine())
+  if (fly.StartupRoutine())
     rc_set_state(EXITING);
 
   //Reload the config file in case changes were made while waiting
