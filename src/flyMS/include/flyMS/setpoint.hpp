@@ -9,7 +9,6 @@
 #ifndef SETPOINT_H
 #define SETPOINT_H
 
-
 //System includes
 #include <string.h>
 #include <stdio.h>
@@ -19,18 +18,12 @@
 #include <math.h>
 #include <time.h>
 #include <stdint.h>
-
 #include <atomic>
 #include <thread>
 #include <mutex>
 
-
 //Package includes
 #include<roboticscape.h>
-// #include <flyMS.hpp>
-
-//Ours
-#include "flyMS/common.hpp"
 #include "yaml-cpp/yaml.h"
 
 
@@ -115,6 +108,7 @@ class setpoint {
   std::array<float, 2> throttle_limits_;
   bool is_headless_mode_;
   int flight_mode_;
+  float delta_t_;
 };
 
 

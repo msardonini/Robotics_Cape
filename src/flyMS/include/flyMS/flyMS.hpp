@@ -21,7 +21,6 @@
 //Ours
 #include "yaml-cpp/yaml.h"
 #include "flyMS/ulog/ulog.h"
-#include "flyMS/common.hpp"
 #include "flyMS/gps.hpp"
 #include "flyMS/imu.hpp"
 #include "flyMS/pruClient.hpp"
@@ -33,36 +32,10 @@ typedef struct controller_t {
   float  droll_err_integrator;
   float  dpitch_err_integrator;
   float  dyaw_err_integrator;
-  float   u_euler[3];          // Controller output for roll, pitch, yaw
+  float  u_euler[3];          // Controller output for roll, pitch, yaw
   float  u[4];                 // Duty Cycle to send to each motor
   float  standing_throttle, alt_error;
 } controller_t;
-
-typedef struct filters_t {
-  digital_filter_t *pitch_rate_PD;
-  digital_filter_t *roll_rate_PD;
-  digital_filter_t *yaw_rate_PD;
-  digital_filter_t *pitch_PD;
-  digital_filter_t *roll_PD;
-  digital_filter_t *yaw_PD;
-  digital_filter_t *LPF_d_pitch;
-  digital_filter_t *LPF_d_roll;
-  digital_filter_t *LPF_d_yaw;
-  digital_filter_t *LPF_Yaw_Ref_P;
-  digital_filter_t *LPF_Yaw_Ref_R;
-  digital_filter_t *Outer_Loop_TF_pitch;
-  digital_filter_t *Outer_Loop_TF_roll;
-  digital_filter_t *LPF_Accel_Lat;
-  digital_filter_t *LPF_Accel_Lon;
-  digital_filter_t *LPF_pitch;
-  digital_filter_t *LPF_roll;
-  digital_filter_t *altitudeHoldPID;
-  digital_filter_t *LPF_baro_alt;
-
-  digital_filter_t *gyro_lpf[3];
-  digital_filter_t *accel_lpf[3];
-
-} filters_t;
 
 class flyMS {
 
@@ -126,10 +99,14 @@ class flyMS {
 
   //Struct for the control inputs
   controller_t control;
-  filters_t filters;
+  digital_filter_t *roll_inner_PID_ = nullptr;
+  digital_filter_t *roll_outer_PID_ = nullptr;
+  digital_filter_t *pitch_outer_PID_ = nullptr;
+  digital_filter_t *pitch_inner_PID_ = nullptr;
+  digital_filter_t *yaw_PID_ = nullptr;
+  digital_filter_t *gyro_lpf_[3] = {nullptr, nullptr, nullptr};
 
-  int integrator_reset;
-  int integrator_start;
+  int integrator_reset_;
 
   // Configurable parameters
   int flight_mode_;
@@ -137,11 +114,14 @@ class flyMS {
   bool is_debug_mode_;
   std::string log_filepath_;
   float delta_t_;
-  std::array<float, 3> roll_PID_inner_;
-  std::array<float, 3> roll_PID_outer_;
-  std::array<float, 3> pitch_PID_inner_;
-  std::array<float, 3> pitch_PID_outer_;
-  std::array<float, 3> yaw_PID_;
+  float min_throttle_; 
+  std::array<float, 3> roll_PID_inner_coeff_;
+  std::array<float, 3> roll_PID_outer_coeff_;
+  std::array<float, 3> pitch_PID_inner_coeff_;
+  std::array<float, 3> pitch_PID_outer_coeff_;
+  std::array<float, 3> yaw_PID_coeff_;
+  std::vector<float> imu_lpf_num_;
+  std::vector<float> imu_lpf_den_;
 };
 
 #endif // FLYMS_H

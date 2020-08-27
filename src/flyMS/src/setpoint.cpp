@@ -17,6 +17,7 @@ setpoint::setpoint(const YAML::Node &config_params) :
   setpoint_mode_(SetpointMode::Stabilized) {
     is_debug_mode_ = config_params["debug_mode"].as<bool>();
     flight_mode_ = config_params["flight_mode"].as<int>();
+    delta_t_ = config_params["delta_t"].as<float>();
 
     YAML::Node setpoint_params = config_params["setpoint"];
     max_setpoints_stabilized_ = setpoint_params["max_setpoints_stabilized"].as<
@@ -91,7 +92,7 @@ int setpoint::SetpointManager() {
       spdlog::error("Error, invalid reference mode! \n");
     }
     setpoint_mutex_.unlock();
-    usleep(static_cast<uint64_t>(DT*1.0E6)); //Run at the control frequency
+    usleep(static_cast<uint64_t>(delta_t_*1.0E6)); //Run at the control frequency
   }
   return 0;
 }
@@ -146,7 +147,7 @@ int setpoint::HandleRcData() {
 
   // Finally Update the integrator on the yaw reference value
   setpoint_data_.euler_ref[2] = setpoint_data_.euler_ref[2] + (setpoint_data_.yaw_rate_ref[0] +
-    setpoint_data_.yaw_rate_ref[1]) * DT / 2;
+    setpoint_data_.yaw_rate_ref[1]) * delta_t_ / 2;
 
   ready_to_send_.store(true);
 
@@ -159,7 +160,7 @@ int setpoint::RcErrHandler() {
     return 0;
 
   dsm2_timeout_++;
-  if (dsm2_timeout_ > 1.5 / DT) { //If packet hasn't been received for 1.5 seconds
+  if (dsm2_timeout_ > 1.5 / delta_t_) { //If packet hasn't been received for 1.5 seconds
     spdlog::info("\nLost Connection with Remote!! Shutting Down Immediately \n");
     rc_set_state(EXITING);
     return -1;

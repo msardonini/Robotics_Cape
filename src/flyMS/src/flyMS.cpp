@@ -9,6 +9,7 @@
 #include "flyMS/flyMS.hpp"
 
 #include <sys/stat.h>
+#include <stdexcept>
 
 #include "spdlog/spdlog.h"
 #include "spdlog/sinks/stdout_color_sinks.h"
@@ -26,17 +27,44 @@ flyMS::flyMS(const YAML::Node &config_params) :
     log_filepath_ = config_params["log_filepath"].as<std::string>();
     delta_t_ = config_params["delta_t"].as<float>();
 
+    std::array<float, 2> throttle_limits = config_params["setpoint"]["throttle_limits"].as<
+      std::array<float, 2> >();
+    min_throttle_ = throttle_limits[0];
+
     YAML::Node controller = config_params["controller"];
-    max_control_effort_ = controller["max_control_effort"].as<std::array<float, 3> >();\
-    roll_PID_inner_ = controller["roll_PID_inner"].as<std::array<float, 3> >();
-    roll_PID_outer_ = controller["roll_PID_outer"].as<std::array<float, 3> >();
-    pitch_PID_inner_ = controller["pitch_PID_inner"].as<std::array<float, 3> >();
-    pitch_PID_outer_ = controller["pitch_PID_outer"].as<std::array<float, 3> >();
-    yaw_PID_ = controller["yaw_PID"].as<std::array<float, 3> >();
+    max_control_effort_ = controller["max_control_effort"].as<std::array<float, 3> >();
+    roll_PID_inner_coeff_ = controller["roll_PID_inner"].as<std::array<float, 3> >();
+    roll_PID_outer_coeff_ = controller["roll_PID_outer"].as<std::array<float, 3> >();
+    pitch_PID_inner_coeff_ = controller["pitch_PID_inner"].as<std::array<float, 3> >();
+    pitch_PID_outer_coeff_ = controller["pitch_PID_outer"].as<std::array<float, 3> >();
+    yaw_PID_coeff_ = controller["yaw_PID"].as<std::array<float, 3> >();
+
+    YAML::Node filters = config_params["filters"];
+    imu_lpf_num_ = filters["imu_lpf_num"].as<std::vector<float> >();
+    imu_lpf_den_ = filters["imu_lpf_den"].as<std::vector<float> >();
 }
 
 //Default Destructor
 flyMS::~flyMS() {
+  // Free all the memory used in our digital filters
+  if (roll_inner_PID_) {
+    free(roll_inner_PID_);
+  }
+  if (roll_outer_PID_) {
+    free(roll_outer_PID_);
+  }
+  if (pitch_inner_PID_) {
+    free(pitch_inner_PID_);
+  }
+  if (pitch_outer_PID_) {
+    free(pitch_outer_PID_);
+  }
+  for (int i = 0; i < 3; i++) {
+    if (gyro_lpf_[i]) {
+      free(gyro_lpf_[i]);
+    }
+  }
+
   //Join the thread if executing
   if (this->flightcoreThread.joinable())
     this->flightcoreThread.join();
@@ -105,7 +133,7 @@ int flyMS::flightCore() {
     *                         Roll Controller                            *
     ************************************************************************/
     if (flight_mode_ == 1) // Stabilized Flight Mode
-      this->setpointData.droll_setpoint = update_filter(this->filters.roll_PD, this->setpointData.euler_ref[0] - this->imuData.euler[0]);
+      this->setpointData.droll_setpoint = update_filter(roll_outer_PID_, this->setpointData.euler_ref[0] - this->imuData.euler[0]);
     else if (flight_mode_ == 2) // Acro mode
       this->setpointData.droll_setpoint = this->setpointData.euler_ref[0];
     else {
@@ -114,71 +142,60 @@ int flyMS::flightCore() {
       return -1;
     }
 
-    this->imuData.eulerRate[0] = update_filter(this->filters.gyro_lpf[0], this->imuData.eulerRate[0]);
-    this->control.u_euler[0] = update_filter(this->filters.roll_rate_PD, this->setpointData.droll_setpoint - this->imuData.eulerRate[0]);
+    this->imuData.eulerRate[0] = update_filter(gyro_lpf_[0], this->imuData.eulerRate[0]);
+    this->control.u_euler[0] = update_filter(roll_inner_PID_, this->setpointData.droll_setpoint - this->imuData.eulerRate[0]);
     this->control.u_euler[0] = saturateFilter(this->control.u_euler[0], -max_control_effort_[0], max_control_effort_[0]);
 
     /************************************************************************
     *                         Pitch Controller                          *
     ************************************************************************/
     if (flight_mode_ == 1) // Stabilized Flight Mode
-      this->setpointData.dpitch_setpoint = update_filter(this->filters.pitch_PD, this->setpointData.euler_ref[1] - this->imuData.euler[1]);
+      this->setpointData.dpitch_setpoint = update_filter(pitch_outer_PID_, this->setpointData.euler_ref[1] - this->imuData.euler[1]);
     else if (flight_mode_ == 2) // Acro mode
       this->setpointData.dpitch_setpoint = this->setpointData.euler_ref[1];
 
 
-    this->imuData.eulerRate[1] = update_filter(this->filters.gyro_lpf[1], this->imuData.eulerRate[1]);
-    this->control.u_euler[1] = update_filter(this->filters.pitch_rate_PD, this->setpointData.dpitch_setpoint - this->imuData.eulerRate[1]);
+    this->imuData.eulerRate[1] = update_filter(gyro_lpf_[1], this->imuData.eulerRate[1]);
+    this->control.u_euler[1] = update_filter(pitch_inner_PID_, this->setpointData.dpitch_setpoint - this->imuData.eulerRate[1]);
     this->control.u_euler[1] = saturateFilter(this->control.u_euler[1], -max_control_effort_[1], max_control_effort_[1]);
 
     /************************************************************************
     *                          Yaw Controller                              *
     ************************************************************************/
-    this->imuData.eulerRate[2] = update_filter(this->filters.gyro_lpf[2], this->imuData.eulerRate[2]);
-    this->control.u_euler[2] = update_filter(this->filters.yaw_rate_PD, this->setpointData.euler_ref[2] - this->imuData.euler[2]);
-    // this->control.u_euler[2] = update_filter(this->filters.yaw_rate_PD,this->setpointData.yaw_rate_ref[0]-this->imuData.eulerRate[2]);
+    this->imuData.eulerRate[2] = update_filter(gyro_lpf_[2], this->imuData.eulerRate[2]);
+    this->control.u_euler[2] = update_filter(yaw_PID_, this->setpointData.euler_ref[2] - this->imuData.euler[2]);
 
     /************************************************************************
     *                     Apply the Integrators                           *
     ************************************************************************/
+    if(this->setpointData.throttle < min_throttle_ + .01){
+      integrator_reset_++;
+    }else{
+      integrator_reset_ = 0;
+    }
 
-    // if(this->setpointData.throttle<MIN_THROTTLE+.01){
-    //   this->integrator_reset++;
-    //   this->integrator_start=0;
-    // }else{
-    //   this->integrator_reset=0;
-    //   this->integrator_start++;
-    // }
-
-    // if(this->integrator_reset==300){// if landed, reset integrators and Yaw error
-    //   this->setpointData.euler_ref[2]=this->imuData.euler[2];
-    //   this->control.droll_err_integrator=0;
-    //   this->control.dpitch_err_integrator=0;
-    //   this->control.dyaw_err_integrator=0;
-    // }
-
-    // //only use integrators if airborne (above minimum throttle for > 1.5 seconds)
-    // if(this->integrator_start >  400){
-    //   this->control.dpitch_err_integrator += this->control.u_euler[0] * DT;
-    //   this->control.droll_err_integrator  += this->control.u_euler[1] * DT;
-    //   this->control.dyaw_err_integrator += this->control.u_euler[2] * DT;
-
-    //   this->control.u_euler[0] += this->config.Dpitch_KI * this->control.dpitch_err_integrator;
-    //   this->control.u_euler[1] += this->config.Droll_KI * this->control.droll_err_integrator;
-    //   this->control.u_euler[2] += this->config.yaw_KI * this->control.dyaw_err_integrator;
-    // }
+    // if landed for 4 seconds, reset integrators and Yaw error
+    if (integrator_reset_ > 4 / delta_t_) {
+      this->setpointData.euler_ref[2]=this->imuData.euler[2];
+      zeroFilter(roll_inner_PID_);
+      zeroFilter(roll_outer_PID_);
+      zeroFilter(pitch_inner_PID_);
+      zeroFilter(pitch_outer_PID_);
+      zeroFilter(yaw_PID_);
+    }
 
     //Apply a saturation filter
-    this->control.u_euler[2] = saturateFilter(this->control.u_euler[2], -max_control_effort_[2], max_control_effort_[2]);
+    this->control.u_euler[2] = saturateFilter(this->control.u_euler[2], -max_control_effort_[2],
+      max_control_effort_[2]);
 
     /************************************************************************
     *  Mixing
-    *                   black        yellow
+    *
     *                          CCW 1    2 CW    IMU Orientation:
-    *                               \ /        Y
-    *                             / \              |_ X
-    *                         CW 3    4 CCW
-    *                     yellow             black
+    *                               \ /              Y
+    *                               / \              |_ X
+    *                           CW 3   4 CCW
+    *
     ************************************************************************/
 
     this->control.u[0] = this->setpointData.throttle - this->control.u_euler[0] + this->control.
@@ -225,7 +242,6 @@ int flyMS::flightCore() {
     ************************************************************************/
     this->gpsModule.getGpsData(&this->gpsData);
 
-    // printf("time diff GPS %" PRIu64 "\n", (this->getTimeMicroseconds() - timeStart));
     /************************************************************************
     *               Log Important Flight Data For Analysis              *
     ************************************************************************/
@@ -234,11 +250,11 @@ int flyMS::flightCore() {
     ulog_.WriteFlightData<struct ULogFlightMsg>(flight_msg, FLIGHT_MSG_ID);
 
     timeFinish = this->getTimeMicroseconds();
-    uint64_t sleep_time = static_cast<uint64_t>(DT*1.0E6) - (timeFinish - timeStart);
+    uint64_t sleep_time = static_cast<uint64_t>(delta_t_*1.0E6) - (timeFinish - timeStart);
 
     // Check to make sure the elapsed time wasn't greater than time allowed.
     // If so don't sleep at all
-    if (sleep_time < static_cast<uint64_t>(DT*1.0E6))  rc_usleep(sleep_time);
+    if (sleep_time < static_cast<uint64_t>(delta_t_*1.0E6))  rc_usleep(sleep_time);
     else spdlog::warn("[flyMS] Error! Control thread too slow! time in micro seconds: {}",
       (timeFinish - timeStart));
 
@@ -328,8 +344,8 @@ std::string flyMS::GetLogDir(const std::string &log_location) {
 }
 
 int flyMS::InitializeSpdlog(const std::string &log_dir) {
-  int max_bytes =  1048576 * 50;  // Max 20 MB
-  int max_files =  20;
+  int max_bytes = 1048576 * 50;  // Max 20 MB
+  int max_files = 20;
 
   std::vector<spdlog::sink_ptr> sinks;
   // Only use the console sink if we are in debug mode
@@ -346,18 +362,6 @@ int flyMS::InitializeSpdlog(const std::string &log_dir) {
   spdlog::register_logger(flyMS_log);
   spdlog::set_default_logger(flyMS_log);
 }
-
-/**
- * @file startupRoutine.cpp
- * @brief Initialize the flight hardware
- *
- * @author Mike Sardonini
- * @date 10/15/2018
- */
-
-
-#include "flyMS/flyMS.hpp"
-
 
 int flyMS::startupRoutine() {
   //Initialize the remote controller through the setpoint object
@@ -410,8 +414,8 @@ int flyMS::readyCheck() {
   bool firstRun = true;
   printf("Toggle the kill swtich twice and leave up to initialize\n");
   while (count < 6 && rc_get_state() != EXITING) {
-    //Blink the green LED light to signal that the program is ready
-    reset_toggle++; // Only blink the led 1/100 the time this loop runs
+    // Blink the green LED light to signal that the program is ready
+    reset_toggle++; // Only blink the led 1 in 20 times this loop runs
     if (toggle) {
       rc_led_set(RC_LED_GREEN, 0);
       if (reset_toggle == 20) {
@@ -440,7 +444,6 @@ int flyMS::readyCheck() {
       if (val[0] > 0.25 && val[1] < 0.25)
         count++;
     }
-
     usleep(10000);
   }
 
@@ -450,7 +453,6 @@ int flyMS::readyCheck() {
       val[1] = this->setpointData.kill_switch[1];
       val[0] = this->setpointData.kill_switch[0];
     }
-
     usleep(10000);
   }
 
@@ -470,66 +472,29 @@ int flyMS::readyCheck() {
 *  setup of feedback controllers used in flight core
 ************************************************************************/
 int flyMS::initializeFilters() {
+  roll_outer_PID_  = generatePID(roll_PID_outer_coeff_[0], roll_PID_outer_coeff_[1],
+    roll_PID_outer_coeff_[2], 0.15, delta_t_);
+  pitch_outer_PID_ = generatePID(pitch_PID_outer_coeff_[0], pitch_PID_outer_coeff_[1],
+    pitch_PID_outer_coeff_[2], 0.15, delta_t_);
+  yaw_PID_ = generatePID(yaw_PID_coeff_[0], yaw_PID_coeff_[1], yaw_PID_coeff_[2], 0.15, delta_t_);
 
-  this->filters.roll_PD  = generatePID(roll_PID_outer_[0], roll_PID_outer_[1], roll_PID_outer_[2], 0.15, delta_t_);
-  this->filters.pitch_PD = generatePID(pitch_PID_outer_[0], pitch_PID_outer_[1], pitch_PID_outer_[2], 0.15, delta_t_);
-  this->filters.yaw_PD   = generatePID(yaw_PID_[0], yaw_PID_[1], yaw_PID_[2], 0.15, 0.005);
+  roll_inner_PID_  = generatePID(roll_PID_inner_coeff_[0], roll_PID_inner_coeff_[0],
+    roll_PID_inner_coeff_[0], 0.15, delta_t_);
+  pitch_inner_PID_ = generatePID(pitch_PID_inner_coeff_[0], pitch_PID_inner_coeff_[1],
+    pitch_PID_inner_coeff_[2], 0.15, delta_t_);
 
-  // //PD Controller (I is done manually)
-  this->filters.roll_rate_PD  = generatePID(roll_PID_inner_[0], roll_PID_inner_[0], roll_PID_inner_[0], 0.15, delta_t_);
-  this->filters.pitch_rate_PD = generatePID(pitch_PID_inner_[0], pitch_PID_inner_[1],
-    pitch_PID_inner_[2], 0.15, delta_t_);
-  // this->filters.yaw_rate_PD   = generatePID(this->config.yaw_KP, this->config.yaw_KI, this->config.yaw_KD,      0.15, delta_t_);
-
-  // //Gains on Low Pass Filter for raw gyroscope output
-
-  // filters->altitudeHoldPID  = generatePID(.05,      .005,  .002,      0.15, delta_t_);
-
-  //elliptic filter 10th order 0.25 dB passband ripple 80 dB min Cutoff 0.8 cutoff frq
-  float num[11] = {0.156832694556443,   1.427422676153595,   5.976558883724950,
-    15.145889466394246,  25.712846449561717,  30.545847498393631,
-    25.712846449561738,  15.145889466394268,   5.976558883724963,
-    1.427422676153600,   0.156832694556444};
-  float den[11] = {1.0,   5.633261445575803,  15.452644550671394,
-   26.460962250802702,  31.096445930527029,  26.068432134671180,
-   15.818327061618843,   6.914360323080047,   2.147477269285763,
-   0.453950599328629,   0.058793907152724};
-
-  // elliptic filter 10th order 0.25 dB passband ripple 80 dB min Cutoff
-  // 0.05 cutoff frq
-  float yaw_num[11] = {0.000000138467082, 0.000001384670818, 0.000006231018679,
-    0.000016616049812, 0.000029078087171, 0.000034893704605, 0.000029078087171,
-    0.000016616049812, 0.000006231018679, 0.000001384670818, 0.000000138467082
-    };
-  float yaw_den[11] = {1.000000000000000, -6.989417698566569,
-   22.323086726703938, -42.824608705880635, 54.570406893265300,
-   -48.208486634295596, 29.872790631313180, -12.810698156370698,
-   3.636160614880030, -0.616474419461443, 0.047382538704228};
-
-  int i;
-  for (i = 0; i < 2; i++) {
-    this->filters.gyro_lpf[i] = initialize_filter(10, num, den);
-    this->filters.accel_lpf[i] = initialize_filter(10, num, den);
+  // Check to make sure our digital filter is a correct size
+  if (imu_lpf_num_.size() != imu_lpf_den_.size()) {
+    spdlog::error("Low pass filter coefficients do not match in size!");
+    throw std::invalid_argument("Low pass filter coefficients do not match in size!");
   }
 
-  this->filters.gyro_lpf[2] = initialize_filter(10, yaw_num, yaw_den);
-  this->filters.accel_lpf[2] = initialize_filter(10, num, den);
-
-  // //Gains on Low Pass Filter for Yaw Reference
-  // float num2[4] = {  0.0317,    0.0951,    0.0951,    0.0317};
-  // float den2[4] = { 1.0000,   -1.4590,    0.9104,   -0.1978};
-  // filters->LPF_Yaw_Ref_P = initialize_filter(3, num2, den2);
-  // filters->LPF_Yaw_Ref_R = initialize_filter(3, num2, den2);
-
-  // //ellip filter, 5th order .5 pass 70 stop .05 cutoff
-  // float baro_num[6] = {0.000618553374672,  -0.001685890697737,   0.001077182625629,   0.001077182625629,  -0.001685890697737,   0.000618553374672};
-  // float baro_den[6] =  {1.000000000000000,  -4.785739467762915,   9.195509273069447,  -8.866262182166356,   4.289470039368545,  -0.832957971903594};
-  // filters->LPF_baro_alt = initialize_filter(5, baro_num, baro_den);
-  // for (i = 0; i< 3; i++)
-  // {
-  //   zeroFilter(filters->gyro_lpf[i]);
-  //  hzeroFilter(filters->accel_lpf[i]);
-  // }
-
+  // Initialize the filters
+  for (int i = 0; i < 3; i++) {
+    // accel_lpf_[i] = initialize_filter(imu_lpf_num_.size(), imu_lpf_num_.data(),
+      // imu_lpf_den_.data());
+    gyro_lpf_[i] = initialize_filter(imu_lpf_num_.size(), imu_lpf_num_.data(),
+      imu_lpf_den_.data());
+  }
   return 0;
 }
