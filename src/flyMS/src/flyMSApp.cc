@@ -14,7 +14,7 @@
 
 //Our Includes
 #include "yaml-cpp/yaml.h"
-#include "flyMS/flyMS.hpp"
+#include "flyMS/flyMS.h"
 
 void onSignalReceived(int signo) {
   switch (signo) {

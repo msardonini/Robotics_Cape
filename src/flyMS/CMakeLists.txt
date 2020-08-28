@@ -20,6 +20,7 @@ add_executable(flyMS
   src/imu.cc
   src/pruClient.cc
   src/setpoint.cc
+  src/position_controller.cc
   src/ulog/ulog.cc
 )
 

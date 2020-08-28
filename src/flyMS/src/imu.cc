@@ -6,7 +6,7 @@
 * @date 10/16/2018
 */
 
-#include "flyMS/imu.hpp"
+#include "flyMS/imu.h"
 
 #include <termios.h>
 #include <unistd.h>

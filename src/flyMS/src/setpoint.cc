@@ -6,7 +6,7 @@
  * @date 10/15/2018
  */
 
-#include "flyMS/setpoint.hpp"
+#include "flyMS/setpoint.h"
 
 #include "spdlog/spdlog.h"
 

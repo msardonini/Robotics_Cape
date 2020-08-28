@@ -6,7 +6,7 @@
  * @date 10/15/2018
  */
 
-#include "flyMS/flyMS.hpp"
+#include "flyMS/flyMS.h"
 
 #include <sys/stat.h>
 #include <stdexcept>

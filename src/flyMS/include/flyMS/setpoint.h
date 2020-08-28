@@ -26,7 +26,6 @@
 #include<roboticscape.h>
 #include "yaml-cpp/yaml.h"
 
-
 /**
  * @brief      The flight mode
  */

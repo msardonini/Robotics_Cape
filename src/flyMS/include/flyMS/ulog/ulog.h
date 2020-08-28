@@ -36,8 +36,8 @@
 #include <string>
 #include <fstream>
 
-#include "flyMS/setpoint.hpp"
-#include "flyMS/imu.hpp"
+#include "flyMS/setpoint.h"
+#include "flyMS/imu.h"
 
 struct ULogFlightMsg {
   ULogFlightMsg() {}

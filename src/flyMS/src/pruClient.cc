@@ -7,7 +7,7 @@
  */
 
 
-#include "flyMS/pruClient.hpp"
+#include "flyMS/pruClient.h"
 
 pruClient::pruClient() {}
 
