@@ -1,10 +1,12 @@
 #ifndef FLYMS_INCLUDE_FLYMS_POSITION_CONTROLLER_H_
 #define FLYMS_INCLUDE_FLYMS_POSITION_CONTROLLER_H_
 
+#include <mutex>
+
 #include "yaml-cpp/yaml.h"
 #include "Eigen/Dense"
- #include "filter.h"
- #include "flyMS/setpoint.h"
+#include "filter.h"
+#include "flyMS/setpoint.h"
 
 template <typename T>
 struct pos_vel {
@@ -16,7 +18,6 @@ class PositionController {
   EIGEN_MAKE_ALIGNED_OPERATOR_NEW
   PositionController(const YAML::Node &config_params);
   ~PositionController();
-
 
   int ReceiveVio(const Eigen::Vector3f &position,
   const Eigen::Vector3f &velocity, const Eigen::Vector3f &orientation) ;
@@ -39,6 +40,7 @@ class PositionController {
   // Z axis
   std::array<std::array<digital_filter_t*, 2>, 3> pid_;
 
+  std::mutex output_mutex_;
 
   // Configurable params
   float delta_t_;

@@ -50,6 +50,9 @@ int PositionController::ReceiveVio(const Eigen::Vector3f &position,
     setpoint_orientation_xyz(0) = update_filter(pid_[i][1], setpoint_velocity_(i) - velocity(i));
   }
 
+  // lock the mutex to protect our output variable
+  std::lock_guard<std::mutex> lock(output_mutex_);
+
   // Convert from rotations about XYZ axis to pitch/roll/yaw in body frame
   setpoint_orientation_ = R_xyz_body * setpoint_orientation_xyz;
 
@@ -63,6 +66,7 @@ int PositionController::ReceiveVio(const Eigen::Vector3f &position,
 }
 
 int PositionController::GetSetpoint(Eigen::Vector3f &setpoint_orientation) {
+  std::lock_guard<std::mutex> lock(output_mutex_);
   setpoint_orientation = setpoint_orientation_;
   return 0;
 }
