@@ -1,8 +1,8 @@
 /**
  * @file pruHandler.hpp
- * @brief Process which communicates with the PRU that controlls quadrotor ESCs. 
-     This process connects to applications via TCP packets over localhost and 
-     relays the data to the PRU. If no program is active, zero throttle is sent. 
+ * @brief Process which communicates with the PRU that controlls quadrotor ESCs.
+     This process connects to applications via TCP packets over localhost and
+     relays the data to the PRU. If no program is active, zero throttle is sent.
  *
  * @author Mike Sardonini
  * @date 11/10/2018
@@ -24,8 +24,8 @@
 #include <errno.h>
 #include <string.h>
 #include <sys/types.h>
-#include <time.h> 
-#include <fstream> 
+#include <time.h>
+#include <fstream>
 
 //Package Includes
 #include <rc/servo.h>

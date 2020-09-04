@@ -3,15 +3,17 @@
 
 PositionController::PositionController(const YAML::Node &config_params) {
   delta_t_ = config_params["delta_t"].as<float>();
-  pid_coeffs_x_[0] = config_params["pid_coeffs_x_outer"].as<std::array<float, 3> >();
-  pid_coeffs_x_[1] = config_params["pid_coeffs_x_inner"].as<std::array<float, 3> >();
-  pid_coeffs_y_[0] = config_params["pid_coeffs_y_outer"].as<std::array<float, 3> >();
-  pid_coeffs_y_[1] = config_params["pid_coeffs_y_inner"].as<std::array<float, 3> >();
-  pid_coeffs_z_[0] = config_params["pid_coeffs_z_outer"].as<std::array<float, 3> >();
-  pid_coeffs_z_[1] = config_params["pid_coeffs_z_inner"].as<std::array<float, 3> >();
+  YAML::Node position_controller = config_params["position_controller"];
+  pid_coeffs_x_[0] = position_controller["pid_coeffs_x_outer"].as<std::array<float, 3> >();
+  pid_coeffs_x_[1] = position_controller["pid_coeffs_x_inner"].as<std::array<float, 3> >();
+  pid_coeffs_y_[0] = position_controller["pid_coeffs_y_outer"].as<std::array<float, 3> >();
+  pid_coeffs_y_[1] = position_controller["pid_coeffs_y_inner"].as<std::array<float, 3> >();
+  pid_coeffs_z_[0] = position_controller["pid_coeffs_z_outer"].as<std::array<float, 3> >();
+  pid_coeffs_z_[1] = position_controller["pid_coeffs_z_inner"].as<std::array<float, 3> >();
 
   // Roll, pitch, and yaw output saturdation limits
-  RPY_saturation_limits_ = config_params["RPY_saturation_limits"].as<std::array<float, 3> >();
+  RPY_saturation_limits_ = position_controller["RPY_saturation_limits"].as<std::array<
+    float, 3> >();
 
   for (int i = 0; i < 2; i++) {
     pid_[0][i] = generatePID(pid_coeffs_x_[i][0], pid_coeffs_x_[i][1], pid_coeffs_x_[i][2],

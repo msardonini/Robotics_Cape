@@ -10,6 +10,8 @@
 
 #include <sys/stat.h>
 #include <stdexcept>
+#include <iomanip>
+#include <sstream>
 
 #include "spdlog/spdlog.h"
 #include "spdlog/sinks/stdout_color_sinks.h"
@@ -157,7 +159,7 @@ int flyMS::FlightCore() {
     }
 
     imu_data_.eulerRate[1] = update_filter(gyro_lpf_[1], imu_data_.eulerRate[1]);
-    u_euler_[1] = update_filter(pitch_inner_PID_, setpoint_.dpitch_setpoint - 
+    u_euler_[1] = update_filter(pitch_inner_PID_, setpoint_.dpitch_setpoint -
       imu_data_.eulerRate[1]);
     u_euler_[1] = saturateFilter(u_euler_[1], -max_control_effort_[1], max_control_effort_[1]);
 
@@ -317,12 +319,17 @@ int flyMS::CheckOutputRange(std::array<float, 4> &u) {
 
 std::string flyMS::GetLogDir(const std::string &log_location) {
   int run_number = 1;
-  std::string run_folder(log_location + std::string("/run") + std::to_string(run_number));
+  std::stringstream run_str;
+  run_str << std::internal << std::setfill('0') << std::setw(3) << run_number;
+
+  std::string run_folder(log_location + std::string("/run") + run_str.str());
 
   //Find the next run number folder that isn't in use
   struct stat st = {0};
   while (!stat(run_folder.c_str(), &st)) {
-    run_folder = (log_location + std::string("/run") + std::to_string(++run_number));
+    run_str.str(std::string());
+    run_str << std::internal << std::setfill('0') << std::setw(3) << ++run_number;
+    run_folder = (log_location + std::string("/run") + run_str.str());
   }
 
   //Make a new folder to hold the logged data

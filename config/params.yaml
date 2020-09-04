@@ -24,6 +24,14 @@ flyMSParams:
         max_setpoints_stabilized: [0.8, 0.8, 3.000000]
         max_setpoints_acro: [0.8, 0.8, 3.000000]
         throttle_limits: [0.300000, 0.750000]
+    position_controller:
+        pid_coeffs_x_outer: [0.0, 0.0, 0.0]
+        pid_coeffs_x_inner: [0.0, 0.0, 0.0]
+        pid_coeffs_y_outer: [0.0, 0.0, 0.0]
+        pid_coeffs_y_inner: [0.0, 0.0, 0.0]
+        pid_coeffs_z_outer: [0.0, 0.0, 0.0]
+        pid_coeffs_z_inner: [0.0, 0.0, 0.0]
+        RPY_saturation_limits: [0.3, 0.3, 0.3]
     filters:
         # elliptic filter 10th order 0.25 dB passband ripple 80 dB min Cutoff 0.8 cutoff frq
         imu_lpf_num: [0.156832694556443,   1.427422676153595,   5.976558883724950,

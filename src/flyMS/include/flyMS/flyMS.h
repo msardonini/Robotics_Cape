@@ -23,6 +23,7 @@
 #include "flyMS/imu.h"
 #include "flyMS/pruClient.h"
 #include "flyMS/setpoint.h"
+#include "flyMS/flyMS_structs.h"
 #include "spdlog/spdlog.h"
 #include "spdlog/sinks/basic_file_sink.h"
 

@@ -6,7 +6,7 @@
 #include "yaml-cpp/yaml.h"
 #include "Eigen/Dense"
 #include "filter.h"
-#include "flyMS/setpoint.h"
+#include "flyMS/flyMS_structs.h"
 
 template <typename T>
 struct pos_vel {

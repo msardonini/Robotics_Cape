@@ -1,18 +1,16 @@
 cmake_minimum_required(VERSION 3.5)
-
-set(PRU_HANDLER_SRC
-          pruHandlerApp.cpp
-          pruHandler.cpp)
-  
  
-add_executable(pruHandler ${PRU_HANDLER_SRC})
+add_executable(pruHandler
+  pruHandlerApp.cpp
+  pruHandler.cpp
+)
 
-
-target_link_libraries(pruHandler robotics_cape pthread)
-# target_link_libraries(pru_handler m)
-# target_link_libraries(pru_handler pthread)
+target_link_libraries(pruHandler
+  PUBLIC
+  robotics_cape
+  pthread
+)
 
 install(TARGETS pruHandler
-	DESTINATION /usr/bin/
-	)
-
+  DESTINATION /usr/bin/
+)

@@ -25,6 +25,8 @@ setpoint::setpoint(const YAML::Node &config_params) :
     max_setpoints_acro_ = setpoint_params["max_setpoints_acro"].as<std::array<float, 3> >();
     is_headless_mode_ = setpoint_params["headless_mode"].as<bool>();
     throttle_limits_ = setpoint_params["throttle_limits"].as<std::array<float, 2> >();
+
+    position_controller_ = std::make_unique<PositionController> (config_params);
   }
 
 setpoint::~setpoint() {
@@ -143,7 +145,8 @@ int setpoint::HandleRcData() {
   setpoint_data_.Aux[0] = dsm2_data_[5];
 
   // Set the throttle
-  setpoint_data_.throttle = (dsm2_data_[0]) * (throttle_limits_[0] - throttle_limits_[1]) + throttle_limits_[0];
+  setpoint_data_.throttle = (dsm2_data_[0]) * (throttle_limits_[0] - throttle_limits_[1]) +
+    throttle_limits_[0];
 
   // Finally Update the integrator on the yaw reference value
   setpoint_data_.euler_ref[2] = setpoint_data_.euler_ref[2] + (setpoint_data_.yaw_rate_ref[0] +

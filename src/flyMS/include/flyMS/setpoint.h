@@ -21,38 +21,13 @@
 #include <atomic>
 #include <thread>
 #include <mutex>
+#include <memory>
 
 //Package includes
-#include<roboticscape.h>
+#include <roboticscape.h>
 #include "yaml-cpp/yaml.h"
-
-/**
- * @brief      The flight mode
- */
-enum class SetpointMode {
-  Undefined = 0,
-  Stabilized = 1,
-  Acro = 2,
-  Navigation = 3
-};
-
-typedef struct setpoint_t {
-  float euler_ref[3];  // Reference (Desired) Position
-  float euler_ref_previous[3];  // Reference (Desired) Position
-  float yaw_rate_ref[2];
-  float Aux[2];
-  double lat_setpoint;
-  double lon_setpoint;      // Controller Variables for Autonomous Flight
-  float altitudeSetpointRate;
-  float altitudeSetpoint;
-  float dpitch_setpoint; // Desired attitude
-  float droll_setpoint;  // Desired attitude
-  float throttle;
-  float yaw_ref_offset;
-  float kill_switch[2];
-} setpoint_t;
-
-
+#include "flyMS/position_controller.h"
+#include "flyMS/flyMS_structs.h"
 
 class setpoint {
  public:
@@ -86,6 +61,8 @@ class setpoint {
   int SetpointManager();
   int HandleRcData();
   int RcErrHandler();
+
+  std::unique_ptr<PositionController> position_controller_;
 
   bool is_initializing_;
   enum SetpointMode setpoint_mode_;

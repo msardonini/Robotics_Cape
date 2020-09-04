@@ -41,7 +41,7 @@ int pruHandler::init_pru_handler() {
   //Initialize the servo connectors from the Robotics Cape Library
   if(rc_servo_init() == -1) {
     return -1;
-  } 
+  }
 
   //Initialize the server to receive commands to send to ESCs
   this->initServer();
