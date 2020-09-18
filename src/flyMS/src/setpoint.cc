@@ -12,7 +12,6 @@
 
 
 setpoint::setpoint(const YAML::Node &config_params) :
-  is_initializing_(true),
   ready_to_send_(false),
   setpoint_mode_(SetpointMode::Stabilized) {
     is_debug_mode_ = config_params["debug_mode"].as<bool>();
@@ -77,8 +76,9 @@ int setpoint::SetpointManager() {
     } else {
       if (!is_debug_mode_) {
         //check to make sure too much time hasn't gone by since hearing the RC
-        RcErrHandler();
-        return 0;
+        if (RcErrHandler()) {
+          return 0;
+        }
       }
     }
 
@@ -145,8 +145,8 @@ int setpoint::HandleRcData() {
   setpoint_data_.Aux[0] = dsm2_data_[5];
 
   // Set the throttle
-  setpoint_data_.throttle = (dsm2_data_[0]) * (throttle_limits_[0] - throttle_limits_[1]) +
-    throttle_limits_[0];
+  setpoint_data_.throttle = (dsm2_data_[0] + 1.0) / 2.0 * (throttle_limits_[1] -
+    throttle_limits_[0]) + throttle_limits_[0];
 
   // Finally Update the integrator on the yaw reference value
   setpoint_data_.euler_ref[2] = setpoint_data_.euler_ref[2] + (setpoint_data_.yaw_rate_ref[0] +
@@ -157,11 +157,11 @@ int setpoint::HandleRcData() {
   return 0;
 }
 
-int setpoint::RcErrHandler() {
-  //If we are in the initializing stage don't bother shutting down the program
-  if (is_initializing_)
-    return 0;
+int setpoint::SetYawRef(float ref) {
+  setpoint_data_.euler_ref[2] = ref;
+}
 
+int setpoint::RcErrHandler() {
   dsm2_timeout_++;
   if (dsm2_timeout_ > 1.5 / delta_t_) { //If packet hasn't been received for 1.5 seconds
     spdlog::info("\nLost Connection with Remote!! Shutting Down Immediately \n");
@@ -169,8 +169,4 @@ int setpoint::RcErrHandler() {
     return -1;
   }
   return 0;
-}
-
-void setpoint::setInitializationFlag(bool flag) {
-  is_initializing_ = flag;
 }

@@ -21,6 +21,8 @@ add_executable(flyMS
   src/pruClient.cc
   src/setpoint.cc
   src/position_controller.cc
+  src/mavlink_interface.cc
+  src/ready_check.cc
   src/ulog/ulog.cc
 )
 

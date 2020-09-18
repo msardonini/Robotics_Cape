@@ -18,14 +18,15 @@
 
 #include "filter.h"
 #include "yaml-cpp/yaml.h"
+#include "spdlog/spdlog.h"
+#include "spdlog/sinks/basic_file_sink.h"
 #include "flyMS/ulog/ulog.h"
 #include "flyMS/gps.h"
 #include "flyMS/imu.h"
 #include "flyMS/pruClient.h"
 #include "flyMS/setpoint.h"
-#include "flyMS/flyMS_structs.h"
-#include "spdlog/spdlog.h"
-#include "spdlog/sinks/basic_file_sink.h"
+#include "flyMS/flyMS_types.h"
+#include "flyMS/mavlink_interface.h"
 
 class flyMS {
  public:
@@ -47,9 +48,6 @@ class flyMS {
   int CheckOutputRange(std::array<float, 4> &u);
 
   int InitializeHardware();
-
-  //Get input from the user to start the flight program
-  int ReadyCheck();
 
   int InitializeFilters();
 
@@ -88,6 +86,9 @@ class flyMS {
   gps gps_module_;
   GPS_data_t gps_;
 
+  // Object to handle the I/O on the serial port
+  MavlinkInterface mavlink_interface_;
+
   // Struct for the control inputs
   digital_filter_t *roll_inner_PID_ = nullptr;
   digital_filter_t *roll_outer_PID_ = nullptr;
@@ -106,7 +107,8 @@ class flyMS {
   bool is_debug_mode_;
   std::string log_filepath_;
   float delta_t_;
-  float min_throttle_; 
+  float min_throttle_;
+  float pid_LPF_const_sec_;
   std::array<float, 3> roll_PID_inner_coeff_;
   std::array<float, 3> roll_PID_outer_coeff_;
   std::array<float, 3> pitch_PID_inner_coeff_;

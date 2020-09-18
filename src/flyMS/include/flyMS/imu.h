@@ -31,6 +31,7 @@
 #include "rc/led.h"
 #include "rc/bmp.h"
 #include "yaml-cpp/yaml.h"
+#include "flyMS/flyMS_types.h"
 
 /**
  * @brief      This class describes a position/velocity/acceletaion state.
@@ -86,25 +87,6 @@ template <typename T> class pva_state {
   std::vector<Eigen::Matrix<T, 9, 1> > data; 
 };
 
-
-typedef struct state_t {
-  Eigen::Vector3f euler;          // Euler angles of aircraft (in roll, pitch, yaw)
-  Eigen::Vector3f eulerPrevious;      // 1 Timestampe previousEuler angles of aircraft (in roll, pitch, yaw)
-  Eigen::Vector3f  eulerRate;        // First derivative of euler angles (in roll/s, pitch/s, yaw/s)
-
-  Eigen::Vector3f accel;
-  Eigen::Vector3f gyro;
-  Eigen::Vector3f mag;
-
-  float barometerAltitude;
-  float compassHeading;
-
-  int    num_wraps;        // Number of spins in Yaw
-  float  initialYaw;
-} state_t;
-
-
-
 class imu {
  public:
 
@@ -139,6 +121,12 @@ class imu {
 
 
   void calculateDCM(float pitchOffsetDeg, float rollOffsetDeg, float yawOffsetDeg);
+  
+  /**
+   * @brief      Resets the image synchronization counter
+   */
+  void ResetCounter();
+
 
  private:
   void SerialReadThread();
@@ -146,7 +134,6 @@ class imu {
   void init_fusion();
   void updateFusion();
   void read_transform_imu();
-  void send_mavlink();
 
   std::atomic<bool> is_running_;
 
@@ -161,9 +148,6 @@ class imu {
   uint64_t trigger_time_;
   uint32_t trigger_count_;
   std::mutex trigger_time_mutex_;
-
-  // file descriptor for the serial port
-  int serial_dev_;
 
   //Boolean to indicate if we are currently initializing the fusion algorithm
   bool is_initializing_fusion_;

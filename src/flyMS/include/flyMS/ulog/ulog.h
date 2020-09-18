@@ -47,6 +47,7 @@ struct ULogFlightMsg {
   timestamp_us(_timestamp_us),
   RPY{state.euler(0), state.euler(1), state.euler(2)},
   gyro{state.gyro(0), state.gyro(1), state.gyro(2)},
+  gyro_filt{state.eulerRate(0), state.eulerRate(1), state.eulerRate(2)},
   accel{state.accel(0), state.accel(1), state.accel(2)},
   motor_cmds{u[0], u[1], u[2], u[3]},
   u{u_euler[0], u_euler[1], u_euler[2], setpoint.throttle},
@@ -56,6 +57,7 @@ struct ULogFlightMsg {
   uint64_t timestamp_us;
   float RPY[3];
   float gyro[3];
+  float gyro_filt[3];
   float accel[3];
   float motor_cmds[4];
   float u[4];

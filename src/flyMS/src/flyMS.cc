@@ -9,6 +9,7 @@
 #include "flyMS/flyMS.h"
 
 #include <sys/stat.h>
+#include <pthread.h>
 #include <stdexcept>
 #include <iomanip>
 #include <sstream>
@@ -22,7 +23,8 @@ flyMS::flyMS(const YAML::Node &config_params) :
   ulog_(),
   imu_module_(config_params),
   setpoint_module_(config_params),
-  gps_module_(config_params) {
+  gps_module_(config_params),
+  mavlink_interface_(config_params, &imu_module_) {
     // Flight mode, 1 = stabilized, 2 = acro
     flight_mode_ = config_params["flight_mode"].as<int>();
     is_debug_mode_ = config_params["debug_mode"].as<bool>();
@@ -34,6 +36,7 @@ flyMS::flyMS(const YAML::Node &config_params) :
     min_throttle_ = throttle_limits[0];
 
     YAML::Node controller = config_params["controller"];
+    pid_LPF_const_sec_ = controller["pid_LPF_const_sec"].as<float>();
     max_control_effort_ = controller["max_control_effort"].as<std::array<float, 3> >();
     roll_PID_inner_coeff_ = controller["roll_PID_inner"].as<std::array<float, 3> >();
     roll_PID_outer_coeff_ = controller["roll_PID_outer"].as<std::array<float, 3> >();
@@ -91,6 +94,7 @@ int flyMS::FlightCore() {
     ******************************************************************/
     imu_module_.update();
     imu_module_.getImuData(&imu_data_);
+    mavlink_interface_.SendImuMessage(imu_data_);
 
     // printf("time diff imu %" PRIu64 "\n", (GetTimeMicroseconds() - timeStart));
 
@@ -107,6 +111,13 @@ int flyMS::FlightCore() {
     *                          Get Setpoint Data                            *
     ************************************************************************/
     setpoint_module_.getSetpointData(&setpoint_);
+
+    // If we have commanded a switch in Aux, activate the perception system
+    if (setpoint_.Aux[0] < 0.1 && setpoint_.Aux[1] > 0.9) {
+      mavlink_interface_.SendStartCommand();
+    } else if (setpoint_.Aux[0] > 0.9 && setpoint_.Aux[1] < 0.1) {
+      mavlink_interface_.SendShutdownCommand();
+    }
 
     /************************************************************************
     *                       Throttle Controller                             *
@@ -182,8 +193,9 @@ int flyMS::FlightCore() {
     }
 
     // if landed for 4 seconds, reset integrators and Yaw error
-    if (integrator_reset_ > 4 / delta_t_) {
+    if (integrator_reset_ > 2 / delta_t_) {
       setpoint_.euler_ref[2]=imu_data_.euler[2];
+      setpoint_module_.SetYawRef(imu_data_.euler[2]);
       zeroFilter(roll_inner_PID_);
       zeroFilter(roll_outer_PID_);
       zeroFilter(pitch_inner_PID_);
@@ -268,15 +280,15 @@ int flyMS::ConsolePrint() {
 //  spdlog::info(" U2: {:2.2f} ",control->u[1]);
 //  spdlog::info(" U3:  {:2.2f} ",control->u[2]);
 //  spdlog::info(" U4: {:2.2f} ",control->u[3]);
-//  spdlog::info("Aux %2.1f ", control->setpoint.Aux[0]);
+ spdlog::info("Aux {:2.1f} ", setpoint_.Aux[0]);
 //  spdlog::info("function: {}",rc_get_dsm_ch_normalized(6));
 //  spdlog::info("num wraps {} ",control->num_wraps);
-  // spdlog::info(" Throt {:2.2f} ", setpoint_.throttle);
-  // spdlog::info(" Roll_ref {:2.2f} ", setpoint_.euler_ref[0]);
-  // spdlog::info(" Pitch_ref {:2.2f} ", setpoint_.euler_ref[1]);
-  // spdlog::info(" Yaw_ref {:2.2f} ", setpoint_.euler_ref[2]);
-  spdlog::info("Roll {:1.2f}, Pitch {:1.2f}, Yaw {:2.3f}", imu_data_.euler[0],
-    imu_data_.euler[1], imu_data_.euler[2]);
+  spdlog::info(" Throt {:2.2f} ", setpoint_.throttle);
+  spdlog::info(" Roll_ref {:2.2f} ", setpoint_.euler_ref[0]);
+  spdlog::info(" Pitch_ref {:2.2f} ", setpoint_.euler_ref[1]);
+  spdlog::info(" Yaw_ref {:2.2f} ", setpoint_.euler_ref[2]);
+  // spdlog::info("Roll {:1.2f}, Pitch {:1.2f}, Yaw {:2.3f}", imu_data_.euler[0],
+  //   imu_data_.euler[1], imu_data_.euler[2]);
 //  spdlog::info(" Mag X {:4.2f}",control->mag[0]);
 //  spdlog::info(" Mag Y {:4.2f}",control->mag[1]);
 //  spdlog::info(" Mag Z {:4.2f}",control->mag[2]);
@@ -363,16 +375,6 @@ int flyMS::StartupRoutine() {
   if (setpoint_module_.start())
     spdlog::error("[flyMS] Error initializing Radio Coms!");
 
-  spdlog::debug("[flyMS] Starting ready check!!");
-  //Pause the program until the user toggles the kill switch
-  if (!is_debug_mode_) {
-    if (ReadyCheck()) {
-      spdlog::error("[flyMS] Ready Check Failed!");
-      return -1;
-    }
-  }
-  spdlog::debug("[flyMS] Done ready check!!");
-
   //Tell the system that we are running
   rc_set_state(RUNNING);
 
@@ -381,86 +383,30 @@ int flyMS::StartupRoutine() {
   InitializeSpdlog(log_dir);
   ulog_.InitUlog(log_dir);
 
-  //Initialize the PID controllers and LP filters
+  // Initialize the PID controllers and LP filters
   InitializeFilters();
 
-  //Tell the setpoint manager we are no longer waiting to initialize
-  setpoint_module_.setInitializationFlag(false);
+  mavlink_interface_.Init();
 
-  //Initialize the IMU Hardware
+  // Initialize the IMU Hardware
   if (imu_module_.initializeImu())
     return -1;
 
-  //Initialize the client to connect to the PRU handler
+  // Initialize the client to connect to the PRU handler
   pru_client_.startPruClient();
 
-  //Start the flight program
+  // Start the flight program
   flightcore_thread_ = std::thread(&flyMS::FlightCore, this);
 
+  // Start the flight program
+  sched_param sch_params;
+  sch_params.sched_priority = 1;  // Max Priority
+  if(pthread_setschedparam(flightcore_thread_.native_handle(), SCHED_FIFO, &sch_params)) {
+    perror("error with pthread");
+    spdlog::error("Error setting pthread_setschedparam");
+  }
   return 0;
 }
-
-
-int flyMS::ReadyCheck() {
-  //Toggle the kill switch to get going, to ensure controlled take-off
-  //Keep kill switch down to remain operational
-  int count = 1, toggle = 0, reset_toggle = 0;
-  float val[2] = {0.0f , 0.0f};
-  bool firstRun = true;
-  printf("Toggle the kill swtich twice and leave up to initialize\n");
-  while (count < 6 && rc_get_state() != EXITING) {
-    // Blink the green LED light to signal that the program is ready
-    reset_toggle++; // Only blink the led 1 in 20 times this loop runs
-    if (toggle) {
-      rc_led_set(RC_LED_GREEN, 0);
-      if (reset_toggle == 20) {
-        toggle = 0;
-        reset_toggle = 0;
-      }
-    } else {
-      rc_led_set(RC_LED_GREEN, 1);
-      if (reset_toggle == 20) {
-        toggle = 1;
-        reset_toggle = 0;
-      }
-    }
-
-    if (setpoint_module_.getSetpointData(&setpoint_)) {
-      //Skip the first run to let data history fill up
-      if (firstRun) {
-        firstRun = false;
-        continue;
-      }
-      val[1] = setpoint_.kill_switch[1];
-      val[0] = setpoint_.kill_switch[0];
-
-      if (val[0] < 0.25 && val[1] > 0.25)
-        count++;
-      if (val[0] > 0.25 && val[1] < 0.25)
-        count++;
-    }
-    usleep(10000);
-  }
-
-  //make sure the kill switch is in the position to fly before starting
-  while (val[0] < 0.25 && rc_get_state() != EXITING) {
-    if (setpoint_module_.getSetpointData(&setpoint_)) {
-      val[1] = setpoint_.kill_switch[1];
-      val[0] = setpoint_.kill_switch[0];
-    }
-    usleep(10000);
-  }
-
-  if (rc_get_state() == EXITING) {
-    printf("State set to exiting, shutting off! \n");
-    return -1;
-  }
-
-  printf("\nInitialized! Starting program\n");
-  rc_led_set(RC_LED_GREEN, 1);
-  return 0;
-}
-
 
 /************************************************************************
 *  initialize_filters()
@@ -468,15 +414,16 @@ int flyMS::ReadyCheck() {
 ************************************************************************/
 int flyMS::InitializeFilters() {
   roll_outer_PID_  = generatePID(roll_PID_outer_coeff_[0], roll_PID_outer_coeff_[1],
-    roll_PID_outer_coeff_[2], 0.15, delta_t_);
+    roll_PID_outer_coeff_[2], pid_LPF_const_sec_, delta_t_);
   pitch_outer_PID_ = generatePID(pitch_PID_outer_coeff_[0], pitch_PID_outer_coeff_[1],
-    pitch_PID_outer_coeff_[2], 0.15, delta_t_);
-  yaw_PID_ = generatePID(yaw_PID_coeff_[0], yaw_PID_coeff_[1], yaw_PID_coeff_[2], 0.15, delta_t_);
+    pitch_PID_outer_coeff_[2], pid_LPF_const_sec_, delta_t_);
+  yaw_PID_ = generatePID(yaw_PID_coeff_[0], yaw_PID_coeff_[1], yaw_PID_coeff_[2],
+    pid_LPF_const_sec_, delta_t_);
 
   roll_inner_PID_  = generatePID(roll_PID_inner_coeff_[0], roll_PID_inner_coeff_[0],
-    roll_PID_inner_coeff_[0], 0.15, delta_t_);
+    roll_PID_inner_coeff_[0], pid_LPF_const_sec_, delta_t_);
   pitch_inner_PID_ = generatePID(pitch_PID_inner_coeff_[0], pitch_PID_inner_coeff_[1],
-    pitch_PID_inner_coeff_[2], 0.15, delta_t_);
+    pitch_PID_inner_coeff_[2], pid_LPF_const_sec_, delta_t_);
 
   // Check to make sure our digital filter is a correct size
   if (imu_lpf_num_.size() != imu_lpf_den_.size()) {

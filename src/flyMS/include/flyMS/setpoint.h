@@ -27,7 +27,7 @@
 #include <roboticscape.h>
 #include "yaml-cpp/yaml.h"
 #include "flyMS/position_controller.h"
-#include "flyMS/flyMS_structs.h"
+#include "flyMS/flyMS_types.h"
 
 class setpoint {
  public:
@@ -54,8 +54,7 @@ class setpoint {
    */
   int start();
 
-  //Sets the init flag
-  void setInitializationFlag(bool flag);
+  int SetYawRef(float ref);
 
  private:
   int SetpointManager();
@@ -64,7 +63,6 @@ class setpoint {
 
   std::unique_ptr<PositionController> position_controller_;
 
-  bool is_initializing_;
   enum SetpointMode setpoint_mode_;
   std::atomic <bool> ready_to_send_;
   float dsm2_data_[RC_MAX_DSM_CHANNELS];

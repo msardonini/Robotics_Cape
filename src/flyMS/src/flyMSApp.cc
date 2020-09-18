@@ -15,6 +15,7 @@
 //Our Includes
 #include "yaml-cpp/yaml.h"
 #include "flyMS/flyMS.h"
+#include "flyMS/ready_check.h"
 
 void onSignalReceived(int signo) {
   switch (signo) {
@@ -68,6 +69,12 @@ int main(int argc, char *argv[]) {
   if (config_filepath.empty()) {
     std::cout << "Reqired parameter: -c" << std::endl;
     return -1;
+  }
+
+  // Perform the ready check before starting the flight program
+  if (!is_debug_mode) {    
+    ReadyCheck ready_check;
+    ready_check.WaitForStartSignal();
   }
 
   // Load the Yaml Node
