@@ -25,7 +25,7 @@ setpoint::setpoint(const YAML::Node &config_params) :
     is_headless_mode_ = setpoint_params["headless_mode"].as<bool>();
     throttle_limits_ = setpoint_params["throttle_limits"].as<std::array<float, 2> >();
 
-    position_controller_ = std::make_unique<PositionController> (config_params);
+    position_controller = std::make_unique<PositionController> (config_params);
   }
 
 setpoint::~setpoint() {

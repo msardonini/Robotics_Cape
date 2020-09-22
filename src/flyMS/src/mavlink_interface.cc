@@ -81,7 +81,7 @@ int MavlinkInterface::SendImuMessage(const state_t &imu_state) {
   }
 
   attitude.timestamp_us = imu_state.timestamp_us;
-  attitude.timestamp_us = imu_state.time_since_trigger_us;
+  attitude.time_since_trigger_us = imu_state.time_since_trigger_us;
   attitude.trigger_count = imu_state.trigger_count;
 
   mavlink_msg_imu_encode(1, 200, &msg, &attitude);
@@ -132,6 +132,17 @@ int MavlinkInterface::SendShutdownCommand() {
   return 0;
 }
 
+bool MavlinkInterface::GetVioData(vio_t *vio) {
+  std::lock_guard<std::mutex> lock(vio_mutex_);
+  if (is_new_vio_data_) {
+    *vio = vio_;
+    is_new_vio_data_ = false;
+    return true;
+  } else {
+    return false;
+  }
+}
+
 void MavlinkInterface::SerialReadThread() {
   unsigned char buf[1024];
   size_t buf_size = 1024;
@@ -164,6 +175,18 @@ void MavlinkInterface::SerialReadThread() {
             // TODO Reset the trigger counter on the IMU
             std::cout << "Received counter reset msg!\n\n";
             imu_ptr_->ResetCounter();
+            break;
+          }
+          case MAVLINK_MSG_ID_VIO: {
+            mavlink_vio_t vio;
+            mavlink_msg_vio_decode(&mav_message, &vio);
+            std::lock_guard<std::mutex> lock(vio_mutex_);
+            vio_.position << vio.position[0], vio.position[1], vio.position[2];
+            vio_.velocity << vio.velocity[0], vio.velocity[1], vio.velocity[2];
+            vio_.quat = Eigen::Quaternion(vio.quat[0], vio.quat[1], vio.quat[2], vio.quat[3]);
+            spdlog::info("new vio data {}, {}, {}, {}!!", vio.quat[0], vio.quat[1], vio.quat[2], vio.quat[3]);
+            std::cout << vio_.position.transpose() << std::endl;
+            is_new_vio_data_ = true;
             break;
           }
           default:

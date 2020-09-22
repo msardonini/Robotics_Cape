@@ -56,12 +56,12 @@ class setpoint {
 
   int SetYawRef(float ref);
 
+  std::unique_ptr<PositionController> position_controller;
  private:
   int SetpointManager();
   int HandleRcData();
   int RcErrHandler();
 
-  std::unique_ptr<PositionController> position_controller_;
 
   enum SetpointMode setpoint_mode_;
   std::atomic <bool> ready_to_send_;

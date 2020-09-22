@@ -38,18 +38,16 @@ PositionController::~PositionController() {
   }
 }
 
-int PositionController::ReceiveVio(const Eigen::Vector3f &position,
-  const Eigen::Vector3f &velocity, const Eigen::Vector3f &orientation) {
+int PositionController::ReceiveVio(const vio_t &vio) {
   Eigen::Vector3f setpoint_orientation_xyz;
 
-  Eigen::Matrix3f R_xyz_body = Eigen::AngleAxis(orientation(0), Eigen::Vector3f::UnitX()) * 
-    Eigen::AngleAxis(orientation(1), Eigen::Vector3f::UnitY()) * 
-    Eigen::AngleAxis(orientation(2), Eigen::Vector3f::UnitZ()).toRotationMatrix().transpose();
+  Eigen::Matrix3f R_xyz_body = vio.quat.toRotationMatrix().transpose();
 
   // Calculate the PIDs for the outer and inner loops on XYZ axis
   for (int i = 0; i < 3; i++) {
-    setpoint_velocity_[i] = update_filter(pid_[i][0], setpoint_position_[i] - position[i]);
-    setpoint_orientation_xyz(0) = update_filter(pid_[i][1], setpoint_velocity_(i) - velocity(i));
+    setpoint_velocity_[i] = update_filter(pid_[i][0], setpoint_position_[i] - vio.position[i]);
+    setpoint_orientation_xyz(0) = update_filter(pid_[i][1], setpoint_velocity_(i) -
+      vio.velocity(i));
   }
 
   // lock the mutex to protect our output variable

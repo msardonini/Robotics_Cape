@@ -2,6 +2,7 @@
 #define SRC_FLYMS_INCLUDE_FLYMS_FLYMS_STRUCTS_H_
 
 #include "Eigen/Dense"
+#include "Eigen/Geometry"
 
 /**
  * @brief      The flight mode
@@ -11,6 +12,13 @@ enum class SetpointMode {
   Stabilized = 1,
   Acro = 2,
   Navigation = 3
+};
+
+struct vio_t {
+  EIGEN_MAKE_ALIGNED_OPERATOR_NEW
+  Eigen::Vector3f position;
+  Eigen::Vector3f velocity;
+  Eigen::Quaternionf quat;
 };
 
 typedef struct setpoint_t {
@@ -30,6 +38,7 @@ typedef struct setpoint_t {
 } setpoint_t;
 
 typedef struct state_t {
+  EIGEN_MAKE_ALIGNED_OPERATOR_NEW
   uint64_t timestamp_us;
   uint32_t time_since_trigger_us;
   uint32_t trigger_count;

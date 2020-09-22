@@ -25,6 +25,8 @@ class MavlinkInterface {
   int SendStartCommand();
   int SendShutdownCommand();
 
+  bool GetVioData(vio_t *vio);
+
  private:
   void SerialReadThread();
 
@@ -39,6 +41,10 @@ class MavlinkInterface {
 
   std::thread serial_read_thread_;
   std::mutex serial_send_mutex_;
+
+  std::mutex vio_mutex_;
+  vio_t vio_;
+  bool is_new_vio_data_ = false;
 };
 
 #endif  // SRC_FLYMS_INCLUDE_FLYMS_MAVLINK_INTERFACE_H_

@@ -19,8 +19,7 @@ class PositionController {
   PositionController(const YAML::Node &config_params);
   ~PositionController();
 
-  int ReceiveVio(const Eigen::Vector3f &position,
-  const Eigen::Vector3f &velocity, const Eigen::Vector3f &orientation) ;
+  int ReceiveVio(const vio_t &vio);
 
   int GetSetpoint(Eigen::Vector3f &setpoint_orientation);
 

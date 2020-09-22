@@ -178,7 +178,6 @@ int imu::update() {
   state_body_.trigger_count = trigger_count_;
   trigger_time_mutex_.unlock();
 
-
   /**********************************************************
   *          Unwrap the Yaw value          *
   **********************************************************/
@@ -330,7 +329,6 @@ void imu::updateFusion() {
 
 void imu::GpioThread() {
   int timeout_ms = 1000;
-  uint64_t event_time;
 
   trigger_time_mutex_.lock();
   trigger_time_ = std::chrono::duration_cast<std::chrono::nanoseconds>(std::chrono::system_clock::
@@ -339,6 +337,7 @@ void imu::GpioThread() {
   trigger_time_mutex_.unlock();
 
   while(is_running_.load()) {
+    uint64_t event_time;
     int ret = rc_gpio_poll(1, 25, timeout_ms, &event_time);
 
     if (ret == RC_GPIOEVENT_FALLING_EDGE) {

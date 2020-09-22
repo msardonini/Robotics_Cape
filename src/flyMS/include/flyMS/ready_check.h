@@ -4,7 +4,6 @@
 #include <thread>
 #include <atomic>
 
-
 class ReadyCheck {
  public:
   ReadyCheck();

@@ -108,6 +108,15 @@ int flyMS::FlightCore() {
     }
 
     /************************************************************************
+    *       Check the Mavlink Interface for New Visual Odometry Data
+    ************************************************************************/
+    vio_t vio;
+    if(mavlink_interface_.GetVioData(&vio)) {
+      setpoint_module_.position_controller->ReceiveVio(vio);
+    }
+
+
+    /************************************************************************
     *                          Get Setpoint Data                            *
     ************************************************************************/
     setpoint_module_.getSetpointData(&setpoint_);
@@ -280,13 +289,13 @@ int flyMS::ConsolePrint() {
 //  spdlog::info(" U2: {:2.2f} ",control->u[1]);
 //  spdlog::info(" U3:  {:2.2f} ",control->u[2]);
 //  spdlog::info(" U4: {:2.2f} ",control->u[3]);
- spdlog::info("Aux {:2.1f} ", setpoint_.Aux[0]);
+ // spdlog::info("Aux {:2.1f} ", setpoint_.Aux[0]);
 //  spdlog::info("function: {}",rc_get_dsm_ch_normalized(6));
 //  spdlog::info("num wraps {} ",control->num_wraps);
-  spdlog::info(" Throt {:2.2f} ", setpoint_.throttle);
-  spdlog::info(" Roll_ref {:2.2f} ", setpoint_.euler_ref[0]);
-  spdlog::info(" Pitch_ref {:2.2f} ", setpoint_.euler_ref[1]);
-  spdlog::info(" Yaw_ref {:2.2f} ", setpoint_.euler_ref[2]);
+  // spdlog::info(" Throt {:2.2f} ", setpoint_.throttle);
+  // spdlog::info(" Roll_ref {:2.2f} ", setpoint_.euler_ref[0]);
+  // spdlog::info(" Pitch_ref {:2.2f} ", setpoint_.euler_ref[1]);
+  // spdlog::info(" Yaw_ref {:2.2f} ", setpoint_.euler_ref[2]);
   // spdlog::info("Roll {:1.2f}, Pitch {:1.2f}, Yaw {:2.3f}", imu_data_.euler[0],
   //   imu_data_.euler[1], imu_data_.euler[2]);
 //  spdlog::info(" Mag X {:4.2f}",control->mag[0]);
