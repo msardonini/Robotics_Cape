@@ -84,7 +84,7 @@ template <typename T> class pva_state {
 
  private:
   int index_;
-  std::vector<Eigen::Matrix<T, 9, 1> > data; 
+  std::vector<Eigen::Matrix<T, 9, 1> > data;
 };
 
 class imu {
@@ -119,9 +119,6 @@ class imu {
   ************************************************************************/
   int getImuData(state_t* state);
 
-
-  void calculateDCM(float pitchOffsetDeg, float rollOffsetDeg, float yawOffsetDeg);
-  
   /**
    * @brief      Resets the image synchronization counter
    */
@@ -153,9 +150,6 @@ class imu {
   bool is_initializing_fusion_;
 
   // All of the configurable parameters
-  float pitch_offset_deg_;
-  float roll_offset_deg_;
-  float yaw_offset_deg_;
   bool enable_dmp_ = false;
   bool enable_fusion_ = false;
   bool enable_barometer_ = false;
@@ -166,7 +160,7 @@ class imu {
   state_t state_imu_;
 
   //3x3 DCM for converting between imu and body frame
-  Eigen::Matrix3f imu_to_body_;
+  Eigen::Matrix3f R_imu_body_;
 
   //Struct to get passed to the roboticsCape API for interfacing with the imu
   rc_mpu_data_t imu_data_;

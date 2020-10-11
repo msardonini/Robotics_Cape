@@ -3,6 +3,17 @@
 	Built with StrawsonDesign's Robotics Cape Library http://strawsondesign.com/#!manual-install.
 	
 
+## Allow access to enable real time threads
+In order to run the flyMS program you need to allow the "debian" user (or whatever user you are using) to spawn real time threads. You can do this by adding these lines to the file "/etc/security/limits.conf"
+
+```
+debian hard rtprio 99
+debian soft rtprio 99
+```
+
+A reboot is required after making this change
+
+
 ## Prereq's
 ** Note that these prereq's are installed automatically with the install.sh script
 

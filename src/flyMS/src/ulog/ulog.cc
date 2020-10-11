@@ -27,17 +27,15 @@ int ULog::InitUlog(const std::string &log_folder) {
   // Writes the header to the file
   WriteHeader();
 
-  std::string flight_msg_format("flight:uint64_t timestamp;float[3] RPY;float[3] gyro;"
-    "float[3] gyro_filt;float[3] accel;float[4] motor_cmds;float[4] u;float[3] RPY_ref;");
-  std::string gps_msg_format("gps:uint64_t timestamp;double[3] LLA;");
-
   // Write the file formats to the beginning of the ulog file
-  WriteFormats(flight_msg_format);
-  WriteFormats(gps_msg_format);
+  WriteFormats(ULogFlightMsg::FORMAT);
+  WriteFormats(ULogGpsMsg::FORMAT);
+  WriteFormats(ULogPosCntrlMsg::FORMAT);
 
   // Give the Message Id's an associated name
-  WriteAddLog(FLIGHT_MSG_ID, "flight");
-  WriteAddLog(GPS_MSG_ID, "gps");
+  WriteAddLog(ULogFlightMsg::ID(), "flight");
+  WriteAddLog(ULogGpsMsg::ID(), "gps");
+  WriteAddLog(ULogPosCntrlMsg::ID(), "pos_cntrl");
 
   return 0;
 }

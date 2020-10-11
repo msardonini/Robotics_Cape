@@ -184,8 +184,7 @@ void MavlinkInterface::SerialReadThread() {
             vio_.position << vio.position[0], vio.position[1], vio.position[2];
             vio_.velocity << vio.velocity[0], vio.velocity[1], vio.velocity[2];
             vio_.quat = Eigen::Quaternion(vio.quat[0], vio.quat[1], vio.quat[2], vio.quat[3]);
-            spdlog::info("new vio data {}, {}, {}, {}!!", vio.quat[0], vio.quat[1], vio.quat[2], vio.quat[3]);
-            std::cout << vio_.position.transpose() << std::endl;
+            // spdlog::info("new vio data {}, {}, {}, {}!!", vio.position[0], vio.position[1], vio.position[2], vio.position[3]);
             is_new_vio_data_ = true;
             break;
           }

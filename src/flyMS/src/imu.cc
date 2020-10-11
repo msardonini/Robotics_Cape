@@ -30,16 +30,13 @@ imu::imu(const YAML::Node &input_params) :
   delta_t_ = input_params["delta_t"].as<float>();
   // Parse the config parameters
   YAML::Node imu_params = input_params["imu_params"];
-  pitch_offset_deg_ = imu_params["pitch_offset_deg"].as<float>();
-  roll_offset_deg_ = imu_params["roll_offset_deg"].as<float>();
-  yaw_offset_deg_ = imu_params["yaw_offset_deg"].as<float>();
-
   enable_dmp_ = imu_params["enable_dmp"].as<bool>();
   enable_fusion_ = imu_params["enable_fusion"].as<bool>();
   enable_barometer_ = imu_params["enable_barometer"].as<bool>();
 
-  //Calculate the DCM with out offsets
-  calculateDCM(pitch_offset_deg_, roll_offset_deg_, yaw_offset_deg_);
+  // Load the transform from imu to body frame
+  R_imu_body_ = Eigen::Matrix<float, 3, 3, Eigen::RowMajor>(imu_params["R_imu_body"].as<std::array<
+    float, 9> >().data());
 
 
   // Register the GPIO pin that will tell us when images are being captured
@@ -65,21 +62,6 @@ imu::~imu() {
   }
   // spdlog::info("imu Destructor\n");
 }
-
-void imu::calculateDCM(float pitchOffsetDeg, float rollOffsetDeg, float yawOffsetDeg) {
-  //Make the Direcion Cosine Matric DCM from the input offsets from the config file
-  float cR1 = cosf(pitchOffsetDeg * D2Rf);
-  float sR1 = sinf(pitchOffsetDeg * D2Rf);
-  float cP1 = cosf(rollOffsetDeg * D2Rf);
-  float sP1 = sinf(rollOffsetDeg * D2Rf);
-  float cY1 = cosf(yawOffsetDeg * D2Rf);
-  float sY1 = sinf(yawOffsetDeg * D2Rf);
-
-  imu_to_body_ << cR1*cY1, -cP1*sY1 + sP1*sR1*cY1 ,  sP1*sY1 + cP1*sR1*cY1,
-    cR1*sY1,  cP1*cY1 + sP1*sR1*sY1, -sP1*cY1 + cP1*sR1*sY1, -sR1, sP1*cR1,
-    cP1*cR1;
-}
-
 
 int imu::initializeImu() {
   //Start the barometer
@@ -119,25 +101,19 @@ int imu::initializeImu() {
     conf.orient = ORIENTATION_Z_UP;
 
     //Check our DCM for the proper orientation config parameter
-    float thresh = 0.95f;
-    if (imu_to_body_(0, 2) > thresh) {
+    const float thresh = 0.95f;
+    if (R_imu_body_(0, 2) > thresh) {
       conf.orient = ORIENTATION_X_UP;
-      calculateDCM(0.0f, roll_offset_deg_, 0.0f);
-    } else if (imu_to_body_(0, 2) < -thresh) {
+    } else if (R_imu_body_(0, 2) < -thresh) {
       conf.orient = ORIENTATION_X_DOWN;
-      calculateDCM(0.0f, roll_offset_deg_, 0.0f);
-    } else if (imu_to_body_(1, 2) > thresh) {
+    } else if (R_imu_body_(1, 2) > thresh) {
       conf.orient = ORIENTATION_Y_UP;
-      calculateDCM(pitch_offset_deg_, 0.0f, 0.0f);
-    } else if (imu_to_body_(1, 2) < -thresh) {
+    } else if (R_imu_body_(1, 2) < -thresh) {
       conf.orient = ORIENTATION_Y_DOWN;
-      calculateDCM(pitch_offset_deg_, 0.0f, 0.0f);
-    } else if (imu_to_body_(2, 2) > thresh) {
+    } else if (R_imu_body_(2, 2) > thresh) {
       conf.orient = ORIENTATION_Z_UP;
-      calculateDCM(0.0f, 0.0f, yaw_offset_deg_);
-    } else if (imu_to_body_(2, 2) < -thresh) {
+    } else if (R_imu_body_(2, 2) < -thresh) {
       conf.orient = ORIENTATION_Z_DOWN;
-      calculateDCM(0.0f, 0.0f, yaw_offset_deg_);
     } else {
       spdlog::error("Error! In order to be in DMP mode, "
         "one of the X,Y,Z vectors on the IMU needs to be parallel with Gravity\n");
@@ -249,11 +225,11 @@ void imu::read_transform_imu() {
   }
 
   //Convert from IMU frame to body Frame
-  state_body_.mag = imu_to_body_ * state_imu_.mag;
-  state_body_.gyro = imu_to_body_ * state_imu_.gyro;
-  state_body_.accel = imu_to_body_ * state_imu_.accel;
-  state_body_.euler = imu_to_body_ * state_body_.euler;
-  state_body_.eulerRate = imu_to_body_ * state_body_.eulerRate;
+  state_body_.mag = R_imu_body_ * state_imu_.mag;
+  state_body_.gyro = R_imu_body_ * state_imu_.gyro;
+  state_body_.accel = R_imu_body_ * state_imu_.accel;
+  state_body_.euler = R_imu_body_ * state_body_.euler;
+  state_body_.eulerRate = R_imu_body_ * state_body_.eulerRate;
 }
 
 

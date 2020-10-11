@@ -14,10 +14,13 @@ flyMSParams:
         roll_offset_deg: 0.000000
         pitch_offset_deg: 0.000000
         yaw_offset_deg: 90.000000
+        R_imu_body: [0, 1, 0,
+                    -1, 0, 0,
+                     0, 0, 1]
     controller:
         pid_LPF_const_sec: 0.1
         roll_PID_outer: [6.0, 0.0, 0.0]
-        roll_PID_inner: [0.00550, 0.010000, 0.001]
+        roll_PID_inner: [0.00450, 0.010000, 0.001]
         pitch_PID_outer: [6.0, 0.0, 0.0]
         pitch_PID_inner: [0.01650, 0.010000, 0.003]
         yaw_PID: [0.50000, 0.050000, 0.050000]
@@ -26,12 +29,12 @@ flyMSParams:
         headless_mode: false
         max_setpoints_stabilized: [0.8, 0.8, 3.000000]
         max_setpoints_acro: [0.8, 0.8, 3.000000]
-        throttle_limits: [0.300000, 0.750000]
+        throttle_limits: [0.350000, 0.750000]
     position_controller:
-        pid_coeffs_x_outer: [0.0, 0.0, 0.0]
-        pid_coeffs_x_inner: [0.0, 0.0, 0.0]
-        pid_coeffs_y_outer: [0.0, 0.0, 0.0]
-        pid_coeffs_y_inner: [0.0, 0.0, 0.0]
+        pid_coeffs_x_outer: [0.2, 0.0, 0.0]
+        pid_coeffs_x_inner: [1.0, 0.0, 0.0]
+        pid_coeffs_y_outer: [0.2, 0.0, 0.0]
+        pid_coeffs_y_inner: [1.0, 0.0, 0.0]
         pid_coeffs_z_outer: [0.0, 0.0, 0.0]
         pid_coeffs_z_inner: [0.0, 0.0, 0.0]
         RPY_saturation_limits: [0.3, 0.3, 0.3]

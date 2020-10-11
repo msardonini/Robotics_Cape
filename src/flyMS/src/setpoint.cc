@@ -10,7 +10,6 @@
 
 #include "spdlog/spdlog.h"
 
-
 setpoint::setpoint(const YAML::Node &config_params) :
   ready_to_send_(false),
   setpoint_mode_(SetpointMode::Stabilized) {
@@ -60,9 +59,7 @@ bool setpoint::getSetpointData(setpoint_t* _setpoint) {
       1. Direct from remote flyMSData
       2. Calculated values from GPS navigation for autonomous flight
 */
-
 int setpoint::SetpointManager() {
-
   while (rc_get_state() != EXITING) {
     /**********************************************************
     *           If there is new dsm2 data read it in       *
@@ -107,11 +104,11 @@ int setpoint::HandleRcData() {
   // Set roll/pitch reference value
   // DSM2 Receiver is inherently positive to the left
   if (flight_mode_ == 1) { // Stabilized Flight Mode
-    setpoint_data_.euler_ref[0] = dsm2_data_[1] * max_setpoints_stabilized_[0];
-    setpoint_data_.euler_ref[1] = -dsm2_data_[2] * max_setpoints_stabilized_[1];
+    setpoint_data_.euler_ref[0] = -dsm2_data_[1] * max_setpoints_stabilized_[0];
+    setpoint_data_.euler_ref[1] = dsm2_data_[2] * max_setpoints_stabilized_[1];
   } else if (flight_mode_ == 2) {
-    setpoint_data_.euler_ref[0] = dsm2_data_[1] * max_setpoints_acro_[0];
-    setpoint_data_.euler_ref[1] = -dsm2_data_[2] * max_setpoints_acro_[1];
+    setpoint_data_.euler_ref[0] = -dsm2_data_[1] * max_setpoints_acro_[0];
+    setpoint_data_.euler_ref[1] = dsm2_data_[2] * max_setpoints_acro_[1];
   }
   // DSM2 Receiver is inherently positive upwards
 

@@ -62,14 +62,48 @@ struct ULogFlightMsg {
   float motor_cmds[4];
   float u[4];
   float RPY_ref[3];
+
+  static constexpr char FORMAT[] = "flight:uint64_t timestamp;float[3] RPY;float[3] gyro;float[3] "
+    "gyro_filt;float[3] accel;float[4] motor_cmds;float[4] u;float[3] RPY_ref;";
+  static constexpr uint16_t ID() {return 0x0000;};
 }__attribute__((packed));
-constexpr uint16_t FLIGHT_MSG_ID = 0x0000;
 
 struct ULogGpsMsg {
-  uint64_t timestamp;
+  // Default Constructor
+  ULogGpsMsg() {}
+
+  // Data Constructor
+  ULogGpsMsg(uint64_t _timestamp_us, double _LLA[3]) : timestamp_us(_timestamp_us),
+    LLA{_LLA[0], _LLA[1], _LLA[2]} {}
+
+  // Data Members
+  uint64_t timestamp_us;
   double LLA[3];
+
+  static constexpr char FORMAT[] = "gps:uint64_t timestamp;double[3] LLA;";
+  static constexpr uint16_t ID() {return 0x0001;};
 }__attribute__((packed));
-constexpr uint16_t GPS_MSG_ID = 0x0001;
+
+struct ULogPosCntrlMsg {
+  ULogPosCntrlMsg(uint16_t _timestamp_us, float _position[3], float _velocity[3], float _quat[4],
+    float _command_RPWT[4]) :
+    timestamp(_timestamp_us),
+    position{_position[0], _position[1], _position[2]},
+    velocity{_velocity[0], _velocity[1], _velocity[2]},
+    quat{_quat[0], _quat[1], _quat[2], _quat[3]},
+    command_RPWT{_command_RPWT[0], _command_RPWT[1], _command_RPWT[2], _command_RPWT[3]} {}
+
+  // Data Members
+  uint64_t timestamp;
+  float position[3];
+  float velocity[3];
+  float quat[4];
+  float command_RPWT[4];
+
+  static constexpr char FORMAT[] = "pos_cntrl:uint64_t timestamp;float[3] position;float[3] "
+    "velocity;float[4] quat;float[4] command;";
+  static constexpr uint16_t ID() {return 0x0002;};
+}__attribute__((packed));
 
 typedef enum class ULogMessageType {
   FORMAT = 'F',
@@ -188,6 +222,7 @@ class ULog {
     // Populate the header
     ulog_message_header_s header;
     header.msg_size = write_size - ULOG_MSG_HEADER_LEN;
+
     header.msg_type = (char) ULogMessageType::DATA;
 
     // Populate the header

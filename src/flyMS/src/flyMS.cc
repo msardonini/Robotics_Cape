@@ -76,17 +76,13 @@ flyMS::~flyMS() {
 }
 
 int flyMS::FlightCore() {
-  // Local Variables
-  uint64_t timeStart;
-  uint64_t timeFinish;
-
   rc_set_state(RUNNING);
 
   while (rc_get_state() != EXITING) {
     /******************************************************************
     *           Grab the time for Periphal Apps and Logs              *
     ******************************************************************/
-    timeStart = GetTimeMicroseconds();
+    uint64_t timeStart = GetTimeMicroseconds();
     // printf("time diff start %" PRIu64 "\n", (GetTimeMicroseconds() - timeStart));
 
     /******************************************************************
@@ -111,10 +107,23 @@ int flyMS::FlightCore() {
     *       Check the Mavlink Interface for New Visual Odometry Data
     ************************************************************************/
     vio_t vio;
+    Eigen::Vector3f setpoint_orientation;
     if(mavlink_interface_.GetVioData(&vio)) {
       setpoint_module_.position_controller->ReceiveVio(vio);
-    }
+      setpoint_module_.position_controller->GetSetpoint(setpoint_orientation);
 
+      float log_setpoint[4] = {setpoint_orientation(0), setpoint_orientation(1),
+        setpoint_orientation(2), 0};
+       float quat_setpoint[4] = {vio.quat.w(), vio.quat.x(), vio.quat.y(), vio.quat.z()};
+
+
+      spdlog::info("new vio data {}, {}, {}, {}!!", log_setpoint[0], log_setpoint[1],
+        log_setpoint[2], log_setpoint[3]);
+
+      // Log the VIO Data
+      ULogPosCntrlMsg vio_log_msg(timeStart, vio.position.data(), vio.velocity.data(), quat_setpoint, log_setpoint);
+      ulog_.WriteFlightData<ULogPosCntrlMsg>(vio_log_msg, ULogPosCntrlMsg::ID());
+    }
 
     /************************************************************************
     *                          Get Setpoint Data                            *
@@ -260,9 +269,9 @@ int flyMS::FlightCore() {
     ************************************************************************/
     struct ULogFlightMsg flight_msg(GetTimeMicroseconds(), imu_data_, setpoint_, u_,
       u_euler_);
-    ulog_.WriteFlightData<struct ULogFlightMsg>(flight_msg, FLIGHT_MSG_ID);
+    ulog_.WriteFlightData<struct ULogFlightMsg>(flight_msg, ULogFlightMsg::ID());
 
-    timeFinish = GetTimeMicroseconds();
+    uint64_t timeFinish = GetTimeMicroseconds();
     uint64_t sleep_time = static_cast<uint64_t>(delta_t_*1.0E6) - (timeFinish - timeStart);
 
     // Check to make sure the elapsed time wasn't greater than time allowed.
@@ -276,9 +285,8 @@ int flyMS::FlightCore() {
 }
 
 uint64_t flyMS::GetTimeMicroseconds() {
-  struct timespec tv;
-  clock_gettime(CLOCK_MONOTONIC, &tv);
-  return (uint64_t)tv.tv_sec * 1E6 + (uint64_t)tv.tv_nsec / 1E3;
+  return std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::steady_clock::now().time_since_epoch()).count();
+  // return (uint64_t)tv.tv_sec * 1E6 + (uint64_t)tv.tv_nsec / 1E3;
 }
 
 

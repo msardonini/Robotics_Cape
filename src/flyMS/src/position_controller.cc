@@ -1,5 +1,6 @@
 #include "flyMS/position_controller.h"
 
+#include <iostream>
 
 PositionController::PositionController(const YAML::Node &config_params) {
   delta_t_ = config_params["delta_t"].as<float>();
@@ -46,8 +47,9 @@ int PositionController::ReceiveVio(const vio_t &vio) {
   // Calculate the PIDs for the outer and inner loops on XYZ axis
   for (int i = 0; i < 3; i++) {
     setpoint_velocity_[i] = update_filter(pid_[i][0], setpoint_position_[i] - vio.position[i]);
-    setpoint_orientation_xyz(0) = update_filter(pid_[i][1], setpoint_velocity_(i) -
+    setpoint_orientation_xyz(i) = update_filter(pid_[i][1], setpoint_velocity_(i) -
       vio.velocity(i));
+
   }
 
   // lock the mutex to protect our output variable
@@ -55,6 +57,16 @@ int PositionController::ReceiveVio(const vio_t &vio) {
 
   // Convert from rotations about XYZ axis to pitch/roll/yaw in body frame
   setpoint_orientation_ = R_xyz_body * setpoint_orientation_xyz;
+
+  //Debug
+  if (0 == 0 ) {
+    std::cerr << " pos err " << setpoint_position_[0] - vio.position[0] << std::endl;
+    std::cerr << " vel err " << setpoint_velocity_(0) - vio.velocity(0) << std::endl;
+    std::cerr << " cmd " << setpoint_orientation_xyz(0) << std::endl;
+    std::cerr << " cmd rotated " << setpoint_orientation_(0) << std::endl;
+    std::cerr << " R " << R_xyz_body << std::endl;
+  }
+
 
   // Apply a saturation filter to keep the behavior in check
   for (int i = 0; i < 3; i++) {
@@ -70,7 +82,6 @@ int PositionController::GetSetpoint(Eigen::Vector3f &setpoint_orientation) {
   setpoint_orientation = setpoint_orientation_;
   return 0;
 }
-
 
 int PositionController::SetReferencePosition(const Eigen::Vector3f &position) {
   setpoint_position_ = position;
