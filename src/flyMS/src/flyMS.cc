@@ -108,20 +108,18 @@ int flyMS::FlightCore() {
     ************************************************************************/
     vio_t vio;
     Eigen::Vector3f setpoint_orientation;
+    float vio_yaw;
     if(mavlink_interface_.GetVioData(&vio)) {
       setpoint_module_.position_controller->ReceiveVio(vio);
-      setpoint_module_.position_controller->GetSetpoint(setpoint_orientation);
+      setpoint_module_.position_controller->GetSetpoint(setpoint_orientation, vio_yaw);
 
-      float log_setpoint[4] = {setpoint_orientation(0), setpoint_orientation(1),
-        setpoint_orientation(2), 0};
+      float log_setpoint[4] = {setpoint_orientation(0), setpoint_orientation(1), vio_yaw,
+        setpoint_orientation(2)};
        float quat_setpoint[4] = {vio.quat.w(), vio.quat.x(), vio.quat.y(), vio.quat.z()};
 
-
-      spdlog::info("new vio data {}, {}, {}, {}!!", log_setpoint[0], log_setpoint[1],
-        log_setpoint[2], log_setpoint[3]);
-
       // Log the VIO Data
-      ULogPosCntrlMsg vio_log_msg(timeStart, vio.position.data(), vio.velocity.data(), quat_setpoint, log_setpoint);
+      ULogPosCntrlMsg vio_log_msg(timeStart, vio.position.data(), vio.velocity.data(),
+        quat_setpoint, log_setpoint);
       ulog_.WriteFlightData<ULogPosCntrlMsg>(vio_log_msg, ULogPosCntrlMsg::ID());
     }
 
@@ -132,9 +130,30 @@ int flyMS::FlightCore() {
 
     // If we have commanded a switch in Aux, activate the perception system
     if (setpoint_.Aux[0] < 0.1 && setpoint_.Aux[1] > 0.9) {
+      // Transition to start flyStereo
       mavlink_interface_.SendStartCommand();
+
+      // Assume that the current throttle value will be an average value to keep altitude
+      standing_throttle_ = setpoint_.throttle;
+      initial_yaw_ = imu_data_.euler[2];
+
+      // Make sure our first setpoint is zero
+      flyStereo_running_ = true;
     } else if (setpoint_.Aux[0] > 0.9 && setpoint_.Aux[1] < 0.1) {
+      flyStereo_running_ = false;
       mavlink_interface_.SendShutdownCommand();
+
+      // Reset the filters in the Position controller
+      setpoint_module_.position_controller->ResetController();
+    }
+
+    // Apply orientation commands from the position controller if running
+    if (flyStereo_running_) {
+      setpoint_.euler_ref[0] = setpoint_orientation(0);
+      setpoint_.euler_ref[1] = setpoint_orientation(1);
+
+      // setpoint_.throttle = setpoint_orientation(2) + standing_throttle_;
+      // setpoint_.euler[2] = vio_yaw - imu_data_.euler[2] + initial_yaw_;
     }
 
     /************************************************************************
@@ -230,10 +249,10 @@ int flyMS::FlightCore() {
     *                           CW 3   4 CCW
     *
     ************************************************************************/
-    u_[0] = setpoint_.throttle - u_euler_[0] + u_euler_[1] - u_euler_[2];
-    u_[1] = setpoint_.throttle + u_euler_[0] + u_euler_[1] + u_euler_[2];
-    u_[2] = setpoint_.throttle - u_euler_[0] - u_euler_[1] + u_euler_[2];
-    u_[3] = setpoint_.throttle + u_euler_[0] - u_euler_[1] - u_euler_[2];
+    u_[0] = setpoint_.throttle + u_euler_[0] - u_euler_[1] - u_euler_[2];
+    u_[1] = setpoint_.throttle - u_euler_[0] - u_euler_[1] + u_euler_[2];
+    u_[2] = setpoint_.throttle + u_euler_[0] + u_euler_[1] + u_euler_[2];
+    u_[3] = setpoint_.throttle - u_euler_[0] + u_euler_[1] - u_euler_[2];
 
     /************************************************************************
     *             Check Output Ranges, if outside, adjust                 *
@@ -300,10 +319,8 @@ int flyMS::ConsolePrint() {
  // spdlog::info("Aux {:2.1f} ", setpoint_.Aux[0]);
 //  spdlog::info("function: {}",rc_get_dsm_ch_normalized(6));
 //  spdlog::info("num wraps {} ",control->num_wraps);
-  // spdlog::info(" Throt {:2.2f} ", setpoint_.throttle);
-  // spdlog::info(" Roll_ref {:2.2f} ", setpoint_.euler_ref[0]);
-  // spdlog::info(" Pitch_ref {:2.2f} ", setpoint_.euler_ref[1]);
-  // spdlog::info(" Yaw_ref {:2.2f} ", setpoint_.euler_ref[2]);
+//  spdlog::info(" Throt {:2.2f}, Roll_ref {:2.2f}, Pitch_ref {:2.2f}, Yaw_ref {:2.2f} ",
+      // setpoint_.throttle, setpoint_.euler_ref[0], setpoint_.euler_ref[1], setpoint_.euler_ref[2]);
   // spdlog::info("Roll {:1.2f}, Pitch {:1.2f}, Yaw {:2.3f}", imu_data_.euler[0],
   //   imu_data_.euler[1], imu_data_.euler[2]);
 //  spdlog::info(" Mag X {:4.2f}",control->mag[0]);
@@ -368,7 +385,7 @@ std::string flyMS::GetLogDir(const std::string &log_location) {
 }
 
 int flyMS::InitializeSpdlog(const std::string &log_dir) {
-  int max_bytes = 1048576 * 50;  // Max 20 MB
+  int max_bytes = 1048576 * 20;  // Max 20 MB
   int max_files = 20;
 
   std::vector<spdlog::sink_ptr> sinks;

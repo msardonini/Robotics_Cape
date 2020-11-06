@@ -64,6 +64,11 @@ class flyMS {
   // Flag for the first iteration
   bool first_iteration_;
 
+  // Variables for working with flyStereo
+  bool flyStereo_running_ = false;
+  float standing_throttle_ = 0.0f;
+  float initial_yaw_ = 0.0f;
+
   // Counter for number of timestamps at min throttle, used to detect landing
   // and reset the integrators in the PID controllers
   int integrator_reset_;

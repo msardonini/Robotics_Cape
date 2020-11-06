@@ -38,7 +38,6 @@ imu::imu(const YAML::Node &input_params) :
   R_imu_body_ = Eigen::Matrix<float, 3, 3, Eigen::RowMajor>(imu_params["R_imu_body"].as<std::array<
     float, 9> >().data());
 
-
   // Register the GPIO pin that will tell us when images are being captured
   rc_gpio_init_event(1, 25, 0, GPIOEVENT_REQUEST_FALLING_EDGE);
 
@@ -136,7 +135,7 @@ int imu::getImuData(state_t* state) {
   return 0;
 }
 
-
+  std::chrono::time_point<std::chrono::system_clock> time_end;
 int imu::update() {
   /**********************************************************
   *        Read and Translate the Raw IMU Data
@@ -153,6 +152,12 @@ int imu::update() {
     (trigger_time_ / 1E3)));
   state_body_.trigger_count = trigger_count_;
   trigger_time_mutex_.unlock();
+
+
+  // spdlog::info("fps: {}", 1.0 / static_cast<std::chrono::duration<double> >
+  //   ((std::chrono::system_clock::now() - time_end)).count());
+  // time_end = std::chrono::system_clock::now();
+
 
   /**********************************************************
   *          Unwrap the Yaw value          *

@@ -85,7 +85,7 @@ struct ULogGpsMsg {
 }__attribute__((packed));
 
 struct ULogPosCntrlMsg {
-  ULogPosCntrlMsg(uint16_t _timestamp_us, float _position[3], float _velocity[3], float _quat[4],
+  ULogPosCntrlMsg(uint64_t _timestamp_us, float _position[3], float _velocity[3], float _quat[4],
     float _command_RPWT[4]) :
     timestamp(_timestamp_us),
     position{_position[0], _position[1], _position[2]},

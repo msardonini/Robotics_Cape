@@ -11,40 +11,35 @@ flyMSParams:
         enable_barometer: false
         enable_dmp: true
         enable_fusion: false
-        roll_offset_deg: 0.000000
-        pitch_offset_deg: 0.000000
-        yaw_offset_deg: 90.000000
         R_imu_body: [0, 1, 0,
                     -1, 0, 0,
                      0, 0, 1]
     controller:
         pid_LPF_const_sec: 0.1
-        roll_PID_outer: [6.0, 0.0, 0.0]
-        roll_PID_inner: [0.00450, 0.010000, 0.001]
-        pitch_PID_outer: [6.0, 0.0, 0.0]
-        pitch_PID_inner: [0.01650, 0.010000, 0.003]
-        yaw_PID: [0.50000, 0.050000, 0.050000]
+        roll_PID_outer: [6.0, 0.5, 0.0]
+        roll_PID_inner: [0.0049, 0.001, 0.002]
+        pitch_PID_outer: [6.0, 0.5, 0.0]
+        pitch_PID_inner: [0.016, 0.001, 0.003]
+        yaw_PID: [0.5, 0.005, 0.05]
         max_control_effort: [0.30, 0.30, 0.25]
     setpoint:
         headless_mode: false
-        max_setpoints_stabilized: [0.8, 0.8, 3.000000]
-        max_setpoints_acro: [0.8, 0.8, 3.000000]
-        throttle_limits: [0.350000, 0.750000]
+        max_setpoints_stabilized: [0.8, 0.8, 3.0]
+        max_setpoints_acro: [0.8, 0.8, 3.0]
+        throttle_limits: [0.4, 0.75]
     position_controller:
-        pid_coeffs_x_outer: [0.2, 0.0, 0.0]
-        pid_coeffs_x_inner: [1.0, 0.0, 0.0]
-        pid_coeffs_y_outer: [0.2, 0.0, 0.0]
-        pid_coeffs_y_inner: [1.0, 0.0, 0.0]
-        pid_coeffs_z_outer: [0.0, 0.0, 0.0]
-        pid_coeffs_z_inner: [0.0, 0.0, 0.0]
+        pid_coeffs_x_outer: [0.25, 0.0, 0.0]
+        pid_coeffs_x_inner: [0.1, 0.0, 0.01]
+        pid_coeffs_y_outer: [0.25, 0.0, 0.01]
+        pid_coeffs_y_inner: [0.1, 0.0, 0.0]
+        pid_coeffs_z_outer: [0.5, 0.0, 0.0]
+        pid_coeffs_z_inner: [0.05, 0.0, 0.0]
         RPY_saturation_limits: [0.3, 0.3, 0.3]
     filters:
         # elliptic filter 10th order 0.25 dB passband ripple 80 dB min Cutoff 0.8 cutoff frq
-        imu_lpf_num: [0.156832694556443,   1.427422676153595,   5.976558883724950,
-            15.145889466394246,  25.712846449561717,  30.545847498393631,
-            25.712846449561738,  15.145889466394268,   5.976558883724963,
-            1.427422676153600,   0.156832694556444]
-        imu_lpf_den: [1.0,   5.633261445575803,  15.452644550671394,
-           26.460962250802702,  31.096445930527029,  26.068432134671180,
-           15.818327061618843,   6.914360323080047,   2.147477269285763,
-           0.453950599328629,   0.058793907152724]
+        imu_lpf_num: [0.156832694556443, 1.427422676153595, 5.976558883724950,
+            15.145889466394246, 25.712846449561717, 30.545847498393631, 25.712846449561738,
+            15.145889466394268, 5.976558883724963, 1.427422676153600, 0.156832694556444]
+        imu_lpf_den: [1.0, 5.633261445575803, 15.452644550671394,
+            26.460962250802702, 31.096445930527029, 26.068432134671180, 15.818327061618843,
+            6.914360323080047, 2.147477269285763, 0.453950599328629, 0.058793907152724]
