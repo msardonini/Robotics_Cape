@@ -17,6 +17,7 @@
 #include "spdlog/spdlog.h"
 #include "spdlog/sinks/stdout_color_sinks.h"
 #include "spdlog/sinks/rotating_file_sink.h"
+#include "spdlog/fmt/ostr.h"
 
 flyMS::flyMS(const YAML::Node &config_params) :
   first_iteration_(true),
@@ -121,6 +122,7 @@ int flyMS::FlightCore() {
       ULogPosCntrlMsg vio_log_msg(timeStart, vio.position.data(), vio.velocity.data(),
         quat_setpoint, log_setpoint);
       ulog_.WriteFlightData<ULogPosCntrlMsg>(vio_log_msg, ULogPosCntrlMsg::ID());
+      flyStereo_streaming_data_ = true;
     }
 
     /************************************************************************
@@ -141,19 +143,27 @@ int flyMS::FlightCore() {
       flyStereo_running_ = true;
     } else if (setpoint_.Aux[0] > 0.9 && setpoint_.Aux[1] < 0.1) {
       flyStereo_running_ = false;
+      flyStereo_streaming_data_ = false;
       mavlink_interface_.SendShutdownCommand();
 
       // Reset the filters in the Position controller
       setpoint_module_.position_controller->ResetController();
+      setpoint_orientation = Eigen::Vector3f::Zero();
+      position_generator_.ResetCounter();
     }
 
     // Apply orientation commands from the position controller if running
-    if (flyStereo_running_) {
+    if (flyStereo_running_ && flyStereo_streaming_data_) {
       setpoint_.euler_ref[0] = setpoint_orientation(0);
       setpoint_.euler_ref[1] = setpoint_orientation(1);
 
-      // setpoint_.throttle = setpoint_orientation(2) + standing_throttle_;
+      setpoint_.throttle = setpoint_orientation(2) + standing_throttle_;
       // setpoint_.euler[2] = vio_yaw - imu_data_.euler[2] + initial_yaw_;
+
+      // Apply the position setpoint
+      Eigen::Vector3f pos_ref;
+      position_generator_.GetPosition(&pos_ref);
+      setpoint_module_.position_controller->SetReferencePosition(pos_ref);
     }
 
     /************************************************************************
@@ -319,8 +329,8 @@ int flyMS::ConsolePrint() {
  // spdlog::info("Aux {:2.1f} ", setpoint_.Aux[0]);
 //  spdlog::info("function: {}",rc_get_dsm_ch_normalized(6));
 //  spdlog::info("num wraps {} ",control->num_wraps);
-//  spdlog::info(" Throt {:2.2f}, Roll_ref {:2.2f}, Pitch_ref {:2.2f}, Yaw_ref {:2.2f} ",
-      // setpoint_.throttle, setpoint_.euler_ref[0], setpoint_.euler_ref[1], setpoint_.euler_ref[2]);
+  spdlog::info(" Throt {:2.2f}, Roll_ref {:2.2f}, Pitch_ref {:2.2f}, Yaw_ref {:2.2f} ",
+    setpoint_.throttle, setpoint_.euler_ref[0], setpoint_.euler_ref[1], setpoint_.euler_ref[2]);
   // spdlog::info("Roll {:1.2f}, Pitch {:1.2f}, Yaw {:2.3f}", imu_data_.euler[0],
   //   imu_data_.euler[1], imu_data_.euler[2]);
 //  spdlog::info(" Mag X {:4.2f}",control->mag[0]);

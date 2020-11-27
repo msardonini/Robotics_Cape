@@ -47,7 +47,6 @@ PositionController::~PositionController() {
 
 int PositionController::ReceiveVio(const vio_t &vio) {
   Eigen::Vector3f setpoint_orientation_xyz;
-
   // Calculate the PIDs for the outer and inner loops on XYZ axis
   for (int i = 0; i < 3; i++) {
     setpoint_velocity_[i] = update_filter(pid_[i][0], setpoint_position_[i] - vio.position[i]);

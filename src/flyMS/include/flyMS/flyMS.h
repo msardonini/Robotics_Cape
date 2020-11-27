@@ -27,6 +27,7 @@
 #include "flyMS/setpoint.h"
 #include "flyMS/flyMS_types.h"
 #include "flyMS/mavlink_interface.h"
+#include "flyMS/position_generator.h"
 
 class flyMS {
  public:
@@ -66,8 +67,10 @@ class flyMS {
 
   // Variables for working with flyStereo
   bool flyStereo_running_ = false;
+  bool flyStereo_streaming_data_ = false;
   float standing_throttle_ = 0.0f;
   float initial_yaw_ = 0.0f;
+  PositionGenerator position_generator_;
 
   // Counter for number of timestamps at min throttle, used to detect landing
   // and reset the integrators in the PID controllers
