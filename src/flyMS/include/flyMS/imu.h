@@ -161,6 +161,8 @@ class imu {
 
   //3x3 DCM for converting between imu and body frame
   Eigen::Matrix3f R_imu_body_;
+  //3x3 DCM for converting between imu and body frame for DMP
+  Eigen::Matrix3f R_imu_body_dmp_;
 
   //Struct to get passed to the roboticsCape API for interfacing with the imu
   rc_mpu_data_t imu_data_;

@@ -37,6 +37,7 @@ imu::imu(const YAML::Node &input_params) :
   // Load the transform from imu to body frame
   R_imu_body_ = Eigen::Matrix<float, 3, 3, Eigen::RowMajor>(imu_params["R_imu_body"].as<std::array<
     float, 9> >().data());
+  R_imu_body_dmp_ = R_imu_body_;
 
   // Register the GPIO pin that will tell us when images are being captured
   rc_gpio_init_event(1, 25, 0, GPIOEVENT_REQUEST_FALLING_EDGE);
@@ -113,6 +114,11 @@ int imu::initializeImu() {
       conf.orient = ORIENTATION_Z_UP;
     } else if (R_imu_body_(2, 2) < -thresh) {
       conf.orient = ORIENTATION_Z_DOWN;
+      Eigen::Matrix3f dmp_conv;
+      dmp_conv << 1, 0, 0,
+                  0,-1, 0,
+                  0, 0,-1;
+      R_imu_body_dmp_ = dmp_conv * R_imu_body_dmp_;
     } else {
       spdlog::error("Error! In order to be in DMP mode, "
         "one of the X,Y,Z vectors on the IMU needs to be parallel with Gravity\n");
@@ -233,8 +239,8 @@ void imu::read_transform_imu() {
   state_body_.mag = R_imu_body_ * state_imu_.mag;
   state_body_.gyro = R_imu_body_ * state_imu_.gyro;
   state_body_.accel = R_imu_body_ * state_imu_.accel;
-  state_body_.euler = R_imu_body_ * state_body_.euler;
-  state_body_.eulerRate = R_imu_body_ * state_body_.eulerRate;
+  state_body_.euler = R_imu_body_dmp_ * state_body_.euler;
+  state_body_.eulerRate = R_imu_body_dmp_ * state_body_.eulerRate;
 }
 
 

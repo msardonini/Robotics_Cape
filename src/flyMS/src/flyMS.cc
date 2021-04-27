@@ -329,10 +329,10 @@ int flyMS::ConsolePrint() {
  // spdlog::info("Aux {:2.1f} ", setpoint_.Aux[0]);
 //  spdlog::info("function: {}",rc_get_dsm_ch_normalized(6));
 //  spdlog::info("num wraps {} ",control->num_wraps);
-  spdlog::info(" Throt {:2.2f}, Roll_ref {:2.2f}, Pitch_ref {:2.2f}, Yaw_ref {:2.2f} ",
-    setpoint_.throttle, setpoint_.euler_ref[0], setpoint_.euler_ref[1], setpoint_.euler_ref[2]);
-  // spdlog::info("Roll {:1.2f}, Pitch {:1.2f}, Yaw {:2.3f}", imu_data_.euler[0],
-  //   imu_data_.euler[1], imu_data_.euler[2]);
+  // spdlog::info(" Throt {:2.2f}, Roll_ref {:2.2f}, Pitch_ref {:2.2f}, Yaw_ref {:2.2f} ",
+  //   setpoint_.throttle, setpoint_.euler_ref[0], setpoint_.euler_ref[1], setpoint_.euler_ref[2]);
+  spdlog::info("Roll {:1.2f}, Pitch {:1.2f}, Yaw {:2.3f}", imu_data_.euler[0],
+    imu_data_.euler[1], imu_data_.euler[2]);
 //  spdlog::info(" Mag X {:4.2f}",control->mag[0]);
 //  spdlog::info(" Mag Y {:4.2f}",control->mag[1]);
 //  spdlog::info(" Mag Z {:4.2f}",control->mag[2]);
@@ -342,9 +342,8 @@ int flyMS::ConsolePrint() {
 //   spdlog::info(" Pos N {:2.3f} ", control->ekf_filter.output.ned_pos[0]);
 //  spdlog::info(" Pos E {:2.3f} ", control->ekf_filter.output.ned_pos[1]);
 //  spdlog::info(" Pos D {:2.3f} ", control->ekf_filter.output.ned_pos[2]);
-  // spdlog::info(" DPitch {:1.2f} ", control->euler_rate[0]);
-  // spdlog::info(" DRoll {:1.2f} ", control->euler_rate[1]);
-  // spdlog::info(" DYaw {:2.3f} ", control->euler_rate[2]);
+  // spdlog::info(" DRoll {:1.2f}, DPitch {:1.2f}, DYaw {:2.3f}", imu_data_.eulerRate[0],
+  //   imu_data_.eulerRate[1], imu_data_.eulerRate[2]);
 //  spdlog::info(" uyaw {:2.3f} ", control->upitch);
 //  spdlog::info(" uyaw {:2.3f} ", control->uroll);
 //  spdlog::info(" uyaw {:2.3f} ", control->uyaw);
