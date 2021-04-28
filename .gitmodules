@@ -4,9 +4,6 @@
 [submodule "external/ecl"]
 	path = external/ecl
 	url = git@github.com:msardonini/ecl.git
-[submodule "external/eigen3"]
-	path = external/eigen3
-	url = git@github.com:OPM/eigen3.git
 [submodule "external/librobotcontrol"]
 	path = external/librobotcontrol
 	url = git@github.com:StrawsonDesign/librobotcontrol.git
