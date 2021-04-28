@@ -4,6 +4,8 @@
 #include "yaml-cpp/yaml.h"
 #include "Eigen/Dense"
 
+
+// TODO(msardonini): make this read in a set of waypoints and just follow that
 class PositionGenerator {
  public:
   explicit PositionGenerator() {
@@ -45,7 +47,7 @@ class PositionGenerator {
         }
       }
     }
-    *output_pos = pos; 
+    *output_pos = pos;
     counter_++;
     return 0;
   }

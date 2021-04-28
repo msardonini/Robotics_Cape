@@ -22,10 +22,10 @@
 flyMS::flyMS(const YAML::Node &config_params) :
   first_iteration_(true),
   ulog_(),
-  imu_module_(config_params),
   setpoint_module_(config_params),
   gps_module_(config_params),
-  mavlink_interface_(config_params, &imu_module_) {
+  mavlink_interface_(config_params),
+  config_params_(config_params) {
     // Flight mode, 1 = stabilized, 2 = acro
     flight_mode_ = config_params["flight_mode"].as<int>();
     is_debug_mode_ = config_params["debug_mode"].as<bool>();
@@ -89,8 +89,8 @@ int flyMS::FlightCore() {
     /******************************************************************
     *         Read, Parse, and Translate IMU data for Flight          *
     ******************************************************************/
-    imu_module_.update();
-    imu_module_.getImuData(&imu_data_);
+
+    imu_module_->GetImuData(&imu_data_);
     mavlink_interface_.SendImuMessage(imu_data_);
 
     // printf("time diff imu %" PRIu64 "\n", (GetTimeMicroseconds() - timeStart));
@@ -393,7 +393,7 @@ std::string flyMS::GetLogDir(const std::string &log_location) {
   return run_folder;
 }
 
-int flyMS::InitializeSpdlog(const std::string &log_dir) {
+void flyMS::InitializeSpdlog(const std::string &log_dir) {
   int max_bytes = 1048576 * 20;  // Max 20 MB
   int max_files = 20;
 
@@ -432,8 +432,7 @@ int flyMS::StartupRoutine() {
   mavlink_interface_.Init();
 
   // Initialize the IMU Hardware
-  if (imu_module_.initializeImu())
-    return -1;
+  imu_module_ = std::make_unique<ImuDmp>(config_params_["imu_params"]);
 
   // Initialize the client to connect to the PRU handler
   pru_client_.startPruClient();

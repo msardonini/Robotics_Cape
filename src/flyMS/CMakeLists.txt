@@ -17,7 +17,8 @@ add_executable(flyMS
   src/flyMS.cc
   src/flyMSApp.cc
   src/gps.cc
-  src/imu.cc
+  src/imu/base.cc
+  src/imu/dmp.cc
   src/pruClient.cc
   src/setpoint.cc
   src/position_controller.cc
@@ -44,6 +45,11 @@ target_include_directories(flyMS
     ${CMAKE_CURRENT_SOURCE_DIR}/include
 )
 
+target_compile_options(flyMS
+  PUBLIC
+    -Wall
+    -Wno-address-of-packed-member
+)
 
 install(TARGETS flyMS
   DESTINATION /usr/bin/)

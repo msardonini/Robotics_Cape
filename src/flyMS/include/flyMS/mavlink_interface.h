@@ -15,8 +15,8 @@ class MavlinkInterface {
   MavlinkInterface() = delete;
   MavlinkInterface(const MavlinkInterface&) = delete;
   MavlinkInterface(MavlinkInterface&&) = delete;
-  
-  MavlinkInterface(const YAML::Node input_params, imu *imu_ptr);
+
+  MavlinkInterface(const YAML::Node input_params);
   ~MavlinkInterface();
 
   int Init();
@@ -29,11 +29,11 @@ class MavlinkInterface {
 
  private:
   void SerialReadThread();
+  void GpioThread();
+  void ResetCounter();
 
   // Flag to tell if we are still operating
   std::atomic<bool> is_running_;
-
-  imu* imu_ptr_;
 
   // file descriptor for the serial port
   int serial_dev_;
@@ -45,6 +45,12 @@ class MavlinkInterface {
   std::mutex vio_mutex_;
   vio_t vio_;
   bool is_new_vio_data_ = false;
+
+  // Variables for handling the GPIO line which is the camera trigger
+  std::thread gpio_thread_;
+  uint64_t trigger_time_;    // The recorded time of the pulse
+  uint32_t trigger_count_;    // The counter
+  std::mutex trigger_time_mutex_;
 };
 
 #endif  // SRC_FLYMS_INCLUDE_FLYMS_MAVLINK_INTERFACE_H_

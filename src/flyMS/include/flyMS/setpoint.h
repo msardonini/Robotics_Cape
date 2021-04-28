@@ -54,7 +54,7 @@ class setpoint {
    */
   int start();
 
-  int SetYawRef(float ref);
+  void SetYawRef(float ref);
 
   std::unique_ptr<PositionController> position_controller;
  private:

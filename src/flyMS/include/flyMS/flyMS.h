@@ -22,7 +22,7 @@
 #include "spdlog/sinks/basic_file_sink.h"
 #include "flyMS/ulog/ulog.h"
 #include "flyMS/gps.h"
-#include "flyMS/imu.h"
+#include "flyMS/imu/dmp.h"
 #include "flyMS/pruClient.h"
 #include "flyMS/setpoint.h"
 #include "flyMS/flyMS_types.h"
@@ -52,7 +52,7 @@ class flyMS {
 
   int InitializeFilters();
 
-  int InitializeSpdlog(const std::string &log_dir);
+  void InitializeSpdlog(const std::string &log_dir);
 
   std::string GetLogDir(const std::string &log_location);
 
@@ -80,7 +80,7 @@ class flyMS {
   ULog ulog_;
 
   // Object and Data struct from the imu manager
-  imu imu_module_;
+  std::unique_ptr<ImuDmp> imu_module_;
   state_t imu_data_;
 
   // Classes for all the functions of the program
@@ -124,6 +124,8 @@ class flyMS {
   std::array<float, 3> yaw_PID_coeff_;
   std::vector<float> imu_lpf_num_;
   std::vector<float> imu_lpf_den_;
+
+  YAML::Node config_params_;
 };
 
 #endif // FLYMS_H

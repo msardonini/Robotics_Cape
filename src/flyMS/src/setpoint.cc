@@ -11,8 +11,8 @@
 #include "spdlog/spdlog.h"
 
 setpoint::setpoint(const YAML::Node &config_params) :
-  ready_to_send_(false),
-  setpoint_mode_(SetpointMode::Stabilized) {
+  setpoint_mode_(SetpointMode::Stabilized),
+  ready_to_send_(false) {
     is_debug_mode_ = config_params["debug_mode"].as<bool>();
     flight_mode_ = config_params["flight_mode"].as<int>();
     delta_t_ = config_params["delta_t"].as<float>();
@@ -154,7 +154,7 @@ int setpoint::HandleRcData() {
   return 0;
 }
 
-int setpoint::SetYawRef(float ref) {
+void setpoint::SetYawRef(float ref) {
   setpoint_data_.euler_ref[2] = ref;
 }
 

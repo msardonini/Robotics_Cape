@@ -21,7 +21,9 @@ ReadyCheck::~ReadyCheck() {
 
 int ReadyCheck::WaitForStartSignal() {
   // Initialze the serial RC hardware
-  int ret = rc_dsm_init();
+  if(rc_dsm_init()) {
+    return -1;
+  }
 
   //Toggle the kill switch to get going, to ensure controlled take-off
   //Keep kill switch down to remain operational

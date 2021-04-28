@@ -13,3 +13,6 @@
 [submodule "external/spdlog"]
 	path = external/spdlog
 	url = https://github.com/gabime/spdlog.git
+[submodule "external/eigen-git-mirror"]
+	path = external/eigen-git-mirror
+	url = git@github.com:eigenteam/eigen-git-mirror.git

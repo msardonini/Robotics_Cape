@@ -99,7 +99,7 @@ void ULog::WriteHeader() {
   struct ulog_message_flag_bits_s flag_bits;
   memset(&flag_bits, 0, sizeof(flag_bits));
   flag_bits.header = header;
-  
+
   WriteMessage(&flag_bits, sizeof(flag_bits));
 }
 
@@ -109,6 +109,6 @@ uint64_t ULog::getTimeMircos() {
   return tv.tv_sec*(uint64_t)1E6 + tv.tv_nsec/(uint64_t)1E3;
 }
 
-int ULog::WriteMessage(void* buf, size_t size) {
+void ULog::WriteMessage(void* buf, size_t size) {
   fd_.write(reinterpret_cast<const char*>(buf), size);
 }

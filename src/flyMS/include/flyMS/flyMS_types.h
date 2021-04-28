@@ -40,8 +40,6 @@ typedef struct setpoint_t {
 typedef struct state_t {
   EIGEN_MAKE_ALIGNED_OPERATOR_NEW
   uint64_t timestamp_us;
-  uint32_t time_since_trigger_us;
-  uint32_t trigger_count;
 
   Eigen::Vector3f euler;  // Euler angles of aircraft (in roll, pitch, yaw)
   // 1 Timestampe previousEuler angles of aircraft (in roll, pitch, yaw)
@@ -55,7 +53,7 @@ typedef struct state_t {
   float barometerAltitude;
   float compassHeading;
 
-  int    num_wraps;        // Number of spins in Yaw
+  // int    num_wraps;        // Number of spins in Yaw
   float  initialYaw;
 } state_t;
 

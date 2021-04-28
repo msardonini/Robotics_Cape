@@ -7,9 +7,9 @@
 #include <iostream>
 
 #include "flyMS/mavlink/fly_stereo/mavlink.h"
+#include "rc/gpio.h"
 
-MavlinkInterface::MavlinkInterface(const YAML::Node input_params, imu *imu_ptr) {
-  imu_ptr_ = imu_ptr;
+MavlinkInterface::MavlinkInterface(const YAML::Node input_params) {
   YAML::Node mavlink_params = input_params["mavlink_interface"];
   serial_dev_file_ = mavlink_params["serial_device"].as<std::string>();
 }
@@ -56,6 +56,9 @@ int MavlinkInterface::Init() {
     return -1;
   }
   serial_read_thread_ = std::thread(&MavlinkInterface::SerialReadThread, this);
+
+  // Start the GPIO thread that watches for the image trigger pulses
+  gpio_thread_ = std::thread(&MavlinkInterface::GpioThread, this);
   return 0;
 }
 
@@ -81,8 +84,12 @@ int MavlinkInterface::SendImuMessage(const state_t &imu_state) {
   }
 
   attitude.timestamp_us = imu_state.timestamp_us;
-  attitude.time_since_trigger_us = imu_state.time_since_trigger_us;
-  attitude.trigger_count = imu_state.trigger_count;
+
+  trigger_time_mutex_.lock();
+  attitude.time_since_trigger_us = static_cast<uint32_t>((imu_state.timestamp_us -
+    (trigger_time_ / 1E3)));
+  attitude.trigger_count = trigger_count_;
+  trigger_time_mutex_.unlock();
 
   mavlink_msg_imu_encode(1, 200, &msg, &attitude);
   uint16_t len = mavlink_msg_to_send_buffer(buf, &msg);
@@ -160,7 +167,7 @@ void MavlinkInterface::SerialReadThread() {
       mavlink_message_t mav_message;
       uint8_t msg_received = mavlink_parse_char(MAVLINK_COMM_1, buf[i],
         &mav_message, &mav_status);
-    
+
       if (msg_received) {
         switch(mav_message.msgid) {
           case MAVLINK_MSG_ID_IMU: {
@@ -174,7 +181,7 @@ void MavlinkInterface::SerialReadThread() {
 
             // TODO Reset the trigger counter on the IMU
             std::cout << "Received counter reset msg!\n\n";
-            imu_ptr_->ResetCounter();
+            ResetCounter();
             break;
           }
           case MAVLINK_MSG_ID_VIO: {
@@ -196,9 +203,48 @@ void MavlinkInterface::SerialReadThread() {
       }
     }
     // Sleep so we don't overload the CPU. This isn't an ideal method, but if
-    // use a blocking call on read(), we can't break out of it on the 
+    // use a blocking call on read(), we can't break out of it on the
     // destruction of this object. It will hang forever until bytes are read,
     // which is not always the case
     std::this_thread::sleep_for(std::chrono::microseconds(100));
   }
 }
+
+void MavlinkInterface::GpioThread() {
+  // Register the GPIO pin that will tell us when images are being captured
+  rc_gpio_init_event(1, 25, 0, GPIOEVENT_REQUEST_FALLING_EDGE);
+
+  int timeout_ms = 1000;
+
+  trigger_time_mutex_.lock();
+  trigger_time_ = std::chrono::duration_cast<std::chrono::nanoseconds>(std::chrono::system_clock::
+    now().time_since_epoch()).count();
+  trigger_count_ = 0;
+  trigger_time_mutex_.unlock();
+
+  while(is_running_.load()) {
+    uint64_t event_time;
+    int ret = rc_gpio_poll(1, 25, timeout_ms, &event_time);
+
+    if (ret == RC_GPIOEVENT_FALLING_EDGE) {
+      std::lock_guard<std::mutex> lock(trigger_time_mutex_);
+      trigger_time_ = event_time;
+      trigger_count_++;
+      // spdlog::error("Falling edge detected, time %llu\n", event_time);
+    } else if (ret == RC_GPIOEVENT_RISING_EDGE) {
+      spdlog::warn("Error! Rising edge detected, should only be returning on falling "
+        "edge");
+    } else if (ret == RC_GPIOEVENT_TIMEOUT) {
+      // spdlog::warn("GPIO timeout");
+    } else if (ret == RC_GPIOEVENT_ERROR) {
+      spdlog::warn("GPIO error");
+    }
+  }
+}
+
+void MavlinkInterface::ResetCounter() {
+  std::lock_guard<std::mutex> lock(trigger_time_mutex_);
+  trigger_count_ = 0;
+}
+
+

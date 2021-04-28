@@ -5,9 +5,9 @@ string(COMPARE EQUAL "${ARCHITECTURE}" x86_64 host64bit)
 
 if(host64bit)
   # Set the location of the toolchain file if needed
-  set(CMAKE_TOOLCHAIN_FILE 
-    "${CMAKE_CURRENT_SOURCE_DIR}/cmake/toolchain.cmake" 
-    CACHE FILEPATH 
+  set(CMAKE_TOOLCHAIN_FILE
+    "${CMAKE_CURRENT_SOURCE_DIR}/cmake/toolchain.cmake"
+    CACHE FILEPATH
     "toolchain path" FORCE)
 
   message(STATUS "Cross compiling to ARM   ${CMAKE_TOOLCHAIN_FILE}")
@@ -17,14 +17,6 @@ project(flyMS LANGUAGES CXX C)
 
 # Compile for c++11
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11")
-
-add_compile_options(
-  # -Wall
-  -Wno-deprecated-declarations
-  -Wno-enum-compare
-  -Wno-unused-local-typedefs
-  -Wno-unused-parameter
-)
 
 # Set the binary and library directories
 set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)

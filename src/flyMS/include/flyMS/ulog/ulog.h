@@ -246,7 +246,7 @@ class ULog {
   void WriteFormats(const std::string &msg_format);
   void WriteAddLog(uint16_t id, std::string msg_name);
   uint64_t getTimeMircos();
-  int WriteMessage(void* buf, size_t size);
+  void WriteMessage(void* buf, size_t size);
 
   // File descriptor for interfacing with the file
   std::ofstream fd_;
