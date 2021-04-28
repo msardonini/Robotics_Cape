@@ -25,7 +25,7 @@
 #include "flyMS/imu/dmp.h"
 #include "flyMS/pruClient.h"
 #include "flyMS/setpoint.h"
-#include "flyMS/flyMS_types.h"
+#include "flyMS/types/state_data.h"
 #include "flyMS/mavlink_interface.h"
 #include "flyMS/position_generator.h"
 
@@ -81,14 +81,14 @@ class flyMS {
 
   // Object and Data struct from the imu manager
   std::unique_ptr<ImuDmp> imu_module_;
-  state_t imu_data_;
+  StateData imu_data_;
 
   // Classes for all the functions of the program
   pruClient pru_client_;
 
   // Object and Data struct from the setpoint manager
   setpoint setpoint_module_;
-  setpoint_t setpoint_;
+  SetpointData setpoint_;  // TODO Make this a non class member
 
   // Object and Data struct from the gps manager
   gps gps_module_;

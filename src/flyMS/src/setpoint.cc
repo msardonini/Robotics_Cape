@@ -40,10 +40,10 @@ int setpoint::start() {
 }
 
 //Gets the data from the local thread. Returns zero if no new data is available
-bool setpoint::getSetpointData(setpoint_t* _setpoint) {
+bool setpoint::getSetpointData(SetpointData* _setpoint) {
   if (ready_to_send_.load()) {
     setpoint_mutex_.lock();
-    memcpy(_setpoint, &setpoint_data_, sizeof(setpoint_t));
+    memcpy(_setpoint, &setpoint_data_, sizeof(SetpointData));
     ready_to_send_.store(false);
     setpoint_mutex_.unlock();
     return true;

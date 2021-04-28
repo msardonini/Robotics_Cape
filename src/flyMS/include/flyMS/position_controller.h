@@ -6,7 +6,7 @@
 #include "yaml-cpp/yaml.h"
 #include "Eigen/Dense"
 #include "filter.h"
-#include "flyMS/flyMS_types.h"
+#include "flyMS/types/vio_data.h"
 
 template <typename T>
 struct pos_vel {
@@ -19,7 +19,7 @@ class PositionController {
   PositionController(const YAML::Node &config_params);
   ~PositionController();
 
-  int ReceiveVio(const vio_t &vio);
+  int ReceiveVio(const VioData &vio);
 
   int GetSetpoint(Eigen::Vector3f &setpoint_orientation, float &yaw);
 
@@ -40,8 +40,8 @@ class PositionController {
   // Conversion matrix to map roll, pitch, throttle commands from PID output in XYZ frame
   Eigen::Matrix3f XYZ_to_RollPitchThrottle_;
 
-  // Filters to calculate the PID output. First dimention is X,Y,Z controllers, second is outer 
-  // loop and inner loop. Ex. pid_[0][1] is inner loop for X axis, pid_[3][0] is outer loop for 
+  // Filters to calculate the PID output. First dimention is X,Y,Z controllers, second is outer
+  // loop and inner loop. Ex. pid_[0][1] is inner loop for X axis, pid_[3][0] is outer loop for
   // Z axis
   std::array<std::array<digital_filter_t*, 2>, 3> pid_;
 

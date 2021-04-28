@@ -37,12 +37,13 @@
 #include <fstream>
 
 #include "flyMS/setpoint.h"
-#include "flyMS/imu.h"
+#include "flyMS/types/state_data.h"
+#include "flyMS/types/vio_data.h"
 
 struct ULogFlightMsg {
   ULogFlightMsg() {}
 
-  ULogFlightMsg(uint64_t _timestamp_us, const state_t &state, const setpoint_t &setpoint,
+  ULogFlightMsg(uint64_t _timestamp_us, const StateData &state, const SetpointData &setpoint,
     const std::array<float, 4> &u, const std::array<float, 4> u_euler) :
   timestamp_us(_timestamp_us),
   RPY{state.euler(0), state.euler(1), state.euler(2)},

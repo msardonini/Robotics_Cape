@@ -13,10 +13,7 @@ class PositionGenerator {
   }
 
   enum class PATH_TYPE {
-    LINE_X,
-    LINE_Y,
-    BOX_XY,
-    BOS_YX
+    LINE_X
   };
 
   void ResetCounter() {

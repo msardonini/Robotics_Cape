@@ -67,13 +67,15 @@ ImuDmp::ImuDmp(const YAML::Node &input_params) {
     throw std::invalid_argument("rc_mpu_initialize failed");
   }
 
+  rc_mpu_set_dmp_callback(&dmpCallback);
+
   is_running_.store(true);
 }
 
-int ImuDmp::GetImuData(state_t *imu_data_body) {
+int ImuDmp::GetImuData(StateData *imu_data_body) {
   std::lock_guard<std::mutex> lock(local_mutex);
 
-  state_t imu_data_imu;
+  StateData imu_data_imu;
   for (int i = 0; i < 3; i++) {
     imu_data_imu.euler(i)        = imu_data_local.dmp_TaitBryan[i];
     imu_data_imu.eulerRate(i)      = imu_data_local.gyro[i] * D2Rf;
@@ -100,6 +102,6 @@ int ImuDmp::GetImuData(state_t *imu_data_body) {
   return 0;
 }
 
-int ImuDmp::GetImuDataBlock(state_t *imu_data_body) {
+int ImuDmp::GetImuDataBlock(StateData *imu_data_body) {
   throw std::invalid_argument("This method is not implemented yet!");
 }

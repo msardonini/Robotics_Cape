@@ -69,7 +69,7 @@ MavlinkInterface::~MavlinkInterface() {
   }
 }
 
-int MavlinkInterface::SendImuMessage(const state_t &imu_state) {
+int MavlinkInterface::SendImuMessage(const StateData &imu_state) {
   mavlink_message_t msg;
   mavlink_imu_t attitude;
   uint8_t buf[1024];
@@ -139,7 +139,7 @@ int MavlinkInterface::SendShutdownCommand() {
   return 0;
 }
 
-bool MavlinkInterface::GetVioData(vio_t *vio) {
+bool MavlinkInterface::GetVioData(VioData *vio) {
   std::lock_guard<std::mutex> lock(vio_mutex_);
   if (is_new_vio_data_) {
     *vio = vio_;

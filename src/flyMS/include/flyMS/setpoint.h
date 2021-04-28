@@ -27,7 +27,34 @@
 #include <roboticscape.h>
 #include "yaml-cpp/yaml.h"
 #include "flyMS/position_controller.h"
-#include "flyMS/flyMS_types.h"
+
+/**
+ * @brief      The flight mode
+ */
+enum class SetpointMode {
+  Undefined = 0,
+  Stabilized = 1,
+  Acro = 2,
+  Navigation = 3
+};
+
+
+struct SetpointData {
+  float euler_ref[3];  // Reference (Desired) Position
+  float euler_ref_previous[3];  // Reference (Desired) Position
+  float yaw_rate_ref[2];
+  float Aux[2];
+  double lat_setpoint;
+  double lon_setpoint;      // Controller Variables for Autonomous Flight
+  float altitudeSetpointRate;
+  float altitudeSetpoint;
+  float dpitch_setpoint; // Desired attitude
+  float droll_setpoint;  // Desired attitude
+  float throttle;
+  float yaw_ref_offset;
+  float kill_switch[2];  // Current (ind 0) and previous (ind 1) value of the kill switch channel
+};
+
 
 class setpoint {
  public:
@@ -44,7 +71,7 @@ class setpoint {
    *
    * @return     The setpoint data.
    */
-  bool getSetpointData(setpoint_t* setpoint);
+  bool getSetpointData(SetpointData* setpoint);
 
 
   /**
@@ -73,7 +100,7 @@ class setpoint {
   std::mutex setpoint_mutex_;
 
   //All relevant setpoint data goes here
-  setpoint_t setpoint_data_;
+  SetpointData setpoint_data_;
 
   // All configurable parameters
   bool is_debug_mode_;

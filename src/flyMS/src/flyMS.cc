@@ -107,7 +107,7 @@ int flyMS::FlightCore() {
     /************************************************************************
     *       Check the Mavlink Interface for New Visual Odometry Data
     ************************************************************************/
-    vio_t vio;
+    VioData vio;
     Eigen::Vector3f setpoint_orientation;
     float vio_yaw;
     if(mavlink_interface_.GetVioData(&vio)) {

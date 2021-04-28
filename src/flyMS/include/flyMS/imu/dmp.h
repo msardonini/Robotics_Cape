@@ -20,7 +20,7 @@ class ImuDmp : public ImuBase {
    * @param imu_state The output imu data
    * @return int 0 on success, -1 on failure
    */
-  virtual int GetImuData(state_t *imu_state) override;
+  virtual int GetImuData(StateData *imu_state) override;
 
   /**
    * @brief Get the Lastest IMU data from the sensor. If no new data is available, block until data
@@ -29,7 +29,7 @@ class ImuDmp : public ImuBase {
    * @param imu_state
    * @return int 0 on success, -1 on failure
    */
-  virtual int GetImuDataBlock(state_t *imu_state) override;
+  virtual int GetImuDataBlock(StateData *imu_state) override;
 
  private:
   // Callback function for the rc API to call when new dmp data is ready

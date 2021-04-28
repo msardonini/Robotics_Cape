@@ -9,7 +9,7 @@ ImuBase::ImuBase() {
   ImuBase::does_imu_obj_exist = true;
 }
 
-void ImuBase::UnwrapYaw(state_t *imu_state_body) {
+void ImuBase::UnwrapYaw(StateData *imu_state_body) {
   imu_state_body->euler(2) += num_wraps_ * 2 * M_PI;
   if (fabs(imu_state_body->euler[2] - imu_state_body->eulerPrevious[2])  > 5) {
     if (imu_state_body->euler[2] > imu_state_body->eulerPrevious[2]) {

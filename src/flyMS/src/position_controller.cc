@@ -45,7 +45,7 @@ PositionController::~PositionController() {
   }
 }
 
-int PositionController::ReceiveVio(const vio_t &vio) {
+int PositionController::ReceiveVio(const VioData &vio) {
   Eigen::Vector3f setpoint_orientation_xyz;
   // Calculate the PIDs for the outer and inner loops on XYZ axis
   for (int i = 0; i < 3; i++) {

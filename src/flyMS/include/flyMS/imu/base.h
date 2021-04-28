@@ -5,7 +5,7 @@
 #include <exception>
 
 #include "Eigen/Dense"
-#include "flyMS/flyMS_types.h"
+#include "flyMS/types/state_data.h"
 
 class ImuBase {
  public:
@@ -20,7 +20,7 @@ class ImuBase {
    * @param imu_state The output imu data converted to the body coordinate frame
    * @return int 0 on success, -1 on failure
    */
-  virtual int GetImuData(state_t *imu_state) = 0;
+  virtual int GetImuData(StateData *imu_state) = 0;
 
   /**
    * @brief Get the Lastest IMU data from the sensor. If no new data is available, block until data
@@ -29,9 +29,9 @@ class ImuBase {
    * @param imu_state The output imu data converted to the body coordinate frame
    * @return int 0 on success, -1 on failure
    */
-  virtual int GetImuDataBlock(state_t *imu_state) = 0;
+  virtual int GetImuDataBlock(StateData *imu_state) = 0;
 
-  void UnwrapYaw(state_t *imu_state_body);
+  void UnwrapYaw(StateData *imu_state_body);
 
  protected:
 

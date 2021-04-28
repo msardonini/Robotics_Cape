@@ -6,8 +6,8 @@
 
 #include "yaml-cpp/yaml.h"
 #include "spdlog/spdlog.h"
-#include "flyMS/flyMS_types.h"
-#include "flyMS/imu.h"
+#include "flyMS/types/state_data.h"
+#include "flyMS/types/vio_data.h"
 
 class MavlinkInterface {
  public:
@@ -21,11 +21,11 @@ class MavlinkInterface {
 
   int Init();
 
-  int SendImuMessage(const state_t &imu_state);
+  int SendImuMessage(const StateData &imu_state);
   int SendStartCommand();
   int SendShutdownCommand();
 
-  bool GetVioData(vio_t *vio);
+  bool GetVioData(VioData *vio);
 
  private:
   void SerialReadThread();
@@ -43,7 +43,7 @@ class MavlinkInterface {
   std::mutex serial_send_mutex_;
 
   std::mutex vio_mutex_;
-  vio_t vio_;
+  VioData vio_;
   bool is_new_vio_data_ = false;
 
   // Variables for handling the GPIO line which is the camera trigger
