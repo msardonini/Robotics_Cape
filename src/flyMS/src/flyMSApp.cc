@@ -16,6 +16,7 @@
 #include "yaml-cpp/yaml.h"
 #include "flyMS/flyMS.h"
 #include "flyMS/ready_check.h"
+#include "spdlog/spdlog.h"
 
 void onSignalReceived(int signo) {
   switch (signo) {
@@ -72,7 +73,7 @@ int main(int argc, char *argv[]) {
   }
 
   // Perform the ready check before starting the flight program
-  if (!is_debug_mode) {    
+  if (!is_debug_mode) {
     ReadyCheck ready_check;
     ready_check.WaitForStartSignal();
   }
@@ -89,8 +90,9 @@ int main(int argc, char *argv[]) {
 
   flyMS fly(config_params);
   //Initialize the flight hardware
-  if (fly.StartupRoutine())
+  if (fly.StartupRoutine()) {
     rc_set_state(EXITING);
+  }
 
   //Reload the config file in case changes were made while waiting
 
@@ -98,7 +100,7 @@ int main(int argc, char *argv[]) {
     sleep(1);
   }
 
-  // rc_cleanup();
+  spdlog::shutdown();
   return 0;
 }
 

@@ -9,122 +9,103 @@
 
 #include "flyMS/pruClient.h"
 
+#include "spdlog/spdlog.h"
+#include "unistd.h"
+
+constexpr int NUM_CHANNELS = 4;
+
 pruClient::pruClient() {}
 
 pruClient::~pruClient() {
-  //Join the thread if executing
-  if (this->pruSenderThread.joinable())
-    this->pruSenderThread.join();
+  //Issue the shutdown command to the pru handler
+  char send_buffer[16];
+  for (int i = 0; i < 4; i++) {
+    send_buffer[0] = 0xAA;
+    send_buffer[1] = 0xBB;
+    send_buffer[10] = 0xEE;
+    send_buffer[11] = 0xFF;
+    send_buffer[2] = 's';
+    send_buffer[3] = 'h';
+    send_buffer[4] = 'u';
+    send_buffer[5] = 't';
+    send_buffer[6] = 'd';
+    send_buffer[7] = 'o';
+    send_buffer[8] = 'w';
+    send_buffer[9] = 'n';
+    write(sockfd_, send_buffer, sizeof(send_buffer) - 1);
+  }
+  close(sockfd_);
 }
 
 int pruClient::startPruClient() {
   //Check to see if the pru server is runningi, if not start it
   if (access(PRU_PID_FILE, F_OK) == -1) {
-    printf("Pru handler is not runnining, starting a new process now");
+    spdlog::warn("Pru handler is not runnining, starting a new process now");
     system("nohup pru_handler >/dev/null 2>&1 &");
     //Give it some time to initialize
     sleep(1);
 
     //Check again to make sure it's on
     if (access(PRU_PID_FILE, F_OK) == -1) {
-      printf("Error! pru_handler will not start\n");
+      spdlog::error("Error! pru_handler will not start\n");
       return -1;
     }
   }
 
   //Initialize the network socket on localhost
-  if ((this->sockfd = socket(AF_INET, SOCK_STREAM, 0)) < 0) {
-    std::cout << "\n Error : Could not create socket: " << strerror(errno) << std::endl;
+  if ((sockfd_ = socket(AF_INET, SOCK_STREAM, 0)) < 0) {
+    spdlog::error("Error : Could not create socket: {}", strerror(errno));
     return -1;
   }
 
-  this->serv_addr.sin_family = AF_INET;
-  this->serv_addr.sin_port = htons(5000);
+  struct sockaddr_in serv_addr;
+  serv_addr.sin_family = AF_INET;
+  serv_addr.sin_port = htons(5000);
 
   // if(inet_pton(AF_INET, argv[1], &serv_addr.sin_addr)<=0)
-  if (inet_pton(AF_INET, "127.0.0.1" , &this->serv_addr.sin_addr) <= 0) {
-    std::cout << "\n  inet_pton error occured: " << strerror(errno) << std::endl;
+  if (inet_pton(AF_INET, "127.0.0.1" , &serv_addr.sin_addr) <= 0) {
+    spdlog::error("Error! inet_pton error occured: {}", strerror(errno));
     return -1;
   }
 
   //Connect to the socket
-  if (connect(this->sockfd, (struct sockaddr *)&this->serv_addr, sizeof(this->serv_addr)) < 0) {
-    std::cout << "\n Error : Connect Failed: " << strerror(errno) << std::endl;
+  if (connect(sockfd_, (struct sockaddr *)&serv_addr, sizeof(serv_addr)) < 0) {
+    spdlog::error("Error : Connect Failed: {}", strerror(errno));
     return -1;
   }
 
-  this->pruSenderThread = std::thread(&pruClient::pruSender, this);
   return 0;
 }
 
-int pruClient::setSendData(std::array<float, 4> _u) {
-  //Gain access to shared memory
-  this->pruSenderMutex.lock();
+int pruClient::setSendData(std::array<float, NUM_CHANNELS> u) {
+  char send_buffer[16];
 
-  if (_u.size() != NUM_CHANNELS)
-    std::cout << "[pruClient]! Wrong number of channels given" << std::endl;
-  //Set the values
-  this->u = _u;
+  send_buffer[0] = 0xAA;
+  send_buffer[1] = 0xBB;
+  send_buffer[10] = 0xEE;
+  send_buffer[11] = 0xFF;
 
-  this->send_flag = true;
-
-  //Give shared memory access back
-  this->pruSenderMutex.unlock();
-  return 0;
-}
-
-int pruClient::pruSender() {
-
-  uint16_t tmp16 = 0x0000;
-  int i;
-  while (rc_get_state() != EXITING) {
-    //Gain access to shared memory
-    this->pruSenderMutex.lock();
-
-    if (this->send_flag) {
-      this->sendBuff[0] = 0xAA;
-      this->sendBuff[1] = 0xBB;
-      this->sendBuff[10] = 0xEE;
-      this->sendBuff[11] = 0xFF;
-
-      for (i = 0; i < NUM_CHANNELS ; i++) {
-        //Apply a saturation filter spanning 0 to 1
-        if (this->u[i] < 0.0f) this->u[i] = 0.0f;
-        else if (this->u[i] > 1.0f) this->u[i] = 1.0f;
-
-        //Convert the float to the uint16 send array
-        if (this->u[i] == 0.0f) tmp16 = 0;
-        else tmp16 = (uint16_t)(this->u[i] * 65536.0f) - 1;
-
-        this->sendBuff[2 * i + 2] = tmp16 >> 8;
-        this->sendBuff[2 * i + 3] = tmp16 & 0xFF;
-      }
-      //Send the data
-      write(this->sockfd, this->sendBuff, sizeof(this->sendBuff) - 1);
-      this->send_flag = false;
+  for (int i = 0; i < NUM_CHANNELS ; i++) {
+    //Apply a saturation filter spanning 0 to 1
+    if (u[i] < 0.0f) {
+      u[i] = 0.0f;
+    } else if (u[i] > 1.0f) {
+      u[i] = 1.0f;
     }
 
-    //Give shared memory access back
-    this->pruSenderMutex.unlock();
+    uint16_t tmp16 = 0x0000;
+    //Convert the float to the uint16 send array
+    if (u[i] == 0.0f) {
+      tmp16 = 0;
+    } else {
+      tmp16 = (uint16_t)(u[i] * 65536.0f) - 1;
+    }
 
-    usleep(2500); //run at 400hz just to check
+    send_buffer[2 * i + 2] = tmp16 >> 8;
+    send_buffer[2 * i + 3] = tmp16 & 0xFF;
   }
+  //Send the data
+  write(sockfd_, send_buffer, sizeof(send_buffer) - 1);
 
-  //Issue the shutdown command to the pru handler
-  for (i = 0; i < 4; i++) {
-    this->sendBuff[0] = 0xAA;
-    this->sendBuff[1] = 0xBB;
-    this->sendBuff[10] = 0xEE;
-    this->sendBuff[11] = 0xFF;
-    this->sendBuff[2] = 's';
-    this->sendBuff[3] = 'h';
-    this->sendBuff[4] = 'u';
-    this->sendBuff[5] = 't';
-    this->sendBuff[6] = 'd';
-    this->sendBuff[7] = 'o';
-    this->sendBuff[8] = 'w';
-    this->sendBuff[9] = 'n';
-    write(this->sockfd, this->sendBuff, sizeof(this->sendBuff) - 1);
-  }
   return 0;
 }

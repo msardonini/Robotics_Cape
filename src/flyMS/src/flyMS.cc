@@ -44,8 +44,6 @@ flyMS::~flyMS() {
 }
 
 int flyMS::FlightCore() {
-  rc_set_state(RUNNING);
-
   while (rc_get_state() != EXITING) {
     /******************************************************************
     *           Grab the time for Periphal Apps and Logs              *
@@ -256,15 +254,12 @@ uint64_t flyMS::GetTimeMicroseconds() {
 int flyMS::ConsolePrint() {
 //  spdlog::info("time {:3.3f} ", control->time);
 //  spdlog::info("Alt_ref {:3.1f} ",control->alt_ref);
-//  spdlog::info(" U1:  {:2.2f} ",control->u[0]);
-//  spdlog::info(" U2: {:2.2f} ",control->u[1]);
-//  spdlog::info(" U3:  {:2.2f} ",control->u[2]);
-//  spdlog::info(" U4: {:2.2f} ",control->u[3]);
+  // spdlog::info("U1: {:2.2f}, U2: {:2.2f}, U3: {:2.2f}, U4: {:2.2f} ", u_[0], u_[1], u_[2], u_[3]);
  // spdlog::info("Aux {:2.1f} ", setpoint_.Aux[0]);
 //  spdlog::info("function: {}",rc_get_dsm_ch_normalized(6));
 //  spdlog::info("num wraps {} ",control->num_wraps);
-  // spdlog::info(" Throt {:2.2f}, Roll_ref {:2.2f}, Pitch_ref {:2.2f}, Yaw_ref {:2.2f} ",
-  //   setpoint_.throttle, setpoint_.euler_ref[0], setpoint_.euler_ref[1], setpoint_.euler_ref[2]);
+  spdlog::info(" Throt {:2.2f}, Roll_ref {:2.2f}, Pitch_ref {:2.2f}, Yaw_ref {:2.2f} ",
+    setpoint_.throttle, setpoint_.euler_ref[0], setpoint_.euler_ref[1], setpoint_.euler_ref[2]);
   spdlog::info("Roll {:1.2f}, Pitch {:1.2f}, Yaw {:2.3f}", imu_data_.euler[0],
     imu_data_.euler[1], imu_data_.euler[2]);
 //  spdlog::info(" Mag X {:4.2f}",control->mag[0]);
@@ -278,9 +273,8 @@ int flyMS::ConsolePrint() {
 //  spdlog::info(" Pos D {:2.3f} ", control->ekf_filter.output.ned_pos[2]);
   // spdlog::info(" DRoll {:1.2f}, DPitch {:1.2f}, DYaw {:2.3f}", imu_data_.eulerRate[0],
   //   imu_data_.eulerRate[1], imu_data_.eulerRate[2]);
-//  spdlog::info(" uyaw {:2.3f} ", control->upitch);
-//  spdlog::info(" uyaw {:2.3f} ", control->uroll);
-//  spdlog::info(" uyaw {:2.3f} ", control->uyaw);
+  // spdlog::info("uroll {:2.3f}, upitch {:2.3f}, uyaw {:2.3f}", u_euler_[0], u_euler_[1],
+  //   u_euler_[2]);
 //  spdlog::info(" GPS pos lat: {:2.2f}", control->GPS_data.pos_lat);
 //  spdlog::info(" GPS pos lon: {:2.2f}", control->GPS_data.pos_lon);
 //  spdlog::info(" HDOP: {}", control->GPS_data.HDOP);
@@ -345,19 +339,21 @@ void flyMS::InitializeSpdlog(const std::string &log_dir) {
   flyMS_log->set_level(spdlog::level::trace);
   spdlog::register_logger(flyMS_log);
   spdlog::set_default_logger(flyMS_log);
+  flyMS_log->flush_on(spdlog::level::critical);
 }
 
 int flyMS::StartupRoutine() {
-  //Initialize the remote controller through the setpoint object
-  setpoint_module_ = std::make_unique<Setpoint>(config_params_);
-
-  //Tell the system that we are running
-  rc_set_state(RUNNING);
-
   // Create a file for logging and initialize our file logger
   std::string log_dir = GetLogDir(log_filepath_);
   InitializeSpdlog(log_dir);
   ulog_.InitUlog(log_dir);
+
+  //Initialize the remote controller through the setpoint object
+  setpoint_module_ = std::make_unique<Setpoint>(config_params_);
+
+
+  //Tell the system that we are running
+  rc_set_state(RUNNING);
 
   // Initialize the PID controllers and LP filters
     YAML::Node controller = config_params_["controller"];

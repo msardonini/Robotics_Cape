@@ -33,15 +33,6 @@
 //Locally used macros
 #define PRU_PID_FILE "/var/run/pru_handler.pid"
 
-#define NUM_CHANNELS 4
-
-//Struct to send the PRU data over with
-typedef struct pru_client_data_t {
-
-
-} pru_client_data_t;
-
-
 class pruClient {
 
  public:
@@ -58,22 +49,9 @@ class pruClient {
 
  private:
 
-  int pruSender();
-
-  //Boolean for the status of the program
-  bool isRunning;
-
-  //Thread and mutex objects
-  std::thread pruSenderThread;
-  std::mutex pruSenderMutex;
-  //Data we send over the network interface
-  bool send_flag;
-  std::array<float, 4> u;
-
   //Socket variables
-  int sockfd;
-  char sendBuff[16];
-  struct sockaddr_in serv_addr;
+  int sockfd_;
+
 
 };
 

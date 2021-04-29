@@ -9,6 +9,7 @@
 #include "flyMS/setpoint.h"
 
 #include <chrono>
+#include <iostream>
 
 #include "spdlog/spdlog.h"
 #include "rc/start_stop.h"
@@ -32,6 +33,10 @@ Setpoint::Setpoint(const YAML::Node &config_params) :
     if (ret < 0) {
       throw std::invalid_argument("DSM failed to initialize");
     }
+
+    // Zero out the container
+    memset(&setpoint_data_, 0x00, sizeof(setpoint_data_));
+
     setpoint_thread_ = std::thread(&Setpoint::SetpointManager, this);
   }
 
@@ -63,6 +68,7 @@ bool Setpoint::GetSetpointData(SetpointData* setpoint) {
       2. Calculated values from GPS navigation for autonomous flight
 */
 int Setpoint::SetpointManager() {
+  dsm2_timeout_ = 0;
   while (is_running_.load()) {
     /**********************************************************
     *           If there is new dsm2 data read it in       *
@@ -157,7 +163,7 @@ void Setpoint::SetYawRef(float ref) {
 int Setpoint::RcErrHandler() {
   dsm2_timeout_++;
   if (dsm2_timeout_ > 1.5 / delta_t_) { //If packet hasn't been received for 1.5 seconds
-    spdlog::info("\nLost Connection with Remote!! Shutting Down Immediately \n");
+    spdlog::critical("Lost Connection with Remote!! Shutting Down Immediately!");
     rc_set_state(EXITING);
     return -1;
   }

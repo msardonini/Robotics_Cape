@@ -1,5 +1,8 @@
 cmake_minimum_required(VERSION 3.5)
- 
+
+# Link statically to all libaries
+set(CMAKE_EXE_LINKER_FLAGS "-static")
+
 add_executable(pruHandler
   pruHandlerApp.cpp
   pruHandler.cpp
