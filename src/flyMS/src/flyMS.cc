@@ -20,9 +20,8 @@
 #include "spdlog/fmt/ostr.h"
 
 flyMS::flyMS(const YAML::Node &config_params) :
-  first_iteration_(true),
   ulog_(),
-  setpoint_module_(config_params),
+  setpoint_module_(),
   gps_module_(config_params),
   mavlink_interface_(config_params),
   config_params_(config_params) {
@@ -32,45 +31,13 @@ flyMS::flyMS(const YAML::Node &config_params) :
     log_filepath_ = config_params["log_filepath"].as<std::string>();
     delta_t_ = config_params["delta_t"].as<float>();
 
-    std::array<float, 2> throttle_limits = config_params["setpoint"]["throttle_limits"].as<
-      std::array<float, 2> >();
-    min_throttle_ = throttle_limits[0];
-
     YAML::Node controller = config_params["controller"];
-    pid_LPF_const_sec_ = controller["pid_LPF_const_sec"].as<float>();
     max_control_effort_ = controller["max_control_effort"].as<std::array<float, 3> >();
-    roll_PID_inner_coeff_ = controller["roll_PID_inner"].as<std::array<float, 3> >();
-    roll_PID_outer_coeff_ = controller["roll_PID_outer"].as<std::array<float, 3> >();
-    pitch_PID_inner_coeff_ = controller["pitch_PID_inner"].as<std::array<float, 3> >();
-    pitch_PID_outer_coeff_ = controller["pitch_PID_outer"].as<std::array<float, 3> >();
-    yaw_PID_coeff_ = controller["yaw_PID"].as<std::array<float, 3> >();
 
-    YAML::Node filters = config_params["filters"];
-    imu_lpf_num_ = filters["imu_lpf_num"].as<std::vector<float> >();
-    imu_lpf_den_ = filters["imu_lpf_den"].as<std::vector<float> >();
 }
 
 // Default Destructor
 flyMS::~flyMS() {
-  // Free all the memory used in our digital filters
-  if (roll_inner_PID_) {
-    free(roll_inner_PID_);
-  }
-  if (roll_outer_PID_) {
-    free(roll_outer_PID_);
-  }
-  if (pitch_inner_PID_) {
-    free(pitch_inner_PID_);
-  }
-  if (pitch_outer_PID_) {
-    free(pitch_outer_PID_);
-  }
-  for (int i = 0; i < 3; i++) {
-    if (gyro_lpf_[i]) {
-      free(gyro_lpf_[i]);
-    }
-  }
-
   //Join the thread if executing
   if (flightcore_thread_.joinable())
     flightcore_thread_.join();
@@ -84,25 +51,12 @@ int flyMS::FlightCore() {
     *           Grab the time for Periphal Apps and Logs              *
     ******************************************************************/
     uint64_t timeStart = GetTimeMicroseconds();
-    // printf("time diff start %" PRIu64 "\n", (GetTimeMicroseconds() - timeStart));
 
     /******************************************************************
     *         Read, Parse, and Translate IMU data for Flight          *
     ******************************************************************/
-
     imu_module_->GetImuData(&imu_data_);
     mavlink_interface_.SendImuMessage(imu_data_);
-
-    // printf("time diff imu %" PRIu64 "\n", (GetTimeMicroseconds() - timeStart));
-
-    /******************************************************************
-    *             Take Care of Some Initialization Tasks              *
-    ******************************************************************/
-    if (first_iteration_) {
-      setpoint_.euler_ref[2] = imu_data_.euler[2];
-      setpoint_.yaw_ref_offset = imu_data_.euler[2];
-      first_iteration_ = false;
-    }
 
     /************************************************************************
     *       Check the Mavlink Interface for New Visual Odometry Data
@@ -111,8 +65,8 @@ int flyMS::FlightCore() {
     Eigen::Vector3f setpoint_orientation;
     float vio_yaw;
     if(mavlink_interface_.GetVioData(&vio)) {
-      setpoint_module_.position_controller->ReceiveVio(vio);
-      setpoint_module_.position_controller->GetSetpoint(setpoint_orientation, vio_yaw);
+      setpoint_module_->position_controller->ReceiveVio(vio);
+      setpoint_module_->position_controller->GetSetpoint(setpoint_orientation, vio_yaw);
 
       float log_setpoint[4] = {setpoint_orientation(0), setpoint_orientation(1), vio_yaw,
         setpoint_orientation(2)};
@@ -128,7 +82,7 @@ int flyMS::FlightCore() {
     /************************************************************************
     *                          Get Setpoint Data                            *
     ************************************************************************/
-    setpoint_module_.getSetpointData(&setpoint_);
+    setpoint_module_->GetSetpointData(&setpoint_);
 
     // If we have commanded a switch in Aux, activate the perception system
     if (setpoint_.Aux[0] < 0.1 && setpoint_.Aux[1] > 0.9) {
@@ -147,7 +101,7 @@ int flyMS::FlightCore() {
       mavlink_interface_.SendShutdownCommand();
 
       // Reset the filters in the Position controller
-      setpoint_module_.position_controller->ResetController();
+      setpoint_module_->position_controller->ResetController();
       setpoint_orientation = Eigen::Vector3f::Zero();
       position_generator_.ResetCounter();
     }
@@ -163,69 +117,51 @@ int flyMS::FlightCore() {
       // Apply the position setpoint
       Eigen::Vector3f pos_ref;
       position_generator_.GetPosition(&pos_ref);
-      setpoint_module_.position_controller->SetReferencePosition(pos_ref);
+      setpoint_module_->position_controller->SetReferencePosition(pos_ref);
     }
-
-    /************************************************************************
-    *                       Throttle Controller                             *
-    ************************************************************************/
-
-    //  float throttle_compensation = 1 / cos(imu_data_.euler[0]);
-    //  throttle_compensation *= 1 / cos(imu_data_.euler[1]);
-
-    // if(function_control.altitudeHold)
-    // {
-    //   if(function_control.altitudeHoldfirst_iteration_)
-    //   {
-    //     // this->control.standing_throttle = setpoint_.throttle;
-    //     // setpoint_.altitudeSetpoint = flyMSData.imu.baro_alt;
-    //     // function_control.altitudeHoldfirst_iteration_ = 0;
-    //   }
-    //       // setpoint_.altitudeSetpoint=setpoint_.altitudeSetpoint+(setpoint_.altitudeSetpointRate)*DT;
-
-    //   //u_throttle = update_filter(this->filters.altitudeHoldPID, setpoint_.altitudeSetpoint - flyMSData.baro_alt);
-    //   //setpoint_.throttle = u_throttle + flyMSData.standing_throttle;
-    // }
 
     /************************************************************************
     *                         Roll Controller                               *
     ************************************************************************/
+    float droll_setpoint;
     if (flight_mode_ == 1) {  // Stabilized Flight Mode
-      setpoint_.droll_setpoint = update_filter(roll_outer_PID_,
+      droll_setpoint = update_filter(flight_filters_->roll_outer_PID,
         setpoint_.euler_ref[0] - imu_data_.euler[0]);
     } else if (flight_mode_ == 2) {  // Acro mode
-      setpoint_.droll_setpoint = setpoint_.euler_ref[0];
+      droll_setpoint = setpoint_.euler_ref[0];
     } else {
       spdlog::error("[flyMS] Error! Invalid flight mode. Shutting down now");
       rc_set_state(EXITING);
       return -1;
     }
 
-    imu_data_.eulerRate[0] = update_filter(gyro_lpf_[0], imu_data_.eulerRate[0]);
-    u_euler_[0] = update_filter(roll_inner_PID_, setpoint_.droll_setpoint -
-      imu_data_.eulerRate[0]);
+    imu_data_.eulerRate[0] = update_filter(flight_filters_->gyro_lpf[0], imu_data_.eulerRate[0]);
+    u_euler_[0] = update_filter(flight_filters_->roll_inner_PID,
+      droll_setpoint - imu_data_.eulerRate[0]);
     u_euler_[0] = saturateFilter(u_euler_[0], -max_control_effort_[0], max_control_effort_[0]);
 
     /************************************************************************
     *                         Pitch Controller                              *
     ************************************************************************/
+    float dpitch_setpoint;
     if (flight_mode_ == 1) {  // Stabilized Flight Mode
-      setpoint_.dpitch_setpoint = update_filter(pitch_outer_PID_,
-        setpoint_.euler_ref[1] - imu_data_.euler[1]);
+      dpitch_setpoint = update_filter(flight_filters_->pitch_outer_PID, setpoint_.euler_ref[1]
+        - imu_data_.euler[1]);
     } else if (flight_mode_ == 2) {  // Acro mode
-      setpoint_.dpitch_setpoint = setpoint_.euler_ref[1];
+      dpitch_setpoint = setpoint_.euler_ref[1];
     }
 
-    imu_data_.eulerRate[1] = update_filter(gyro_lpf_[1], imu_data_.eulerRate[1]);
-    u_euler_[1] = update_filter(pitch_inner_PID_, setpoint_.dpitch_setpoint -
-      imu_data_.eulerRate[1]);
+    imu_data_.eulerRate[1] = update_filter(flight_filters_->gyro_lpf[1], imu_data_.eulerRate[1]);
+    u_euler_[1] = update_filter(flight_filters_->pitch_inner_PID,
+      dpitch_setpoint - imu_data_.eulerRate[1]);
     u_euler_[1] = saturateFilter(u_euler_[1], -max_control_effort_[1], max_control_effort_[1]);
 
     /************************************************************************
     *                          Yaw Controller                              *
     ************************************************************************/
-    imu_data_.eulerRate[2] = update_filter(gyro_lpf_[2], imu_data_.eulerRate[2]);
-    u_euler_[2] = update_filter(yaw_PID_, setpoint_.euler_ref[2] - imu_data_.euler[2]);
+    imu_data_.eulerRate[2] = update_filter(flight_filters_->gyro_lpf[2], imu_data_.eulerRate[2]);
+    u_euler_[2] = update_filter(flight_filters_->yaw_PID,
+      setpoint_.euler_ref[2] - imu_data_.euler[2]);
     //Apply a saturation filter
     u_euler_[2] = saturateFilter(u_euler_[2], -max_control_effort_[2],
       max_control_effort_[2]);
@@ -233,7 +169,7 @@ int flyMS::FlightCore() {
     /************************************************************************
     *                  Reset the Integrators if Landed                      *
     ************************************************************************/
-    if (setpoint_.throttle < min_throttle_ + .01) {
+    if (setpoint_.throttle < setpoint_module_->GetMinThrottle() + .01) {
       integrator_reset_++;
     } else {
       integrator_reset_ = 0;
@@ -242,21 +178,17 @@ int flyMS::FlightCore() {
     // if landed for 4 seconds, reset integrators and Yaw error
     if (integrator_reset_ > 2 / delta_t_) {
       setpoint_.euler_ref[2]=imu_data_.euler[2];
-      setpoint_module_.SetYawRef(imu_data_.euler[2]);
-      zeroFilter(roll_inner_PID_);
-      zeroFilter(roll_outer_PID_);
-      zeroFilter(pitch_inner_PID_);
-      zeroFilter(pitch_outer_PID_);
-      zeroFilter(yaw_PID_);
+      setpoint_module_->SetYawRef(imu_data_.euler[2]);
+      flight_filters_->ZeroPIDs();
     }
 
     /************************************************************************
     *  Mixing
     *
-    *                          CCW 1    2 CW    IMU Orientation:
-    *                               \ /              Y
-    *                               / \              |_ X
-    *                           CW 3   4 CCW
+    *                          CCW 1    2 CW       Body Frame:
+    *                               \ /               X
+    *                               / \             Y_|
+    *                           CW 3   4 CCW              Z UP
     *
     ************************************************************************/
     u_[0] = setpoint_.throttle + u_euler_[0] - u_euler_[1] - u_euler_[2];
@@ -305,10 +237,12 @@ int flyMS::FlightCore() {
 
     // Check to make sure the elapsed time wasn't greater than time allowed.
     // If so don't sleep at all
-    if (sleep_time < static_cast<uint64_t>(delta_t_*1.0E6))  rc_usleep(sleep_time);
-    else spdlog::warn("[flyMS] Error! Control thread too slow! time in micro seconds: {}",
-      (timeFinish - timeStart));
-
+    if (sleep_time < static_cast<uint64_t>(delta_t_*1.0E6)) {
+      rc_usleep(sleep_time);
+    } else {
+      spdlog::warn("[flyMS] Error! Control thread too slow! time in micro seconds: {}",
+        (timeFinish - timeStart));
+    }
   }
   return 0;
 }
@@ -415,8 +349,7 @@ void flyMS::InitializeSpdlog(const std::string &log_dir) {
 
 int flyMS::StartupRoutine() {
   //Initialize the remote controller through the setpoint object
-  if (setpoint_module_.start())
-    spdlog::error("[flyMS] Error initializing Radio Coms!");
+  setpoint_module_ = std::make_unique<Setpoint>(config_params_);
 
   //Tell the system that we are running
   rc_set_state(RUNNING);
@@ -427,7 +360,18 @@ int flyMS::StartupRoutine() {
   ulog_.InitUlog(log_dir);
 
   // Initialize the PID controllers and LP filters
-  InitializeFilters();
+    YAML::Node controller = config_params_["controller"];
+    YAML::Node filters = config_params_["filters"];
+    flight_filters_ = std::make_unique<FlightFilters> (
+      controller["roll_PID_inner"].as<std::array<float, 3> >(),
+      controller["roll_PID_outer"].as<std::array<float, 3> >(),
+      controller["pitch_PID_inner"].as<std::array<float, 3> >(),
+      controller["pitch_PID_outer"].as<std::array<float, 3> >(),
+      controller["yaw_PID"].as<std::array<float, 3> >(),
+      filters["imu_lpf_num"].as<std::vector<float> >(),
+      filters["imu_lpf_den"].as<std::vector<float> >(),
+      delta_t_,
+      controller["pid_LPF_const_sec"].as<float>());
 
   mavlink_interface_.Init();
 
@@ -446,39 +390,6 @@ int flyMS::StartupRoutine() {
   if(pthread_setschedparam(flightcore_thread_.native_handle(), SCHED_FIFO, &sch_params)) {
     perror("error with pthread");
     spdlog::error("Error setting pthread_setschedparam");
-  }
-  return 0;
-}
-
-/************************************************************************
-*  initialize_filters()
-*  setup of feedback controllers used in flight core
-************************************************************************/
-int flyMS::InitializeFilters() {
-  roll_outer_PID_  = generatePID(roll_PID_outer_coeff_[0], roll_PID_outer_coeff_[1],
-    roll_PID_outer_coeff_[2], pid_LPF_const_sec_, delta_t_);
-  pitch_outer_PID_ = generatePID(pitch_PID_outer_coeff_[0], pitch_PID_outer_coeff_[1],
-    pitch_PID_outer_coeff_[2], pid_LPF_const_sec_, delta_t_);
-  yaw_PID_ = generatePID(yaw_PID_coeff_[0], yaw_PID_coeff_[1], yaw_PID_coeff_[2],
-    pid_LPF_const_sec_, delta_t_);
-
-  roll_inner_PID_  = generatePID(roll_PID_inner_coeff_[0], roll_PID_inner_coeff_[0],
-    roll_PID_inner_coeff_[0], pid_LPF_const_sec_, delta_t_);
-  pitch_inner_PID_ = generatePID(pitch_PID_inner_coeff_[0], pitch_PID_inner_coeff_[1],
-    pitch_PID_inner_coeff_[2], pid_LPF_const_sec_, delta_t_);
-
-  // Check to make sure our digital filter is a correct size
-  if (imu_lpf_num_.size() != imu_lpf_den_.size()) {
-    spdlog::error("Low pass filter coefficients do not match in size!");
-    throw std::invalid_argument("Low pass filter coefficients do not match in size!");
-  }
-
-  // Initialize the filters
-  for (int i = 0; i < 3; i++) {
-    // accel_lpf_[i] = initialize_filter(imu_lpf_num_.size(), imu_lpf_num_.data(),
-      // imu_lpf_den_.data());
-    gyro_lpf_[i] = initialize_filter(imu_lpf_num_.size(), imu_lpf_num_.data(),
-      imu_lpf_den_.data());
   }
   return 0;
 }

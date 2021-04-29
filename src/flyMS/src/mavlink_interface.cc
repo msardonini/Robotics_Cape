@@ -67,6 +67,10 @@ MavlinkInterface::~MavlinkInterface() {
   if (serial_read_thread_.joinable()) {
     serial_read_thread_.join();
   }
+
+  if (gpio_thread_.joinable()) {
+    gpio_thread_.join();
+  }
 }
 
 int MavlinkInterface::SendImuMessage(const StateData &imu_state) {

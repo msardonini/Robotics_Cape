@@ -24,45 +24,26 @@
 #include <memory>
 
 //Package includes
-#include <roboticscape.h>
 #include "yaml-cpp/yaml.h"
+#include "rc/dsm.h"
 #include "flyMS/position_controller.h"
 
-/**
- * @brief      The flight mode
- */
-enum class SetpointMode {
-  Undefined = 0,
-  Stabilized = 1,
-  Acro = 2,
-  Navigation = 3
-};
-
-
 struct SetpointData {
-  float euler_ref[3];  // Reference (Desired) Position
-  float euler_ref_previous[3];  // Reference (Desired) Position
-  float yaw_rate_ref[2];
-  float Aux[2];
-  double lat_setpoint;
-  double lon_setpoint;      // Controller Variables for Autonomous Flight
-  float altitudeSetpointRate;
-  float altitudeSetpoint;
-  float dpitch_setpoint; // Desired attitude
-  float droll_setpoint;  // Desired attitude
+  float euler_ref[3];  // Reference (Desired) Position in Roll, Pitch, Yaw
+  float yaw_rate_ref[2];  // Reference Yaw Rate, current (ind 0) and previous
+  float Aux[2];  // The Aux channel value, current (ind 0) and previous
   float throttle;
-  float yaw_ref_offset;
   float kill_switch[2];  // Current (ind 0) and previous (ind 1) value of the kill switch channel
 };
 
 
-class setpoint {
+class Setpoint {
  public:
 
-  setpoint(const YAML::Node &config_params);
+  Setpoint(const YAML::Node &config_params);
 
   //Default Destructor
-  ~setpoint();
+  ~Setpoint();
 
   /**
    * @brief      Gets the setpoint data.
@@ -71,28 +52,34 @@ class setpoint {
    *
    * @return     The setpoint data.
    */
-  bool getSetpointData(SetpointData* setpoint);
-
+  bool GetSetpointData(SetpointData* setpoint);
 
   /**
-   * @brief      Initializes the hardware for the RC and starts managing threads
+   * @brief Set the Yaw Setpoint value to a user defined offset
    *
-   * @return     0 on success, -1 on failure
+   * @param ref
    */
-  int start();
-
   void SetYawRef(float ref);
+
+  /**
+   * @brief Get the Min Throttle
+   *
+   * @return float
+   */
+  float GetMinThrottle() const {
+    return throttle_limits_[0];
+  }
 
   std::unique_ptr<PositionController> position_controller;
  private:
   int SetpointManager();
-  int HandleRcData();
+  int HandleRcData(std::array<float, RC_MAX_DSM_CHANNELS> dsm2_data);
   int RcErrHandler();
 
+  std::atomic<bool> is_running_;  // Flag to indicate if the object is running vs shutting down
 
-  enum SetpointMode setpoint_mode_;
   std::atomic <bool> ready_to_send_;
-  float dsm2_data_[RC_MAX_DSM_CHANNELS];
+  std::array<float, RC_MAX_DSM_CHANNELS> dsm2_data_;
   int dsm2_timeout_;
 
   //Variables to control multithreading

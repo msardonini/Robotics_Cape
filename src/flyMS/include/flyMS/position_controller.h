@@ -55,6 +55,4 @@ class PositionController {
   std::array<std::array<float, 3>, 2> pid_coeffs_z_;
 };
 
-
-
 #endif  // FLYMS_INCLUDE_FLYMS_POSITION_CONTROLLER_H_

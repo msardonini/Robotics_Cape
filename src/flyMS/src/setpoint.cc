@@ -8,10 +8,13 @@
 
 #include "flyMS/setpoint.h"
 
-#include "spdlog/spdlog.h"
+#include <chrono>
 
-setpoint::setpoint(const YAML::Node &config_params) :
-  setpoint_mode_(SetpointMode::Stabilized),
+#include "spdlog/spdlog.h"
+#include "rc/start_stop.h"
+
+Setpoint::Setpoint(const YAML::Node &config_params) :
+  is_running_(true),
   ready_to_send_(false) {
     is_debug_mode_ = config_params["debug_mode"].as<bool>();
     flight_mode_ = config_params["flight_mode"].as<int>();
@@ -25,27 +28,27 @@ setpoint::setpoint(const YAML::Node &config_params) :
     throttle_limits_ = setpoint_params["throttle_limits"].as<std::array<float, 2> >();
 
     position_controller = std::make_unique<PositionController> (config_params);
+    int ret = rc_dsm_init();
+    if (ret < 0) {
+      throw std::invalid_argument("DSM failed to initialize");
+    }
+    setpoint_thread_ = std::thread(&Setpoint::SetpointManager, this);
   }
 
-setpoint::~setpoint() {
+Setpoint::~Setpoint() {
+  is_running_.store(false);
   if (setpoint_thread_.joinable()) {
     setpoint_thread_.join();
   }
 }
 
-int setpoint::start() {
-  int ret = rc_dsm_init();
-  setpoint_thread_ = std::thread(&setpoint::SetpointManager, this);
-  return ret;
-}
 
 //Gets the data from the local thread. Returns zero if no new data is available
-bool setpoint::getSetpointData(SetpointData* _setpoint) {
+bool Setpoint::GetSetpointData(SetpointData* setpoint) {
   if (ready_to_send_.load()) {
-    setpoint_mutex_.lock();
-    memcpy(_setpoint, &setpoint_data_, sizeof(SetpointData));
+    std::lock_guard<std::mutex> lock(setpoint_mutex_);
+    *setpoint = setpoint_data_;
     ready_to_send_.store(false);
-    setpoint_mutex_.unlock();
     return true;
   }
   return false;
@@ -59,15 +62,16 @@ bool setpoint::getSetpointData(SetpointData* _setpoint) {
       1. Direct from remote flyMSData
       2. Calculated values from GPS navigation for autonomous flight
 */
-int setpoint::SetpointManager() {
-  while (rc_get_state() != EXITING) {
+int Setpoint::SetpointManager() {
+  while (is_running_.load()) {
     /**********************************************************
     *           If there is new dsm2 data read it in       *
     *      and make a local copy from the driver's data  *
     **********************************************************/
+    std::array<float, RC_MAX_DSM_CHANNELS> dsm2_data;
     if (rc_dsm_is_new_data()) {
       for (int i = 0; i < RC_MAX_DSM_CHANNELS; i++) {
-        dsm2_data_[i] = rc_dsm_ch_normalized(i + 1);
+        dsm2_data[i] = rc_dsm_ch_normalized(i + 1);
       }
       dsm2_timeout_ = 0;
     } else {
@@ -80,42 +84,34 @@ int setpoint::SetpointManager() {
     }
 
     setpoint_mutex_.lock();
-    switch (setpoint_mode_) {
-    case SetpointMode::Stabilized:
-      HandleRcData();
-      break;
-    case SetpointMode::Navigation:
-
-      break;
-    default:
-      spdlog::error("Error, invalid reference mode! \n");
-    }
+    HandleRcData(dsm2_data);
     setpoint_mutex_.unlock();
-    usleep(static_cast<uint64_t>(delta_t_*1.0E6)); //Run at the control frequency
+    std::this_thread::sleep_for(std::chrono::microseconds(static_cast<unsigned int>(
+      delta_t_ * 1.0E6)));
   }
   return 0;
 }
 
 
-int setpoint::HandleRcData() {
+int Setpoint::HandleRcData(std::array<float, RC_MAX_DSM_CHANNELS> dsm2_data) {
   /**********************************************************
   *           Read the RC Controller for Commands           *
   **********************************************************/
   // Set roll/pitch reference value
   // DSM2 Receiver is inherently positive to the left
   if (flight_mode_ == 1) { // Stabilized Flight Mode
-    setpoint_data_.euler_ref[0] = -dsm2_data_[1] * max_setpoints_stabilized_[0];
-    setpoint_data_.euler_ref[1] = dsm2_data_[2] * max_setpoints_stabilized_[1];
+    setpoint_data_.euler_ref[0] = -dsm2_data[1] * max_setpoints_stabilized_[0];
+    setpoint_data_.euler_ref[1] = dsm2_data[2] * max_setpoints_stabilized_[1];
   } else if (flight_mode_ == 2) {
-    setpoint_data_.euler_ref[0] = -dsm2_data_[1] * max_setpoints_acro_[0];
-    setpoint_data_.euler_ref[1] = dsm2_data_[2] * max_setpoints_acro_[1];
+    setpoint_data_.euler_ref[0] = -dsm2_data[1] * max_setpoints_acro_[0];
+    setpoint_data_.euler_ref[1] = dsm2_data[2] * max_setpoints_acro_[1];
   }
   // DSM2 Receiver is inherently positive upwards
 
   // Set Yaw, RC Controller acts on Yaw velocity, save a history for integration
   // Apply the integration outside of current if statement, needs to run at 200Hz
   setpoint_data_.yaw_rate_ref[1] = setpoint_data_.yaw_rate_ref[0];
-  setpoint_data_.yaw_rate_ref[0] = dsm2_data_[3] * max_setpoints_stabilized_[2];
+  setpoint_data_.yaw_rate_ref[0] = dsm2_data[3] * max_setpoints_stabilized_[2];
 
   //If Specified by the config file, convert from Drone Coordinate System to User Coordinate System
   if (is_headless_mode_) {
@@ -135,14 +131,14 @@ int setpoint::HandleRcData() {
 
   // Kill Switch
   setpoint_data_.kill_switch[1] = setpoint_data_.kill_switch[0];
-  setpoint_data_.kill_switch[0] = dsm2_data_[4];
+  setpoint_data_.kill_switch[0] = dsm2_data[4];
 
   // Auxillary Switch
   setpoint_data_.Aux[1] = setpoint_data_.Aux[0];
-  setpoint_data_.Aux[0] = dsm2_data_[5];
+  setpoint_data_.Aux[0] = dsm2_data[5];
 
   // Set the throttle
-  setpoint_data_.throttle = (dsm2_data_[0] + 1.0) / 2.0 * (throttle_limits_[1] -
+  setpoint_data_.throttle = (dsm2_data[0] + 1.0) / 2.0 * (throttle_limits_[1] -
     throttle_limits_[0]) + throttle_limits_[0];
 
   // Finally Update the integrator on the yaw reference value
@@ -154,11 +150,11 @@ int setpoint::HandleRcData() {
   return 0;
 }
 
-void setpoint::SetYawRef(float ref) {
+void Setpoint::SetYawRef(float ref) {
   setpoint_data_.euler_ref[2] = ref;
 }
 
-int setpoint::RcErrHandler() {
+int Setpoint::RcErrHandler() {
   dsm2_timeout_++;
   if (dsm2_timeout_ > 1.5 / delta_t_) { //If packet hasn't been received for 1.5 seconds
     spdlog::info("\nLost Connection with Remote!! Shutting Down Immediately \n");
